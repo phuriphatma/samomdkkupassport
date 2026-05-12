@@ -13,7 +13,11 @@ export async function processScan() {
     const user = await checkSession();
     if (!user) {
         // Not logged in? Save intent in persistent localStorage and redirect to login
-        localStorage.setItem('pendingScanUrl', window.location.href);
+        try {
+            localStorage.setItem('pendingScanUrl', window.location.href);
+        } catch (e) {
+            console.warn("Could not save pending scan URL", e);
+        }
         window.location.href = 'index.html';
         return;
     }

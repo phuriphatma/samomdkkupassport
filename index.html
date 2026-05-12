@@ -85,7 +85,12 @@
 
             // FIX: If we have a pending scan URL, pass it to Google so we land right back on the scan!
             let redirectUrl = window.location.origin + '/dashboard.html';
-            const pendingUrl = localStorage.getItem('pendingScanUrl');
+            let pendingUrl = null;
+            try {
+                pendingUrl = localStorage.getItem('pendingScanUrl');
+            } catch (e) {
+                console.warn("Could not read localStorage", e);
+            }
 
             if (pendingUrl) {
                 redirectUrl = pendingUrl;
@@ -101,9 +106,17 @@
 
         document.getElementById('continue-btn').addEventListener('click', () => {
             // FIX: Changed sessionStorage to localStorage
-            const pendingUrl = localStorage.getItem('pendingScanUrl');
+            let pendingUrl = null;
+            try {
+                pendingUrl = localStorage.getItem('pendingScanUrl');
+                if (pendingUrl) {
+                    localStorage.removeItem('pendingScanUrl');
+                }
+            } catch (e) {
+                console.warn("Could not read/write localStorage", e);
+            }
+            
             if (pendingUrl) {
-                localStorage.removeItem('pendingScanUrl');
                 window.location.href = pendingUrl;
             } else {
                 window.location.href = 'dashboard.html';
