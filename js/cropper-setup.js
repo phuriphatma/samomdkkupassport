@@ -32,8 +32,6 @@ export function setupCropper() {
         });
       };
       reader.readAsDataURL(file);
-      // Reset input
-      input.value = "";
     });
   }
 
