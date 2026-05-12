@@ -68,7 +68,7 @@ export async function processScan() {
     }
 
     // Populate the confirmation card
-    document.getElementById('confirm-activity').innerText = activity.badge_name || activity.name;
+    document.getElementById('confirm-activity').innerText = activity.name;
     document.getElementById('confirm-points').innerText = `+${activity.base_points_km} km`;
     
     if (activity.badge_url) {
@@ -81,6 +81,12 @@ export async function processScan() {
         }
         badgeEl.src = finalUrl;
         badgeEl.style.display = 'block';
+
+        if (activity.badge_name) {
+            const badgeNameEl = document.getElementById('confirm-badge-name');
+            badgeNameEl.innerText = activity.badge_name;
+            badgeNameEl.style.display = 'block';
+        }
     }
 
     // Show the section
