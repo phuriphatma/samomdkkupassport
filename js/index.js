@@ -1,6 +1,6 @@
 // js/index.js — Landing page auth logic
 import { supabase } from './app.js';
-import { getPendingScanUrl, clearPendingScanUrl, savePendingScanUrl } from './utils.js';
+import { getPendingScanUrl, clearPendingScanUrl } from './utils.js';
 
 const loadingText = document.getElementById('loading-text');
 const loginBtn = document.getElementById('google-login');
@@ -43,18 +43,13 @@ loginBtn.addEventListener('click', async () => {
     loadingText.innerText = 'Redirecting to Google...';
     loginBtn.style.display = 'none';
 
-    // FIX: If we have a pending scan URL, pass it to Google so we land right back on the scan!
-    let redirectUrl = window.location.origin + '/dashboard.html';
-    const pendingUrl = getPendingScanUrl();
-
-    if (pendingUrl) {
-        redirectUrl = pendingUrl;
-    }
-
+    // Always redirect to dashboard after OAuth.
+    // If there's a pending scan URL, dashboard.js will pick it up from localStorage
+    // and redirect there. This avoids OAuth stripping query params from scan URLs.
     await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-            redirectTo: redirectUrl,
+            redirectTo: window.location.origin + '/dashboard.html',
         }
     });
 });
