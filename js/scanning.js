@@ -68,8 +68,20 @@ export async function processScan() {
     }
 
     // Populate the confirmation card
-    document.getElementById('confirm-activity').innerText = activity.name;
+    document.getElementById('confirm-activity').innerText = activity.badge_name || activity.name;
     document.getElementById('confirm-points').innerText = `+${activity.base_points_km} km`;
+    
+    if (activity.badge_url) {
+        const badgeEl = document.getElementById('confirm-badge');
+        let finalUrl = activity.badge_url;
+        // Fix Google Drive URLs
+        const gdriveMatch = finalUrl.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+        if (gdriveMatch) {
+            finalUrl = `https://lh3.googleusercontent.com/d/${gdriveMatch[1]}`;
+        }
+        badgeEl.src = finalUrl;
+        badgeEl.style.display = 'block';
+    }
 
     // Show the section
     confirmSection.style.display = 'block';

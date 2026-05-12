@@ -197,8 +197,15 @@
             stampWrapper.style.alignItems = "center";
             stampWrapper.style.margin = "10px";
 
+            let finalUrl = activityData.badge_url;
+            // Fix Google Drive URLs
+            const gdriveMatch = finalUrl.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+            if (gdriveMatch) {
+                finalUrl = `https://lh3.googleusercontent.com/d/${gdriveMatch[1]}`;
+            }
+
             const img = document.createElement("img");
-            img.src = activityData.badge_url;
+            img.src = finalUrl;
             img.className = "city-stamp";
             img.title = activityName;
             img.style.marginBottom = "5px";
