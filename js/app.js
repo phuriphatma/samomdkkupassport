@@ -1,5 +1,5 @@
 // js/app.js
-import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
+import { createClient } from "@supabase/supabase-js";
 
 // GET THESE FROM VITE ENVIRONMENT VARIABLES
 const SUPABASE_URL = import.meta.env?.VITE_SUPABASE_URL || "https://idwlabpbwiwgaoqwbozz.supabase.co";
