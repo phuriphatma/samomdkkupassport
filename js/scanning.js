@@ -1,6 +1,6 @@
 // js/scanning.js
 import { supabase } from './app.js';
-import { checkSession, logout } from './auth.js';
+import { checkSession } from './auth.js';
 import { fixGoogleDriveUrl, savePendingScanUrl, clearPendingScanUrl } from './utils.js';
 
 export async function processScan() {
@@ -123,7 +123,16 @@ export async function processScan() {
 
     document.getElementById('btn-change-account').onclick = async () => {
         savePendingScanUrl(window.location.href);
-        await logout();
+
+        // Sign out, then immediately open Google account picker — no intermediate page.
+        // Dashboard will pick up the pending scan URL and redirect back here.
+        await supabase.auth.signOut();
+        await supabase.auth.signInWithOAuth({
+            provider: 'google',
+            options: {
+                redirectTo: window.location.origin + '/dashboard.html',
+            }
+        });
     };
 
     // Helper function to update status UI
