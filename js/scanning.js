@@ -112,6 +112,11 @@ export async function processScan() {
     };
 
     document.getElementById('btn-change-account').onclick = async () => {
+        try {
+            localStorage.setItem('pendingScanUrl', window.location.href);
+        } catch (e) {
+            console.warn("Could not save pending scan URL", e);
+        }
         await logout();
     };
 
