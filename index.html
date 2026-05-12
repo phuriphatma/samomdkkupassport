@@ -50,34 +50,35 @@
         const loggedInSection = document.getElementById('logged-in-section');
         const emailDisplay = document.getElementById('user-email-display');
 
-        // Function to update the screen based on session status
         function updateUI(session) {
             loadingText.style.display = 'none';
 
             if (session && session.user) {
-                // Device cache found a user! Show the continue screen.
                 loggedInSection.style.display = 'block';
                 loginBtn.style.display = 'none';
                 emailDisplay.innerText = session.user.email;
             } else {
-                // No cache found. Show the login button.
                 loggedInSection.style.display = 'none';
                 loginBtn.style.display = 'block';
             }
         }
 
         async function initAuth() {
-            // 1. Immediately check for an existing session in cache
-            const { data: { session } } = await supabase.auth.getSession();
-            updateUI(session);
+            // FIX: Added try-catch so it never gets stuck on "Reading device cache..."
+            try {
+                const { data: { session }, error } = await supabase.auth.getSession();
+                if (error) throw error;
+                updateUI(session);
+            } catch (err) {
+                console.error("Session check error:", err);
+                updateUI(null);
+            }
 
-            // 2. Setup a listener just in case the device cache loads a fraction of a second later
             supabase.auth.onAuthStateChange((_event, session) => {
                 updateUI(session);
             });
         }
 
-        // Login Action
         document.getElementById('google-login').addEventListener('click', async () => {
             loadingText.style.display = 'block';
             loadingText.innerText = 'Redirecting to Google...';
@@ -91,24 +92,32 @@
             });
         });
 
-        // Continue Action
         document.getElementById('continue-btn').addEventListener('click', () => {
-            window.location.href = 'dashboard.html';
+            // FIX: Resume scan if user clicked continue from cache
+            const pendingUrl = sessionStorage.getItem('pendingScanUrl');
+            if (pendingUrl) {
+                sessionStorage.removeItem('pendingScanUrl');
+                window.location.href = pendingUrl;
+            } else {
+                window.location.href = 'dashboard.html';
+            }
         });
 
-        // Logout Action
         document.getElementById('logout-btn').addEventListener('click', async (e) => {
             e.preventDefault();
             loadingText.style.display = 'block';
             loadingText.innerText = 'Clearing device cache...';
             loggedInSection.style.display = 'none';
 
-            // Wipe the session from local storage
-            await supabase.auth.signOut();
+            // FIX: Prevent hanging if signOut fails due to an already dead session
+            try {
+                await supabase.auth.signOut();
+            } catch (err) {
+                console.error("Logout error:", err);
+            }
             window.location.reload();
         });
 
-        // Start checking as soon as the script runs
         initAuth();
     </script>
 </body>

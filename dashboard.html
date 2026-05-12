@@ -91,6 +91,14 @@
         return;
       }
 
+      // === NEW FIX: Resume scan if they were redirected to login ===
+      const pendingUrl = sessionStorage.getItem('pendingScanUrl');
+      if (pendingUrl) {
+        sessionStorage.removeItem('pendingScanUrl');
+        window.location.href = pendingUrl;
+        return;
+      }
+
       // 2. Set Passenger Name
       let displayName = "Traveler";
       if (user.user_metadata?.full_name) {

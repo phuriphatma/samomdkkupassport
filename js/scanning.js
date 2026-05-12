@@ -40,13 +40,62 @@ export async function processScan() {
         return;
     }
 
-    // Anti-Cheat Check
-    const now = new Date();
-    const expiresAt = new Date(activity.token_expires_at);
+    // --- QR GENERATION ---
+    function startRotatingQR() {
+        document.getElementById("event-creation").style.display = "none";
+        document.getElementById("manage-section").style.display = "none";
+        document.getElementById("qr-section").style.display = "block";
 
-    if (activity.active_token !== token || now > expiresAt) {
-        showStatus('QR Code Expired', 'This QR code has expired to prevent cheating. Please scan the current code on the screen.', 'error');
-        return;
+        if (rotationInterval) clearInterval(rotationInterval);
+        if (timerInterval) clearInterval(timerInterval);
+        document.getElementById("qrcode").innerHTML = "";
+
+        qrGenerator = new QRCode(document.getElementById("qrcode"), {
+            width: 300,
+            height: 300,
+        });
+
+        if (qrType === "dynamic") {
+            generateAndSaveToken(false);
+            rotationInterval = setInterval(
+                () => generateAndSaveToken(false),
+                15000,
+            );
+
+            let secondsLeftRemaining = 15;
+            document.querySelector(".timer").style.display = "block";
+            timerInterval = setInterval(() => {
+                secondsLeftRemaining--;
+                document.getElementById("time-left").innerText =
+                    secondsLeftRemaining;
+                if (secondsLeftRemaining <= 0) secondsLeftRemaining = 15;
+            }, 1000);
+            document.getElementById("qr-info-text").innerText =
+                "This token rotates automatically to prevent cheating.";
+        } else {
+            generateAndSaveToken(true);
+            document.querySelector(".timer").style.display = "none";
+            document.getElementById("qr-info-text").innerText =
+                "This is a static QR code. You can screenshot or print it.";
+        }
+    }
+
+    async function generateAndSaveToken(isStatic) {
+        const newToken = generateUUID();
+        const expireMs = isStatic ? 10 * 365 * 24 * 60 * 60 * 1000 : 20000;
+        const expires = new Date(Date.now() + expireMs).toISOString();
+
+        const { error } = await supabase
+            .from("activities")
+            .update({ active_token: newToken, token_expires_at: expires })
+            .eq("id", currentActivityId);
+
+        if (error) return;
+
+        const currentUrl = window.location.origin;
+        const scanUrl = `${currentUrl}/scan.html?aid=${currentActivityId}&tk=${newToken}`;
+
+        qrGenerator.makeCode(scanUrl);
     }
 
     // 4. SHOW CONFIRMATION UI INSTEAD OF AUTO-INSERTING
