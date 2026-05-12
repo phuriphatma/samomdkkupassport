@@ -1,67 +1,93 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Stamping Passport...</title>
-    <link rel="stylesheet" href="css/main.css" />
-    <style>
-      .scan-container {
-        text-align: center;
-        margin-top: 100px;
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Stamping Passport...</title>
+  <link rel="stylesheet" href="css/main.css" />
+  <style>
+    .scan-container {
+      text-align: center;
+      margin-top: 100px;
+    }
+
+    /* A simple spinning animation for loading */
+    .spinner {
+      border: 4px solid rgba(0, 0, 0, 0.1);
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      border-left-color: var(--accent-blue);
+      animation: spin 1s linear infinite;
+      margin: 0 auto 20px auto;
+    }
+
+    @keyframes spin {
+      0% {
+        transform: rotate(0deg);
       }
-      /* A simple spinning animation for loading */
-      .spinner {
-        border: 4px solid rgba(0, 0, 0, 0.1);
-        width: 50px;
-        height: 50px;
-        border-radius: 50%;
-        border-left-color: var(--accent-blue);
-        animation: spin 1s linear infinite;
-        margin: 0 auto 20px auto;
+
+      100% {
+        transform: rotate(360deg);
       }
-      @keyframes spin {
-        0% {
-          transform: rotate(0deg);
-        }
-        100% {
-          transform: rotate(360deg);
-        }
-      }
-      .success {
-        color: var(--accent-green);
-      }
-      .error {
-        color: var(--accent-red);
-      }
-    </style>
-  </head>
-  <body>
-    <div class="container scan-container">
-      <div id="loading-spinner">
-        <div class="spinner"></div>
-        <h2>Verifying Flight Data...</h2>
-        <p>Please wait while we check your passport.</p>
+    }
+
+    .success {
+      color: var(--accent-green);
+    }
+
+    .error {
+      color: var(--accent-red);
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container scan-container">
+    <div id="loading-spinner">
+      <div class="spinner"></div>
+      <h2>Verifying Flight Data...</h2>
+      <p>Please wait while we check your passport.</p>
+    </div>
+
+    <div id="confirm-section"
+      style="display: none; background: rgba(0,0,0,0.2); padding: 25px 20px; border-radius: 12px; border: 1px solid var(--glass-border); margin-bottom: 20px;">
+      <p style="margin-bottom: 5px; font-size: 0.9rem; color: var(--text-muted);">Adding flight to passport:</p>
+      <h3 id="confirm-user" style="color: var(--accent-primary); margin-bottom: 20px; word-break: break-all;"></h3>
+
+      <div style="background: rgba(255,255,255,0.05); padding: 15px; border-radius: 8px; margin-bottom: 25px;">
+        <h2 id="confirm-activity" style="color: var(--text-light); margin-bottom: 5px; font-size: 1.5rem;"></h2>
+        <p id="confirm-points" style="color: var(--accent-success); font-weight: bold; font-size: 1.2rem; margin: 0;">
+        </p>
       </div>
 
-      <h1 id="scan-title"></h1>
-      <p id="scan-message"></p>
-
-      <div id="action-buttons" style="display: none; margin-top: 30px">
-        <button
-          onclick="window.location.href = 'dashboard.html'"
-          class="btn-large"
-        >
-          View My Passport
-        </button>
+      <div style="display: flex; flex-direction: column; gap: 12px;">
+        <button id="btn-confirm-add" class="btn-large"
+          style="background: linear-gradient(135deg, var(--accent-success), #059669); font-size: 1.1rem;">✈️ Confirm &
+          Stamp Passport</button>
+        <button id="btn-change-account" class="btn-large"
+          style="background: transparent; border: 1px solid var(--glass-border); color: var(--text-muted);">Not you?
+          Change Account</button>
       </div>
     </div>
 
-    <script type="module">
-      import { processScan } from "./js/scanning.js";
+    <h1 id="scan-title"></h1>
+    <p id="scan-message"></p>
 
-      // Run the scan processor as soon as the page loads
-      processScan();
-    </script>
-  </body>
+    <div id="action-buttons" style="display: none; margin-top: 30px">
+      <button onclick="window.location.href = 'dashboard.html'" class="btn-large">
+        View My Passport
+      </button>
+    </div>
+  </div>
+
+  <script type="module">
+    import { processScan } from "./js/scanning.js";
+
+    // Run the scan processor as soon as the page loads
+    processScan();
+  </script>
+</body>
+
 </html>

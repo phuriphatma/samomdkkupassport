@@ -112,6 +112,15 @@
           style="margin-bottom: 10px; width: 100%; padding: 10px; box-sizing: border-box;" />
         <input type="password" id="admin-pass" placeholder="Password" required
           style="margin-bottom: 10px; width: 100%; padding: 10px; box-sizing: border-box;" />
+
+        <div style="margin-bottom: 20px; text-align: left;">
+          <label
+            style="color: var(--text-light); font-size: 0.95rem; display: flex; align-items: center; gap: 8px; cursor: pointer;">
+            <input type="checkbox" id="admin-remember" style="width: auto; margin: 0; cursor: pointer;" />
+            Remember me
+          </label>
+        </div>
+
         <button type="submit" style="width: 100%;">Login</button>
       </form>
     </div>
@@ -185,8 +194,8 @@
     }
 
     async function init() {
-      // Remember login
-      if (localStorage.getItem("admin_logged_in") === "true") {
+      // Check both local and session storage
+      if (localStorage.getItem("admin_logged_in") === "true" || sessionStorage.getItem("admin_logged_in") === "true") {
         document.getElementById("admin-login-section").style.display = "none";
         document.getElementById("admin-content").style.display = "block";
         document.getElementById("admin-logout").style.display = "inline-block";
@@ -195,7 +204,9 @@
       document.getElementById("admin-login-form").addEventListener("submit", handleLogin);
       document.getElementById("activity-form").addEventListener("submit", createActivity);
       document.getElementById("admin-logout").addEventListener("click", () => {
+        // Clear both storages on logout
         localStorage.removeItem("admin_logged_in");
+        sessionStorage.removeItem("admin_logged_in");
         window.location.reload();
       });
     }
@@ -204,8 +215,16 @@
       e.preventDefault();
       const user = document.getElementById("admin-user").value;
       const pass = document.getElementById("admin-pass").value;
+      const remember = document.getElementById("admin-remember").checked;
+
       if (user === "admin" && pass === "1234") {
-        localStorage.setItem("admin_logged_in", "true");
+        // Save to appropriate storage based on checkbox
+        if (remember) {
+          localStorage.setItem("admin_logged_in", "true");
+        } else {
+          sessionStorage.setItem("admin_logged_in", "true");
+        }
+
         document.getElementById("admin-login-section").style.display = "none";
         document.getElementById("admin-content").style.display = "block";
         document.getElementById("admin-logout").style.display = "inline-block";
