@@ -3,9 +3,10 @@ body.boarding-pass-theme {
     display: flex;
     justify-content: center;
     align-items: center;
+    flex-direction: column;
+    /* FIX: Stacks items vertically so the back button doesn't overlap */
     min-height: 100vh;
     padding: 20px;
-    /* Uses gradient from main.css */
 }
 
 .boarding-pass {
@@ -308,13 +309,9 @@ body.boarding-pass-theme {
 @media (max-width: 900px) {
     .boarding-pass {
         width: 90%;
-        /* Take up most of the screen width */
         max-width: 450px;
-        /* Don't let it get too wide on tablets */
         height: auto;
-        /* Let content dictate height */
         flex-direction: column;
-        /* Stack the left and right sides vertically */
     }
 
     .pass-left {
@@ -326,16 +323,13 @@ body.boarding-pass-theme {
         width: 100%;
         padding: 25px 20px;
         border-left: none;
-        /* Change vertical perforation to horizontal */
         border-top: 2px dashed rgba(255, 255, 255, 0.2);
     }
 
-    /* Hide the old vertical glassy perforation on mobile */
     .boarding-pass::after {
         display: none;
     }
 
-    /* Shrink the header */
     .pass-header {
         flex-direction: column;
         align-items: flex-start;
@@ -343,14 +337,11 @@ body.boarding-pass-theme {
         margin-bottom: 20px;
     }
 
-    /* Scale down the name and let it wrap if it's too long */
     .passenger-details h2 {
         font-size: 1.6rem;
         word-break: break-word;
-        /* Prevents long names from overflowing */
     }
 
-    /* Adjust the stats grid */
     .travel-stats {
         gap: 20px;
         justify-content: space-between;
@@ -360,7 +351,6 @@ body.boarding-pass-theme {
         font-size: 1.8rem;
     }
 
-    /* Keep the visa stamp from overlapping */
     .visa-section {
         position: relative;
         top: 0;
@@ -368,10 +358,8 @@ body.boarding-pass-theme {
         text-align: left;
         margin-bottom: 20px;
         order: -1;
-        /* Puts the stamp above the stats */
     }
 
-    /* Fix the logout button positioning */
     .logout-link {
         position: relative;
         bottom: 0;
@@ -379,5 +367,42 @@ body.boarding-pass-theme {
         display: block;
         margin-top: 20px;
         text-align: center;
+    }
+}
+
+/* =========================================
+   NEW: SKELETON LOADING ANIMATION
+========================================= */
+.skeleton {
+    position: relative;
+    overflow: hidden;
+    background-color: rgba(255, 255, 255, 0.05);
+    /* Gray background */
+    color: transparent !important;
+    /* Hide the placeholder text */
+    border-radius: 6px;
+    user-select: none;
+    display: inline-block;
+}
+
+.skeleton::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    transform: translateX(-100%);
+    background-image: linear-gradient(90deg,
+            rgba(255, 255, 255, 0) 0,
+            rgba(255, 255, 255, 0.1) 20%,
+            rgba(255, 255, 255, 0.1) 60%,
+            rgba(255, 255, 255, 0));
+    animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+    100% {
+        transform: translateX(100%);
     }
 }
