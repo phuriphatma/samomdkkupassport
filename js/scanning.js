@@ -53,6 +53,10 @@ export async function processScan() {
 
     // Get display name or prompt login
     if (user) {
+        // The pending URL has served its purpose (redirecting back here after login).
+        // Clear it immediately so the dashboard doesn't redirect back here again.
+        clearPendingScanUrl();
+
         let displayName = user.user_metadata?.full_name || user.user_metadata?.name || user.email;
         document.getElementById('confirm-user').innerText = displayName;
         document.getElementById('btn-confirm-add').innerText = '✈️ Confirm & Stamp Passport';
@@ -112,9 +116,6 @@ export async function processScan() {
             }
             return;
         }
-
-        // Clear the pending scan so it doesn't trigger again later
-        clearPendingScanUrl();
 
         // Success!
         showStatus('Passport Stamped! ✈️', `Successfully earned ${activity.base_points_km} km for ${activity.name}!`, 'success');
