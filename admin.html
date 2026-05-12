@@ -6,102 +6,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Admin Passport Terminal</title>
   <link rel="stylesheet" href="css/main.css" />
+  <link rel="stylesheet" href="css/admin.css" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-  <style>
-    .qr-area {
-      text-align: center;
-      margin-top: 30px;
-    }
-
-    #qrcode img {
-      margin: 0 auto;
-      border: 10px solid white;
-      border-radius: 10px;
-    }
-
-    .timer {
-      font-size: 1.2rem;
-      color: red;
-      font-weight: bold;
-    }
-
-    .bonus-container {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin: 15px 0 25px 0;
-      padding: 15px 20px;
-      background: rgba(0, 0, 0, 0.2);
-      border-radius: 12px;
-      border: 1px solid var(--glass-border);
-      box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
-    }
-
-    .bonus-text {
-      font-weight: 500;
-      font-size: 1rem;
-      color: var(--text-light);
-    }
-
-    .toggle-switch {
-      position: relative;
-      display: inline-block;
-      width: 54px;
-      height: 28px;
-    }
-
-    .toggle-switch input {
-      opacity: 0;
-      width: 0;
-      height: 0;
-    }
-
-    .slider {
-      position: absolute;
-      cursor: pointer;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background-color: rgba(255, 255, 255, 0.1);
-      transition: 0.4s;
-      border-radius: 34px;
-      border: 1px solid var(--glass-border);
-    }
-
-    .slider:before {
-      position: absolute;
-      content: "";
-      height: 20px;
-      width: 20px;
-      left: 4px;
-      bottom: 3px;
-      background-color: var(--text-muted);
-      transition: 0.4s;
-      border-radius: 50%;
-    }
-
-    input:checked+.slider {
-      background-color: var(--accent-primary);
-      border-color: var(--accent-primary);
-      box-shadow: 0 0 10px rgba(56, 189, 248, 0.4);
-    }
-
-    input:checked+.slider:before {
-      transform: translateX(24px);
-      background-color: white;
-    }
-  </style>
 </head>
 
 <body>
   <div class="container">
-    <div style="
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          margin-bottom: 20px;
-        ">
+    <div class="admin-topbar">
       <a href="index.html" class="text-link">&larr; Back to Home</a>
       <a href="#" id="admin-logout" class="text-link" style="display: none; color: var(--accent-danger)">Logout
         Admin</a>
@@ -109,32 +20,15 @@
 
     <h1>Admin Terminal</h1>
 
-    <div id="admin-login-section" style="max-width: 400px; margin: 0 auto">
+    <div id="admin-login-section" class="admin-login-box">
       <h3>Login</h3>
       <form id="admin-login-form">
-        <input type="text" id="admin-user" placeholder="Username" required style="
-              margin-bottom: 10px;
-              width: 100%;
-              padding: 10px;
-              box-sizing: border-box;
-            " />
-        <input type="password" id="admin-pass" placeholder="Password" required style="
-              margin-bottom: 10px;
-              width: 100%;
-              padding: 10px;
-              box-sizing: border-box;
-            " />
+        <input type="text" id="admin-user" placeholder="Username" required class="admin-login-input" />
+        <input type="password" id="admin-pass" placeholder="Password" required class="admin-login-input" />
 
         <div style="margin-bottom: 20px; text-align: left">
-          <label style="
-                color: var(--text-light);
-                font-size: 0.95rem;
-                display: flex;
-                align-items: center;
-                gap: 8px;
-                cursor: pointer;
-              ">
-            <input type="checkbox" id="admin-remember" style="width: auto; margin: 0; cursor: pointer" />
+          <label class="remember-label">
+            <input type="checkbox" id="admin-remember" class="remember-checkbox" />
             Remember me
           </label>
         </div>
@@ -150,7 +44,8 @@
           <input type="text" id="act-name" placeholder="HRD Project Name" required /><br />
           <input type="number" id="act-km" placeholder="500" required /><br />
           <input type="text" id="act-badge-name" placeholder="Badge Display Name (Optional)" /><br />
-          <small style="color: var(--text-muted); display: block; margin-bottom: 5px;">Upload a square image (e.g. 200x200) to Google Drive, make it public, and paste the direct link here.</small>
+          <small style="color: var(--text-muted); display: block; margin-bottom: 5px;">Upload a square image (e.g.
+            200x200) to Google Drive, make it public, and paste the direct link here.</small>
           <input type="url" id="act-badge-url" placeholder="Badge Image URL" /><br />
 
           <select id="act-continent">
@@ -166,7 +61,6 @@
               <span class="slider"></span>
             </label>
           </div>
-
 
           <button type="submit">Create Activity</button>
         </form>
@@ -197,10 +91,7 @@
           <button type="submit" style="margin-bottom: 10px">
             Update Activity
           </button>
-          <button type="button" onclick="cancelEdit()" style="
-                background: rgba(255, 255, 255, 0.1);
-                border: 1px solid var(--glass-border);
-              ">
+          <button type="button" onclick="cancelEdit()" class="btn-cancel-edit">
             Cancel Edit
           </button>
         </form>
@@ -217,13 +108,12 @@
         <h3>Activity Scanners</h3>
         <p style="margin-bottom: 20px;">Leave this page open to display the dynamic QR code.</p>
 
-        <div style="display: flex; gap: 30px; justify-content: center; flex-wrap: wrap; margin-bottom: 30px;">
+        <div class="qr-display-row">
           <div class="qr-area" style="margin-top: 0;">
             <h4 style="color: var(--accent-primary);">Dynamic QR</h4>
             <small style="display: block; margin-bottom: 15px; color: var(--text-muted);">Auto-rotates to prevent
               cheating</small>
-            <div id="qrcode-dynamic"
-              style="background: white; padding: 10px; border-radius: 10px; display: inline-block;"></div>
+            <div id="qrcode-dynamic" class="qr-box"></div>
             <div class="timer" style="margin-top: 15px;">
               Refreshing in <span id="time-left">15</span>s
             </div>
@@ -233,340 +123,19 @@
             <h4 style="color: var(--accent-secondary);">Static QR</h4>
             <small style="display: block; margin-bottom: 15px; color: var(--text-muted);">Printable. Does not
               expire.</small>
-            <div id="qrcode-static"
-              style="background: white; padding: 10px; border-radius: 10px; display: inline-block;"></div>
+            <div id="qrcode-static" class="qr-box"></div>
             <div style="margin-top: 15px; font-weight: bold; color: var(--accent-secondary);">
               Unlimited Validity
             </div>
           </div>
         </div>
 
-        <button onclick="window.location.reload()" style="max-width: 300px; margin: 0 auto;">Close Scanners</button>
+        <button onclick="window.location.reload()" class="qr-close-btn">Close Scanners</button>
       </div>
     </div>
   </div>
 
-  <script type="module">
-    import { supabase } from "./js/app.js";
-
-    let currentActivityId = null;
-    let editingActivityId = null;
-    let qrGenerator = null;
-    let rotationInterval = null;
-    let timerInterval = null;
-    let qrType = "dynamic";
-
-    function generateUUID() {
-      if (typeof crypto !== "undefined" && crypto.randomUUID)
-        return crypto.randomUUID();
-      return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(
-        /[xy]/g,
-        function (c) {
-          const r = (Math.random() * 16) | 0;
-          const v = c === "x" ? r : (r & 0x3) | 0x8;
-          return v.toString(16);
-        },
-      );
-    }
-
-    async function init() {
-      if (
-        localStorage.getItem("admin_logged_in") === "true" ||
-        sessionStorage.getItem("admin_logged_in") === "true"
-      ) {
-        showAdminPanel();
-      }
-
-      document
-        .getElementById("admin-login-form")
-        .addEventListener("submit", handleLogin);
-      document
-        .getElementById("activity-form")
-        .addEventListener("submit", createActivity);
-      document
-        .getElementById("edit-activity-form")
-        .addEventListener("submit", submitEditActivity);
-      document
-        .getElementById("admin-logout")
-        .addEventListener("click", () => {
-          localStorage.removeItem("admin_logged_in");
-          sessionStorage.removeItem("admin_logged_in");
-          window.location.reload();
-        });
-    }
-
-    function showAdminPanel() {
-      document.getElementById("admin-login-section").style.display = "none";
-      document.getElementById("admin-content").style.display = "block";
-      document.getElementById("admin-logout").style.display = "inline-block";
-      loadActivities();
-    }
-
-    function handleLogin(e) {
-      e.preventDefault();
-      const user = document.getElementById("admin-user").value;
-      const pass = document.getElementById("admin-pass").value;
-      const remember = document.getElementById("admin-remember").checked;
-
-      if (user === "admin" && pass === "1234") {
-        if (remember) {
-          localStorage.setItem("admin_logged_in", "true");
-        } else {
-          sessionStorage.setItem("admin_logged_in", "true");
-        }
-        showAdminPanel();
-      } else {
-        alert("Invalid credentials!");
-      }
-    }
-
-    // --- ACTIVITY LIST & MANAGEMENT ---
-    async function loadActivities() {
-      const { data, error } = await supabase
-        .from("activities")
-        .select("*")
-        .order("created_at", { ascending: false });
-
-      if (error) {
-        console.error(error);
-        return;
-      }
-
-      const list = document.getElementById("activities-list");
-      list.innerHTML = "";
-
-      if (data.length === 0) {
-        list.innerHTML =
-          '<p style="font-size: 0.9rem;">No activities created yet.</p>';
-        return;
-      }
-
-      data.forEach((act) => {
-        list.innerHTML += `
-          <div style="background: rgba(255,255,255,0.05); padding: 15px; margin-bottom: 15px; border-radius: 8px; border: 1px solid var(--glass-border);">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-              <strong style="color: var(--accent-primary); font-size: 1.1rem;">${act.name}</strong>
-              <span style="background: rgba(0,0,0,0.3); padding: 4px 8px; border-radius: 6px; font-size: 0.85rem;">${act.base_points_km} km</span>
-            </div>
-            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-              <button onclick="startScannerFor('${act.id}')" style="padding: 8px 12px; font-size: 0.8rem; width: auto; flex-grow: 1;">Generate QR</button>
-              <button onclick="editActivity('${act.id}')" style="padding: 8px 12px; font-size: 0.8rem; width: auto; background: var(--accent-secondary); flex-grow: 1;">Edit</button>
-              <button onclick="deleteActivity('${act.id}')" style="padding: 8px 12px; font-size: 0.8rem; width: auto; background: var(--accent-danger); flex-grow: 1;">Delete</button>
-            </div>
-          </div>
-        `;
-      });
-    }
-
-    window.startScannerFor = (id) => {
-      currentActivityId = id;
-      qrType = "dynamic"; // Defaulting to dynamic when resuming from list
-      startRotatingQR();
-    };
-
-    window.editActivity = async (id) => {
-      editingActivityId = id;
-      const { data, error } = await supabase
-        .from("activities")
-        .select("*")
-        .eq("id", id)
-        .single();
-      if (error) {
-        alert("Could not load activity.");
-        return;
-      }
-
-      document.getElementById("edit-name").value = data.name;
-      document.getElementById("edit-km").value = data.base_points_km;
-      document.getElementById("edit-badge-name").value = data.badge_name || "";
-      document.getElementById("edit-badge-url").value = data.badge_url || "";
-      document.getElementById("edit-continent").value =
-        data.continent_id || "";
-      document.getElementById("edit-bonus").checked = data.is_marketing_bonus;
-
-      document.getElementById("event-creation").style.display = "none";
-      document.getElementById("manage-section").style.display = "none";
-      document.getElementById("edit-section").style.display = "block";
-    };
-
-    window.cancelEdit = () => {
-      editingActivityId = null;
-      document.getElementById("edit-section").style.display = "none";
-      document.getElementById("event-creation").style.display = "block";
-      document.getElementById("manage-section").style.display = "block";
-    };
-
-    window.deleteActivity = async (id) => {
-      if (
-        !confirm(
-          "Are you sure? This will permanently delete the activity AND remove these points from all users who attended!",
-        )
-      )
-        return;
-
-      // 1. Delete scans attached to this activity to keep customer dashboards accurate
-      const { error: scanError } = await supabase.from("scans").delete().eq("activity_id", id);
-      
-      if (scanError) {
-        console.error(scanError);
-        alert("Could not delete associated scans: " + scanError.message);
-        return;
-      }
-
-      // 2. Delete the activity itself
-      const { data, error } = await supabase
-        .from("activities")
-        .delete()
-        .eq("id", id)
-        .select();
-        
-      if (error) {
-        console.error(error);
-        alert("Delete failed: " + error.message);
-      } else if (!data || data.length === 0) {
-        alert("Delete failed: No matching activity found, or restricted by permissions (RLS). Please check database policies.");
-      } else {
-        loadActivities();
-      }
-    };
-
-    async function submitEditActivity(e) {
-      e.preventDefault();
-      const name = document.getElementById("edit-name").value;
-      const km = document.getElementById("edit-km").value;
-      const cont = document.getElementById("edit-continent").value || null;
-      const badge_name = document.getElementById("edit-badge-name").value || name;
-      const badge_url = document.getElementById("edit-badge-url").value || null;
-      const bonus = document.getElementById("edit-bonus").checked;
-
-      // 1. Update the activity details
-      const { error } = await supabase
-        .from("activities")
-        .update({
-          name,
-          base_points_km: km,
-          continent_id: cont,
-          badge_name,
-          badge_url,
-          is_marketing_bonus: bonus,
-        })
-        .eq("id", editingActivityId);
-
-      if (error) {
-        console.error(error);
-        alert("Update failed: " + error.message);
-        return;
-      }
-
-      // 2. IMPORTANT: Update past scans so the users see the new points updated retroactively!
-      await supabase
-        .from("scans")
-        .update({
-          points_awarded: km,
-        })
-        .eq("activity_id", editingActivityId);
-
-      alert("Activity updated successfully!");
-      cancelEdit();
-      loadActivities();
-    }
-
-    async function createActivity(e) {
-      e.preventDefault();
-      const name = document.getElementById("act-name").value;
-      const km = document.getElementById("act-km").value;
-      const cont = document.getElementById("act-continent").value || null;
-      const badge_name = document.getElementById("act-badge-name").value || name;
-      const badge_url = document.getElementById("act-badge-url").value || null;
-      const bonus = document.getElementById("act-bonus").checked;
-
-
-      const { data, error } = await supabase
-        .from("activities")
-        .insert([
-          {
-            name,
-            base_points_km: km,
-            continent_id: cont,
-            badge_name,
-            badge_url,
-            is_marketing_bonus: bonus,
-          },
-        ])
-        .select();
-
-      if (error) {
-        console.error(error);
-        return;
-      }
-
-      currentActivityId = data[0].id;
-      loadActivities(); // Refresh the list
-      startRotatingQR();
-    }
-
-    // --- QR GENERATION ---
-    let qrDynamicGenerator = null;
-    let qrStaticGenerator = null;
-
-    function startRotatingQR() {
-      document.getElementById("event-creation").style.display = "none";
-      document.getElementById("manage-section").style.display = "none";
-      document.getElementById("qr-section").style.display = "block";
-
-      if (rotationInterval) clearInterval(rotationInterval);
-      if (timerInterval) clearInterval(timerInterval);
-
-      document.getElementById("qrcode-dynamic").innerHTML = "";
-      document.getElementById("qrcode-static").innerHTML = "";
-
-      qrDynamicGenerator = new QRCode(document.getElementById("qrcode-dynamic"), { width: 220, height: 220 });
-      qrStaticGenerator = new QRCode(document.getElementById("qrcode-static"), { width: 220, height: 220 });
-
-      generateStaticAndStartDynamic();
-    }
-
-    async function generateStaticAndStartDynamic() {
-      // 1. Get or create the Static Token
-      const { data: act } = await supabase.from('activities').select('static_token').eq('id', currentActivityId).single();
-      let staticToken = act?.static_token;
-
-      if (!staticToken) {
-        staticToken = generateUUID();
-        await supabase.from('activities').update({ static_token: staticToken }).eq('id', currentActivityId);
-      }
-
-      const scanUrlStatic = `${window.location.origin}/scan.html?aid=${currentActivityId}&tk=${staticToken}`;
-      qrStaticGenerator.makeCode(scanUrlStatic);
-
-      // 2. Start dynamic rotation
-      rotateDynamicToken();
-      rotationInterval = setInterval(rotateDynamicToken, 15000);
-
-      let secondsLeftRemaining = 15;
-      document.getElementById("time-left").innerText = secondsLeftRemaining;
-      timerInterval = setInterval(() => {
-        secondsLeftRemaining--;
-        document.getElementById("time-left").innerText = secondsLeftRemaining;
-        if (secondsLeftRemaining <= 0) secondsLeftRemaining = 15;
-      }, 1000);
-    }
-
-    async function rotateDynamicToken() {
-      const newToken = generateUUID();
-      const expires = new Date(Date.now() + 20000).toISOString();
-
-      await supabase
-        .from("activities")
-        .update({ active_token: newToken, token_expires_at: expires })
-        .eq("id", currentActivityId);
-
-      const scanUrl = `${window.location.origin}/scan.html?aid=${currentActivityId}&tk=${newToken}`;
-      qrDynamicGenerator.makeCode(scanUrl);
-    }
-
-    init();
-  </script>
+  <script type="module" src="js/admin-page.js"></script>
 </body>
 
 </html>

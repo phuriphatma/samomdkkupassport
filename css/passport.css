@@ -396,3 +396,43 @@ body.boarding-pass-theme {
         transform: translateX(100%);
     }
 }
+
+/* Flight log item (created by dashboard.js) */
+.flight-log-item {
+    margin-bottom: 6px;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+/* Continent badge inline tag */
+.continent-badge {
+    display: inline-block;
+    margin-left: 6px;
+    padding: 2px 6px;
+    font-size: 0.6rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-radius: 4px;
+    vertical-align: middle;
+}
+
+/* Stamp wrapper for badge image + label */
+.stamp-wrapper {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    margin: 10px;
+}
+
+.stamp-wrapper .city-stamp {
+    margin-bottom: 5px;
+}
+
+.stamp-label {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    font-weight: 600;
+    text-align: center;
+}

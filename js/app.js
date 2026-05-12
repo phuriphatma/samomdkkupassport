@@ -12,18 +12,3 @@ try {
     console.error("Failed to initialize Supabase:", err);
 }
 
-// Helper to update UI after login
-export function setAuthUI(user) {
-  const loginBtn = document.getElementById("login-btn");
-  const userDisplay = document.getElementById("user-display");
-  if (user) {
-    if (loginBtn) loginBtn.style.display = "none";
-    if (userDisplay) {
-      userDisplay.style.display = "block";
-      userDisplay.innerText = user.email;
-    }
-  } else {
-    if (loginBtn) loginBtn.style.display = "block";
-    if (userDisplay) userDisplay.style.display = "none";
-  }
-}

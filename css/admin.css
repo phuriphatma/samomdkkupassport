@@ -1,0 +1,194 @@
+/* css/admin.css — Admin page specific styles */
+.qr-area {
+    text-align: center;
+    margin-top: 30px;
+}
+
+#qrcode img {
+    margin: 0 auto;
+    border: 10px solid white;
+    border-radius: 10px;
+}
+
+.timer {
+    font-size: 1.2rem;
+    color: red;
+    font-weight: bold;
+}
+
+.bonus-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: 15px 0 25px 0;
+    padding: 15px 20px;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 12px;
+    border: 1px solid var(--glass-border);
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.bonus-text {
+    font-weight: 500;
+    font-size: 1rem;
+    color: var(--text-light);
+}
+
+.toggle-switch {
+    position: relative;
+    display: inline-block;
+    width: 54px;
+    height: 28px;
+}
+
+.toggle-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(255, 255, 255, 0.1);
+    transition: 0.4s;
+    border-radius: 34px;
+    border: 1px solid var(--glass-border);
+}
+
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 20px;
+    width: 20px;
+    left: 4px;
+    bottom: 3px;
+    background-color: var(--text-muted);
+    transition: 0.4s;
+    border-radius: 50%;
+}
+
+input:checked+.slider {
+    background-color: var(--accent-primary);
+    border-color: var(--accent-primary);
+    box-shadow: 0 0 10px rgba(56, 189, 248, 0.4);
+}
+
+input:checked+.slider:before {
+    transform: translateX(24px);
+    background-color: white;
+}
+
+/* Admin page layout helpers */
+.admin-topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.admin-login-box {
+    max-width: 400px;
+    margin: 0 auto;
+}
+
+.admin-login-input {
+    margin-bottom: 10px;
+    width: 100%;
+    padding: 10px;
+    box-sizing: border-box;
+}
+
+.remember-label {
+    color: var(--text-light);
+    font-size: 0.95rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+}
+
+.remember-checkbox {
+    width: auto;
+    margin: 0;
+    cursor: pointer;
+}
+
+/* Activity list cards */
+.activity-card {
+    background: rgba(255, 255, 255, 0.05);
+    padding: 15px;
+    margin-bottom: 15px;
+    border-radius: 8px;
+    border: 1px solid var(--glass-border);
+}
+
+.activity-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.activity-card-name {
+    color: var(--accent-primary);
+    font-size: 1.1rem;
+}
+
+.activity-card-km {
+    background: rgba(0, 0, 0, 0.3);
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 0.85rem;
+}
+
+.activity-card-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.btn-action {
+    padding: 8px 12px;
+    font-size: 0.8rem;
+    width: auto;
+    flex-grow: 1;
+}
+
+.btn-edit {
+    background: var(--accent-secondary);
+}
+
+.btn-delete {
+    background: var(--accent-danger);
+}
+
+.btn-cancel-edit {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid var(--glass-border);
+}
+
+/* QR Section layout */
+.qr-display-row {
+    display: flex;
+    gap: 30px;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-bottom: 30px;
+}
+
+.qr-box {
+    background: white;
+    padding: 10px;
+    border-radius: 10px;
+    display: inline-block;
+}
+
+.qr-close-btn {
+    max-width: 300px;
+    margin: 0 auto;
+}

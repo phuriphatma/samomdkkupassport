@@ -1,0 +1,34 @@
+/* css/scan.css — Scan page specific styles */
+.scan-container {
+    text-align: center;
+    margin-top: 100px;
+}
+
+/* A simple spinning animation for loading */
+.spinner {
+    border: 4px solid rgba(0, 0, 0, 0.1);
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    border-left-color: var(--accent-blue);
+    animation: spin 1s linear infinite;
+    margin: 0 auto 20px auto;
+}
+
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+.success {
+    color: var(--accent-green);
+}
+
+.error {
+    color: var(--accent-red);
+}

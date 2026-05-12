@@ -1,6 +1,7 @@
 // js/scanning.js
 import { supabase } from './app.js';
 import { checkSession, logout } from './auth.js';
+import { fixGoogleDriveUrl, savePendingScanUrl, clearPendingScanUrl } from './utils.js';
 
 export async function processScan() {
     const titleEl = document.getElementById('scan-title');
@@ -60,11 +61,7 @@ export async function processScan() {
         document.getElementById('btn-confirm-add').innerText = '🔑 Login to Stamp Passport';
         document.getElementById('btn-change-account').style.display = 'none';
         
-        try {
-            localStorage.setItem('pendingScanUrl', window.location.href);
-        } catch (e) {
-            console.warn("Could not save pending scan URL", e);
-        }
+        savePendingScanUrl(window.location.href);
     }
 
     // Populate the confirmation card
@@ -73,13 +70,7 @@ export async function processScan() {
     
     if (activity.badge_url) {
         const badgeEl = document.getElementById('confirm-badge');
-        let finalUrl = activity.badge_url;
-        // Fix Google Drive URLs
-        const gdriveMatch = finalUrl.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
-        if (gdriveMatch) {
-            finalUrl = `https://lh3.googleusercontent.com/d/${gdriveMatch[1]}`;
-        }
-        badgeEl.src = finalUrl;
+        badgeEl.src = fixGoogleDriveUrl(activity.badge_url);
         badgeEl.style.display = 'block';
 
         if (activity.badge_name) {
@@ -123,18 +114,14 @@ export async function processScan() {
         }
 
         // Clear the pending scan so it doesn't trigger again later
-        localStorage.removeItem('pendingScanUrl');
+        clearPendingScanUrl();
 
         // Success!
         showStatus('Passport Stamped! ✈️', `Successfully earned ${activity.base_points_km} km for ${activity.name}!`, 'success');
     };
 
     document.getElementById('btn-change-account').onclick = async () => {
-        try {
-            localStorage.setItem('pendingScanUrl', window.location.href);
-        } catch (e) {
-            console.warn("Could not save pending scan URL", e);
-        }
+        savePendingScanUrl(window.location.href);
         await logout();
     };
 

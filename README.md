@@ -1,0 +1,144 @@
+# Samo Passport ✈️
+
+**Life is a Journey** — A gamified wellness passport system for medical students.
+
+Students attend wellness activities, scan QR codes, and earn "km" points that accumulate into travel-themed tiers on their digital boarding pass.
+
+## Features
+
+- 🔐 **Google OAuth** — Login restricted to `@kkumail.com` accounts via Supabase Auth
+- 📱 **QR Code Scanning** — Dynamic (rotating, anti-cheat) and static (printable) QR codes
+- 🎫 **Boarding Pass Dashboard** — Travel-themed passport UI with tier progression and city stamps
+- 🛡️ **Admin Terminal** — Create, edit, delete activities and generate QR scanners
+- 🌍 **Continent Themes** — Activities tagged with themed continent badges (Novatopia, Empathia)
+- ⭐ **Travel Visa** — Streak bonus for consistent participation
+
+## Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| Frontend | Vanilla HTML / CSS / JavaScript (ES Modules) |
+| Build Tool | [Vite](https://vitejs.dev/) |
+| Backend / Auth | [Supabase](https://supabase.com/) (PostgreSQL + Auth + RLS) |
+| Hosting | [Cloudflare Pages](https://pages.cloudflare.com/) |
+| QR Generation | [qrcodejs](https://github.com/davidshimjs/qrcodejs) |
+
+## Project Structure
+
+```
+passport/
+├── index.html              # Landing page (login / continue)
+├── dashboard.html           # Student boarding pass dashboard
+├── admin.html               # Admin terminal (CRUD + QR generation)
+├── scan.html                # QR scan processor & confirmation
+├── css/
+│   ├── main.css             # Global design system (colors, typography, glass effects)
+│   ├── passport.css         # Boarding pass dashboard styles
+│   ├── admin.css            # Admin page styles (toggle, QR layout, cards)
+│   └── scan.css             # Scan page styles (spinner, status)
+├── js/
+│   ├── app.js               # Supabase client initialization
+│   ├── auth.js              # Session checking, OAuth error handling, logout
+│   ├── utils.js             # Shared helpers (UUID, Google Drive URL fixer, localStorage)
+│   ├── index.js             # Landing page logic
+│   ├── dashboard.js         # Dashboard data fetching & rendering
+│   ├── admin-page.js        # Admin CRUD, login, QR token rotation
+│   ├── scanning.js          # Scan processing, token verification, stamp insertion
+│   └── cropper-setup.js     # Image cropper for badge uploads (optional)
+├── vite.config.js           # Multi-page Vite build config
+├── package.json
+└── .env                     # Supabase credentials (not committed)
+```
+
+## Getting Started
+
+### Prerequisites
+
+- [Node.js](https://nodejs.org/) (v18+)
+- A [Supabase](https://supabase.com/) project with the required tables
+
+### Installation
+
+```bash
+git clone https://github.com/samodevmdkku69/passport.git
+cd passport
+npm install
+```
+
+### Environment Variables
+
+Create a `.env` file (see `.env.example`):
+
+```env
+VITE_SUPABASE_URL=https://your-project.supabase.co
+VITE_SUPABASE_ANON_KEY=your-anon-key
+```
+
+### Run Locally
+
+```bash
+npm run dev
+```
+
+Opens at `http://localhost:5173`. Hot-reloads on file changes.
+
+### Build for Production
+
+```bash
+npm run build
+npm run preview   # Preview the production build locally
+```
+
+## Deployment
+
+This project is deployed on **Cloudflare Pages** connected to the GitHub repo.
+
+### Production
+
+Push to `main` branch → Cloudflare auto-builds and deploys to production.
+
+```bash
+git add .
+git commit -m "your changes"
+git push origin main
+```
+
+### Preview Deployments (Testing)
+
+Push to **any non-main branch** → Cloudflare creates a preview deployment with a unique URL.
+
+```bash
+git checkout -b refactor
+git add .
+git commit -m "refactor: extract inline scripts to modules"
+git push origin refactor
+```
+
+After pushing, check your **Cloudflare Pages dashboard** → **Deployments** tab for the preview URL (e.g. `https://refactor.your-project.pages.dev`).
+
+Once tested and verified, merge into main:
+
+```bash
+git checkout main
+git merge refactor
+git push origin main
+```
+
+## Admin Access
+
+Default admin credentials (change in production):
+
+- **Username:** `admin`
+- **Password:** `1234`
+
+## Database Tables
+
+| Table | Purpose |
+|-------|---------|
+| `activities` | Activity definitions (name, km, badge, continent, tokens) |
+| `scans` | Records of user scans (user_id, activity_id, points_awarded) |
+| `user_tiers` | Computed view of user totals, tiers, and visa status |
+
+## License
+
+Private project — KKU Faculty of Medicine, Samo Wellness Program.
