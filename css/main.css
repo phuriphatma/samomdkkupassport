@@ -1,13 +1,14 @@
 /* css/main.css */
 :root {
-    --bg-gradient: linear-gradient(135deg, #0f2027, #203a43, #2c5364); /* Deep space gradient */
+    --bg-gradient: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+    /* Deep space gradient */
     --text-light: #f8fafc;
     --text-muted: #94a3b8;
     --accent-primary: #38bdf8;
     --accent-secondary: #818cf8;
     --accent-success: #34d399;
     --accent-danger: #fb7185;
-    
+
     --glass-bg: rgba(255, 255, 255, 0.05);
     --glass-border: rgba(255, 255, 255, 0.1);
     --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
@@ -22,9 +23,17 @@
     padding: 0;
 }
 
+/* Fixes white flashing on mobile overscroll */
+html {
+    background-color: #0f2027;
+    min-height: 100vh;
+}
+
 body {
     font-family: var(--font-body);
-    background: var(--bg-gradient);
+    background-color: #0f2027;
+    /* Fallback color for white flashing fix */
+    background-image: var(--bg-gradient);
     background-attachment: fixed;
     color: var(--text-light);
     line-height: 1.6;
@@ -32,16 +41,34 @@ body {
     overflow-x: hidden;
 }
 
-h1, h2, h3, h4, h5, h6 {
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
     font-family: var(--font-heading);
     font-weight: 600;
     letter-spacing: -0.02em;
 }
 
-h1 { margin-bottom: 15px; font-size: 2.5rem; }
-h2 { margin-bottom: 12px; }
-h3 { margin-bottom: 10px; }
-p { margin-bottom: 20px; color: var(--text-muted); }
+h1 {
+    margin-bottom: 15px;
+    font-size: 2.5rem;
+}
+
+h2 {
+    margin-bottom: 12px;
+}
+
+h3 {
+    margin-bottom: 10px;
+}
+
+p {
+    margin-bottom: 20px;
+    color: var(--text-muted);
+}
 
 /* Main Glassmorphism Container */
 .container {
@@ -82,7 +109,8 @@ p { margin-bottom: 20px; color: var(--text-muted); }
     font-weight: 800;
 }
 
-.btn-large, button {
+.btn-large,
+button {
     background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
     color: white;
     border: none;
@@ -97,7 +125,8 @@ p { margin-bottom: 20px; color: var(--text-muted); }
     width: 100%;
 }
 
-button:hover, .btn-large:hover {
+button:hover,
+.btn-large:hover {
     transform: translateY(-2px);
     box-shadow: 0 6px 20px rgba(56, 189, 248, 0.5);
     background: linear-gradient(135deg, #0ea5e9, #6366f1);
@@ -107,7 +136,8 @@ button:active {
     transform: translateY(1px);
 }
 
-input, select {
+input,
+select {
     width: 100%;
     padding: 14px;
     margin-bottom: 20px;
@@ -120,7 +150,8 @@ input, select {
     transition: border-color 0.3s, box-shadow 0.3s;
 }
 
-input:focus, select:focus {
+input:focus,
+select:focus {
     outline: none;
     border-color: var(--accent-primary);
     box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.2);
@@ -148,4 +179,11 @@ hr {
 .text-link:hover {
     color: var(--accent-primary);
     text-decoration: underline;
+}
+
+/* Fix for mobile Safari background rendering bugs */
+@media (max-width: 900px) {
+    body {
+        background-attachment: scroll;
+    }
 }
