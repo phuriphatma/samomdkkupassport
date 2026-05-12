@@ -130,11 +130,18 @@
             loggedInSection.style.display = 'none';
 
             try {
-                await supabase.auth.signOut();
+                // Manually clear localStorage in case Supabase hangs
+                localStorage.removeItem('pendingScanUrl');
+                // Use Promise.race to guarantee we don't get stuck if network drops during signout
+                await Promise.race([
+                    supabase.auth.signOut(),
+                    new Promise(resolve => setTimeout(resolve, 2000))
+                ]);
             } catch (err) {
                 console.error("Logout error:", err);
             }
-            window.location.reload();
+            // Use href instead of reload() to wipe any leftover URL hashes/tokens from the address bar
+            window.location.href = window.location.pathname;
         });
 
         initAuth();
