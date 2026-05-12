@@ -456,7 +456,7 @@
       const km = document.getElementById("act-km").value;
       const cont = document.getElementById("act-continent").value || null;
       const bonus = document.getElementById("act-bonus").checked;
-      qrType = document.getElementById("act-qr-type").value;
+
 
       const { data, error } = await supabase
         .from("activities")
