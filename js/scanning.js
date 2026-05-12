@@ -9,20 +9,7 @@ export async function processScan() {
     const actions = document.getElementById('action-buttons');
     const confirmSection = document.getElementById('confirm-section');
 
-    // 1. Verify User Session
-    const user = await checkSession();
-    if (!user) {
-        // Not logged in? Save intent in persistent localStorage and redirect to login
-        try {
-            localStorage.setItem('pendingScanUrl', window.location.href);
-        } catch (e) {
-            console.warn("Could not save pending scan URL", e);
-        }
-        window.location.href = 'index.html';
-        return;
-    }
-
-    // 2. Parse URL Parameters
+    // 1. Parse URL Parameters First
     const urlParams = new URLSearchParams(window.location.search);
     const activityId = urlParams.get('aid');
     const token = urlParams.get('tk');
@@ -32,7 +19,7 @@ export async function processScan() {
         return;
     }
 
-    // 3. Verify Token against Database
+    // 2. Verify Token against Database
     const { data: activity, error: actError } = await supabase
         .from('activities')
         .select('*')
@@ -57,14 +44,30 @@ export async function processScan() {
     }
     // ---------------------------------
 
-    // 4. SHOW CONFIRMATION UI INSTEAD OF AUTO-INSERTING
+    // 3. Verify User Session
+    const user = await checkSession();
+
+    // 4. SHOW CONFIRMATION UI
     spinner.style.display = 'none';
 
-    // Get display name
-    let displayName = user.user_metadata?.full_name || user.user_metadata?.name || user.email;
+    // Get display name or prompt login
+    if (user) {
+        let displayName = user.user_metadata?.full_name || user.user_metadata?.name || user.email;
+        document.getElementById('confirm-user').innerText = displayName;
+        document.getElementById('btn-confirm-add').innerText = '✈️ Confirm & Stamp Passport';
+    } else {
+        document.getElementById('confirm-user').innerText = 'Guest (Login Required)';
+        document.getElementById('btn-confirm-add').innerText = '🔑 Login to Stamp Passport';
+        document.getElementById('btn-change-account').style.display = 'none';
+        
+        try {
+            localStorage.setItem('pendingScanUrl', window.location.href);
+        } catch (e) {
+            console.warn("Could not save pending scan URL", e);
+        }
+    }
 
     // Populate the confirmation card
-    document.getElementById('confirm-user').innerText = displayName;
     document.getElementById('confirm-activity').innerText = activity.name;
     document.getElementById('confirm-points').innerText = `+${activity.base_points_km} km`;
 
@@ -73,6 +76,12 @@ export async function processScan() {
 
     // 5. Handle button clicks
     document.getElementById('btn-confirm-add').onclick = async () => {
+        if (!user) {
+            // Not logged in? Redirect to login
+            window.location.href = 'index.html';
+            return;
+        }
+
         confirmSection.style.display = 'none';
         spinner.style.display = 'block';
         document.querySelector('#loading-spinner h2').innerText = 'Stamping Passport...';
