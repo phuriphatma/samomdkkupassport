@@ -149,6 +149,7 @@
         <form id="activity-form">
           <input type="text" id="act-name" placeholder="HRD Project Name" required /><br />
           <input type="number" id="act-km" placeholder="500" required /><br />
+          <input type="url" id="act-badge-url" placeholder="Badge Image URL (Optional)" /><br />
 
           <select id="act-continent">
             <option value="">Select Continent Theme (Optional)</option>
@@ -174,6 +175,7 @@
         <form id="edit-activity-form">
           <input type="text" id="edit-name" placeholder="HRD Project Name" required /><br />
           <input type="number" id="edit-km" placeholder="500" required /><br />
+          <input type="url" id="edit-badge-url" placeholder="Badge Image URL (Optional)" /><br />
 
           <select id="edit-continent">
             <option value="">Select Continent Theme (Optional)</option>
@@ -373,6 +375,7 @@
 
       document.getElementById("edit-name").value = data.name;
       document.getElementById("edit-km").value = data.base_points_km;
+      document.getElementById("edit-badge-url").value = data.badge_url || "";
       document.getElementById("edit-continent").value =
         data.continent_id || "";
       document.getElementById("edit-bonus").checked = data.is_marketing_bonus;
@@ -418,6 +421,7 @@
       const name = document.getElementById("edit-name").value;
       const km = document.getElementById("edit-km").value;
       const cont = document.getElementById("edit-continent").value || null;
+      const badge_url = document.getElementById("edit-badge-url").value || null;
       const bonus = document.getElementById("edit-bonus").checked;
 
       // 1. Update the activity details
@@ -427,6 +431,7 @@
           name,
           base_points_km: km,
           continent_id: cont,
+          badge_url,
           is_marketing_bonus: bonus,
         })
         .eq("id", editingActivityId);
@@ -455,6 +460,7 @@
       const name = document.getElementById("act-name").value;
       const km = document.getElementById("act-km").value;
       const cont = document.getElementById("act-continent").value || null;
+      const badge_url = document.getElementById("act-badge-url").value || null;
       const bonus = document.getElementById("act-bonus").checked;
 
 
@@ -465,6 +471,7 @@
             name,
             base_points_km: km,
             continent_id: cont,
+            badge_url,
             is_marketing_bonus: bonus,
           },
         ])
