@@ -405,16 +405,26 @@
         return;
 
       // 1. Delete scans attached to this activity to keep customer dashboards accurate
-      await supabase.from("scans").delete().eq("activity_id", id);
+      const { error: scanError } = await supabase.from("scans").delete().eq("activity_id", id);
+      
+      if (scanError) {
+        console.error(scanError);
+        alert("Could not delete associated scans: " + scanError.message);
+        return;
+      }
 
       // 2. Delete the activity itself
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("activities")
         .delete()
-        .eq("id", id);
+        .eq("id", id)
+        .select();
+        
       if (error) {
         console.error(error);
         alert("Delete failed: " + error.message);
+      } else if (!data || data.length === 0) {
+        alert("Delete failed: No matching activity found, or restricted by permissions (RLS). Please check database policies.");
       } else {
         loadActivities();
       }
