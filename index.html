@@ -7,7 +7,9 @@
     <title>Samo Passport Terminal</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;600;800&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;600;800&display=swap"
+        rel="stylesheet">
     <link rel="stylesheet" href="css/main.css">
 </head>
 
@@ -15,7 +17,25 @@
     <div class="terminal-container">
         <h1>Life is a Journey ✈️</h1>
         <p>Medical Student wellness passport system.</p>
-        <button id="google-login" class="btn-large">Login with @kkumail.com</button>
+
+        <p id="loading-text" style="color: var(--accent-primary); font-weight: 600; margin: 20px 0;">Checking session...
+        </p>
+
+        <button id="google-login" class="btn-large" style="display: none;">Login with @kkumail.com</button>
+
+        <div id="logged-in-section" style="display: none; margin-top: 20px;">
+            <div
+                style="background: rgba(0,0,0,0.2); padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid var(--glass-border);">
+                <p style="margin-bottom: 5px; font-size: 0.9rem; color: var(--text-muted);">Remembered Account:</p>
+                <h3 id="user-email-display" style="margin: 0; color: var(--accent-primary); word-break: break-all;">
+                </h3>
+            </div>
+
+            <button id="continue-btn" class="btn-large" style="margin-bottom: 15px;">Continue to My Passport</button>
+            <button id="logout-btn" class="btn-large"
+                style="background: linear-gradient(135deg, var(--accent-danger), #be123c); box-shadow: 0 4px 15px rgba(251, 113, 133, 0.3);">Logout</button>
+        </div>
+
         <div style="margin-top: 25px;">
             <a href="admin.html" class="text-link">Admin Portal</a>
         </div>
@@ -25,10 +45,24 @@
         import { supabase } from './js/app.js';
 
         async function checkLogin() {
+            const loadingText = document.getElementById('loading-text');
+            const loginBtn = document.getElementById('google-login');
+            const loggedInSection = document.getElementById('logged-in-section');
+            const emailDisplay = document.getElementById('user-email-display');
+
+            // Ask Supabase for the current cached session
             const { data } = await supabase.auth.getSession();
+
+            // Hide the loading text
+            loadingText.style.display = 'none';
+
             if (data.session) {
-                // Already logged in, redirect to passport
-                window.location.href = 'dashboard.html';
+                // Display the remembered user interface
+                loggedInSection.style.display = 'block';
+                emailDisplay.innerText = data.session.user.email;
+            } else {
+                // No session found, show the login button
+                loginBtn.style.display = 'block';
             }
         }
 
@@ -37,13 +71,24 @@
                 provider: 'google',
                 options: {
                     redirectTo: window.location.origin + '/dashboard.html',
-                    // Optional: Restrict domain if Google allows it in OAuth config
-                    // hd: 'kkumail.com' 
                 }
             });
         }
 
+        // Attach Event Listeners
         document.getElementById('google-login').addEventListener('click', loginWithGoogle);
+
+        document.getElementById('continue-btn').addEventListener('click', () => {
+            window.location.href = 'dashboard.html';
+        });
+
+        document.getElementById('logout-btn').addEventListener('click', async () => {
+            // Sign out the user and reload the page to clear the UI
+            await supabase.auth.signOut();
+            window.location.reload();
+        });
+
+        // Run the session check on page load
         checkLogin();
     </script>
 </body>
