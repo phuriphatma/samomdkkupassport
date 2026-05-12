@@ -1,69 +1,147 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Admin Passport Terminal</title>
-    <link rel="stylesheet" href="css/main.css" />
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-    <style>
-      .qr-area {
-        text-align: center;
-        margin-top: 30px;
-      }
 
-      #qrcode img {
-        margin: 0 auto;
-        border: 10px solid white;
-        border-radius: 10px;
-      }
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin Passport Terminal</title>
+  <link rel="stylesheet" href="css/main.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <style>
+    .qr-area {
+      text-align: center;
+      margin-top: 30px;
+    }
 
-      .timer {
-        font-size: 1.2rem;
-        color: red;
-        font-weight: bold;
-      }
-    </style>
-  </head>
+    #qrcode img {
+      margin: 0 auto;
+      border: 10px solid white;
+      border-radius: 10px;
+    }
 
-  <body>
-    <div class="container">
-      <a href="index.html" class="text-link" style="display: inline-block; margin-bottom: 20px;">&larr; Back to Home</a>
-      <h1>Admin Terminal</h1>
+    .timer {
+      font-size: 1.2rem;
+      color: red;
+      font-weight: bold;
+    }
 
-      <div id="admin-login-section" style="max-width: 400px; margin: 0 auto;">
-        <h3>Login</h3>
-        <form id="admin-login-form">
-          <input type="text" id="admin-user" placeholder="Username" required style="margin-bottom: 10px; width: 100%; padding: 10px; box-sizing: border-box;" />
-          <input type="password" id="admin-pass" placeholder="Password" required style="margin-bottom: 10px; width: 100%; padding: 10px; box-sizing: border-box;" />
-          <button type="submit" style="width: 100%;">Login</button>
-        </form>
-      </div>
+    /* Modern Toggle Switch for Marketing Bonus */
+    .bonus-container {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin: 15px 0 25px 0;
+      padding: 15px 20px;
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 12px;
+      border: 1px solid var(--glass-border);
+      box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
 
-      <div id="admin-content" style="display: none;">
-        <div id="event-creation">
+    .bonus-text {
+      font-weight: 500;
+      font-size: 1rem;
+      color: var(--text-light);
+    }
+
+    .toggle-switch {
+      position: relative;
+      display: inline-block;
+      width: 54px;
+      height: 28px;
+    }
+
+    .toggle-switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: rgba(255, 255, 255, 0.1);
+      transition: .4s;
+      border-radius: 34px;
+      border: 1px solid var(--glass-border);
+    }
+
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 20px;
+      width: 20px;
+      left: 4px;
+      bottom: 3px;
+      background-color: var(--text-muted);
+      transition: .4s;
+      border-radius: 50%;
+    }
+
+    input:checked+.slider {
+      background-color: var(--accent-primary);
+      border-color: var(--accent-primary);
+      box-shadow: 0 0 10px rgba(56, 189, 248, 0.4);
+    }
+
+    input:checked+.slider:before {
+      transform: translateX(24px);
+      background-color: white;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+      <a href="index.html" class="text-link">&larr; Back to Home</a>
+      <a href="#" id="admin-logout" class="text-link" style="display: none; color: var(--accent-danger);">Logout
+        Admin</a>
+    </div>
+
+    <h1>Admin Terminal</h1>
+
+    <div id="admin-login-section" style="max-width: 400px; margin: 0 auto;">
+      <h3>Login</h3>
+      <form id="admin-login-form">
+        <input type="text" id="admin-user" placeholder="Username" required
+          style="margin-bottom: 10px; width: 100%; padding: 10px; box-sizing: border-box;" />
+        <input type="password" id="admin-pass" placeholder="Password" required
+          style="margin-bottom: 10px; width: 100%; padding: 10px; box-sizing: border-box;" />
+        <button type="submit" style="width: 100%;">Login</button>
+      </form>
+    </div>
+
+    <div id="admin-content" style="display: none;">
+      <div id="event-creation">
         <h3>1. Create Activity Point</h3>
         <form id="activity-form">
-          <input
-            type="text"
-            id="act-name"
-            placeholder="HRD Project Name"
-            required
-          /><br />
+          <input type="text" id="act-name" placeholder="HRD Project Name" required /><br />
           <input type="number" id="act-km" placeholder="500" required /><br />
-          <select id="act-continent" required>
-            <option value="">Select Continent Theme</option>
+
+          <select id="act-continent">
+            <option value="">Select Continent Theme (Optional)</option>
             <option value="1">Novatopia (Green)</option>
-            <option value="2">Empathia (Red)</option></select
-          ><br />
-          <label
-            ><input type="checkbox" id="act-bonus" /> Marketing Bonus (x2
-            km)</label
-          ><br />
-          <select id="act-qr-type" required style="margin-top: 15px; margin-bottom: 25px;">
-            <option value="dynamic">Dynamic QR Code (Anti-Cheat, Rotates every 15s)</option>
-            <option value="static">Static QR Code (Printable, Does not expire)</option>
+            <option value="2">Empathia (Red)</option>
           </select><br />
+
+          <div class="bonus-container">
+            <span class="bonus-text">Marketing Bonus (x2 km)</span>
+            <label class="toggle-switch">
+              <input type="checkbox" id="act-bonus" />
+              <span class="slider"></span>
+            </label>
+          </div>
+
+          <select id="act-qr-type" required style="margin-bottom: 25px;">
+            <option value="dynamic">Dynamic QR Code</option>
+            <option value="static">Static QR Code</option>
+          </select><br />
+
           <button type="submit">Create Activity</button>
         </form>
       </div>
@@ -71,139 +149,153 @@
       <hr />
 
       <div id="qr-section" style="display: none">
-        <h3>2. Dynamic QR Scanner</h3>
+        <h3>2. QR Scanner</h3>
         <p>Show this screen to attendees after activity.</p>
         <div class="qr-area">
           <div id="qrcode"></div>
           <div class="timer">Refreshing in <span id="time-left">15</span>s</div>
-          <small>This token rotates automatically to prevent cheating.</small>
+          <small id="qr-info-text">This token rotates automatically to prevent cheating.</small>
         </div>
-        <button onclick="window.location.reload()">Stop Scanner</button>
-      </div>
+        <button onclick="window.location.reload()" style="margin-top: 20px;">Stop Scanner</button>
       </div>
     </div>
+  </div>
 
-    <script type="module">
-      import { supabase } from "./js/app.js";
+  <script type="module">
+    import { supabase } from "./js/app.js";
 
-      let currentActivityId = null;
-      let qrGenerator = null;
-      let rotationInterval = null;
-      let timerInterval = null;
-      let qrType = 'dynamic';
+    let currentActivityId = null;
+    let qrGenerator = null;
+    let rotationInterval = null;
+    let timerInterval = null;
+    let qrType = 'dynamic';
 
-      // --- FIX #1: UUID Fallback for Local IP Testing ---
-      function generateUUID() {
-        if (typeof crypto !== "undefined" && crypto.randomUUID) {
-          return crypto.randomUUID();
-        }
-        // Fallback generator if crypto is blocked by non-HTTPS connections
-        return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(
-          /[xy]/g,
-          function (c) {
-            const r = (Math.random() * 16) | 0;
-            const v = c === "x" ? r : (r & 0x3) | 0x8;
-            return v.toString(16);
+    function generateUUID() {
+      if (typeof crypto !== "undefined" && crypto.randomUUID) {
+        return crypto.randomUUID();
+      }
+      return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(
+        /[xy]/g,
+        function (c) {
+          const r = (Math.random() * 16) | 0;
+          const v = c === "x" ? r : (r & 0x3) | 0x8;
+          return v.toString(16);
+        },
+      );
+    }
+
+    async function init() {
+      // Remember login
+      if (localStorage.getItem("admin_logged_in") === "true") {
+        document.getElementById("admin-login-section").style.display = "none";
+        document.getElementById("admin-content").style.display = "block";
+        document.getElementById("admin-logout").style.display = "inline-block";
+      }
+
+      document.getElementById("admin-login-form").addEventListener("submit", handleLogin);
+      document.getElementById("activity-form").addEventListener("submit", createActivity);
+      document.getElementById("admin-logout").addEventListener("click", () => {
+        localStorage.removeItem("admin_logged_in");
+        window.location.reload();
+      });
+    }
+
+    function handleLogin(e) {
+      e.preventDefault();
+      const user = document.getElementById("admin-user").value;
+      const pass = document.getElementById("admin-pass").value;
+      if (user === "admin" && pass === "1234") {
+        localStorage.setItem("admin_logged_in", "true");
+        document.getElementById("admin-login-section").style.display = "none";
+        document.getElementById("admin-content").style.display = "block";
+        document.getElementById("admin-logout").style.display = "inline-block";
+      } else {
+        alert("Invalid credentials!");
+      }
+    }
+
+    async function createActivity(e) {
+      e.preventDefault();
+      const name = document.getElementById("act-name").value;
+      const km = document.getElementById("act-km").value;
+      const cont = document.getElementById("act-continent").value || null; // Handle empty/optional
+      const bonus = document.getElementById("act-bonus").checked;
+      qrType = document.getElementById("act-qr-type").value;
+
+      const { data, error } = await supabase
+        .from("activities")
+        .insert([
+          {
+            name,
+            base_points_km: km,
+            continent_id: cont,
+            is_marketing_bonus: bonus,
           },
-        );
+        ])
+        .select();
+
+      if (error) {
+        console.error(error);
+        return;
       }
 
-      async function init() {
-        document.getElementById("admin-login-form").addEventListener("submit", handleLogin);
+      currentActivityId = data[0].id;
+      startRotatingQR();
+    }
 
-        document
-          .getElementById("activity-form")
-          .addEventListener("submit", createActivity);
+    function startRotatingQR() {
+      document.getElementById("event-creation").style.display = "none";
+      document.getElementById("qr-section").style.display = "block";
+
+      // Clean up previous instances if this function gets called multiple times
+      if (rotationInterval) clearInterval(rotationInterval);
+      if (timerInterval) clearInterval(timerInterval);
+      document.getElementById("qrcode").innerHTML = "";
+
+      qrGenerator = new QRCode(document.getElementById("qrcode"), {
+        width: 300,
+        height: 300,
+      });
+
+      if (qrType === 'dynamic') {
+        generateAndSaveToken(false);
+        rotationInterval = setInterval(() => generateAndSaveToken(false), 15000);
+
+        let secondsLeftRemaining = 15;
+        document.querySelector('.timer').style.display = 'block';
+        timerInterval = setInterval(() => {
+          secondsLeftRemaining--;
+          document.getElementById("time-left").innerText = secondsLeftRemaining;
+          if (secondsLeftRemaining <= 0) secondsLeftRemaining = 15;
+        }, 1000);
+        document.getElementById('qr-info-text').innerText = 'This token rotates automatically to prevent cheating.';
+      } else {
+        generateAndSaveToken(true);
+        document.querySelector('.timer').style.display = 'none';
+        document.getElementById('qr-info-text').innerText = 'This is a static QR code. You can screenshot or print it.';
       }
+    }
 
-      function handleLogin(e) {
-        e.preventDefault();
-        const user = document.getElementById("admin-user").value;
-        const pass = document.getElementById("admin-pass").value;
-        if (user === "admin" && pass === "1234") {
-          document.getElementById("admin-login-section").style.display = "none";
-          document.getElementById("admin-content").style.display = "block";
-        } else {
-          alert("Invalid credentials!");
-        }
-      }
+    async function generateAndSaveToken(isStatic) {
+      const newToken = generateUUID();
+      const expireMs = isStatic ? (10 * 365 * 24 * 60 * 60 * 1000) : 20000;
+      const expires = new Date(Date.now() + expireMs).toISOString();
 
-      async function createActivity(e) {
-        e.preventDefault();
-        const name = document.getElementById("act-name").value;
-        const km = document.getElementById("act-km").value;
-        const cont = document.getElementById("act-continent").value;
-        const bonus = document.getElementById("act-bonus").checked;
-        qrType = document.getElementById("act-qr-type").value;
+      const { error } = await supabase
+        .from("activities")
+        .update({ active_token: newToken, token_expires_at: expires })
+        .eq("id", currentActivityId);
 
-        const { data, error } = await supabase
-          .from("activities")
-          .insert([
-            {
-              name,
-              base_points_km: km,
-              continent_id: cont,
-              is_marketing_bonus: bonus,
-            },
-          ])
-          .select();
+      if (error) return;
 
-        if (error) {
-          console.error(error);
-          return;
-        }
+      const currentUrl = window.location.origin;
+      const scanUrl = `${currentUrl}/scan.html?aid=${currentActivityId}&tk=${newToken}`;
 
-        currentActivityId = data[0].id;
-        startRotatingQR();
-      }
+      qrGenerator.makeCode(scanUrl);
+    }
 
-      function startRotatingQR() {
-        document.getElementById("event-creation").style.display = "none";
-        document.getElementById("qr-section").style.display = "block";
+    init();
+  </script>
+</body>
 
-        qrGenerator = new QRCode(document.getElementById("qrcode"), {
-          width: 300,
-          height: 300,
-        });
-
-        if (qrType === 'dynamic') {
-          generateAndSaveToken(false);
-          rotationInterval = setInterval(() => generateAndSaveToken(false), 15000);
-
-          let secondsLeftRemaining = 15;
-          document.querySelector('.timer').style.display = 'block';
-          timerInterval = setInterval(() => {
-            secondsLeftRemaining--;
-            document.getElementById("time-left").innerText = secondsLeftRemaining;
-            if (secondsLeftRemaining <= 0) secondsLeftRemaining = 15;
-          }, 1000);
-          document.querySelector('#qr-section small').innerText = 'This token rotates automatically to prevent cheating.';
-        } else {
-          generateAndSaveToken(true);
-          document.querySelector('.timer').style.display = 'none';
-          document.querySelector('#qr-section small').innerText = 'This is a static QR code. You can screenshot or print it.';
-        }
-      }
-
-      async function generateAndSaveToken(isStatic) {
-        const newToken = generateUUID();
-        const expireMs = isStatic ? (10 * 365 * 24 * 60 * 60 * 1000) : 20000;
-        const expires = new Date(Date.now() + expireMs).toISOString();
-
-        const { error } = await supabase
-          .from("activities")
-          .update({ active_token: newToken, token_expires_at: expires })
-          .eq("id", currentActivityId);
-
-        if (error) return;
-
-        const currentUrl = window.location.origin;
-        const scanUrl = `${currentUrl}/scan.html?aid=${currentActivityId}&tk=${newToken}`;
-
-        qrGenerator.makeCode(scanUrl);
-      }
-
-      init();
-    </script>
-  </body>
 </html>
