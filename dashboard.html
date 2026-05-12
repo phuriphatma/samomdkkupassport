@@ -190,11 +190,29 @@
           activityList.appendChild(logItem);
 
           if (activityData.badge_url) {
+            // Wrapper for stamp + label
+            const stampWrapper = document.createElement("div");
+            stampWrapper.style.display = "inline-flex";
+            stampWrapper.style.flexDirection = "column";
+            stampWrapper.style.alignItems = "center";
+            stampWrapper.style.margin = "10px";
+
             const img = document.createElement("img");
             img.src = activityData.badge_url;
             img.className = "city-stamp";
             img.title = activityName;
-            container.appendChild(img);
+            img.style.marginBottom = "5px";
+
+            const label = document.createElement("span");
+            label.innerText = activityData.badge_name || activityData.name;
+            label.style.fontSize = "0.75rem";
+            label.style.color = "var(--text-muted)";
+            label.style.fontWeight = "600";
+            label.style.textAlign = "center";
+
+            stampWrapper.appendChild(img);
+            stampWrapper.appendChild(label);
+            container.appendChild(stampWrapper);
           }
         });
 

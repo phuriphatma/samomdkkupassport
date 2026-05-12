@@ -7,6 +7,9 @@
   <title>Admin Passport Terminal</title>
   <link rel="stylesheet" href="css/main.css" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <!-- Cropper.js for image cropping without backend -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
   <style>
     .qr-area {
       text-align: center;
@@ -149,7 +152,13 @@
         <form id="activity-form">
           <input type="text" id="act-name" placeholder="HRD Project Name" required /><br />
           <input type="number" id="act-km" placeholder="500" required /><br />
-          <input type="url" id="act-badge-url" placeholder="Badge Image URL (Optional)" /><br />
+          <input type="text" id="act-badge-name" placeholder="Badge Display Name (Optional)" /><br />
+          <small style="color: var(--text-muted); display: block; margin-bottom: 5px;">Select an image to crop into a square and get an Apps Script Link:</small>
+          <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+            <input type="file" id="act-file-upload" accept="image/*" style="flex: 1;" />
+            <button type="button" id="btn-upload-drive" style="flex: 1; padding: 10px; background: var(--accent-primary);">Upload to Drive</button>
+          </div>
+          <input type="url" id="act-badge-url" placeholder="Or paste Badge Image URL manually" /><br />
 
           <select id="act-continent">
             <option value="">Select Continent Theme (Optional)</option>
@@ -175,7 +184,12 @@
         <form id="edit-activity-form">
           <input type="text" id="edit-name" placeholder="HRD Project Name" required /><br />
           <input type="number" id="edit-km" placeholder="500" required /><br />
-          <input type="url" id="edit-badge-url" placeholder="Badge Image URL (Optional)" /><br />
+          <input type="text" id="edit-badge-name" placeholder="Badge Display Name (Optional)" /><br />
+          <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+            <input type="file" id="edit-file-upload" accept="image/*" style="flex: 1;" />
+            <button type="button" id="btn-edit-upload-drive" style="flex: 1; padding: 10px; background: var(--accent-primary);">Upload to Drive</button>
+          </div>
+          <input type="url" id="edit-badge-url" placeholder="Badge Image URL" /><br />
 
           <select id="edit-continent">
             <option value="">Select Continent Theme (Optional)</option>
@@ -245,6 +259,7 @@
 
   <script type="module">
     import { supabase } from "./js/app.js";
+    import { setupCropper } from "./js/cropper-setup.js";
 
     let currentActivityId = null;
     let editingActivityId = null;
@@ -375,6 +390,7 @@
 
       document.getElementById("edit-name").value = data.name;
       document.getElementById("edit-km").value = data.base_points_km;
+      document.getElementById("edit-badge-name").value = data.badge_name || "";
       document.getElementById("edit-badge-url").value = data.badge_url || "";
       document.getElementById("edit-continent").value =
         data.continent_id || "";
@@ -421,6 +437,7 @@
       const name = document.getElementById("edit-name").value;
       const km = document.getElementById("edit-km").value;
       const cont = document.getElementById("edit-continent").value || null;
+      const badge_name = document.getElementById("edit-badge-name").value || name;
       const badge_url = document.getElementById("edit-badge-url").value || null;
       const bonus = document.getElementById("edit-bonus").checked;
 
@@ -431,6 +448,7 @@
           name,
           base_points_km: km,
           continent_id: cont,
+          badge_name,
           badge_url,
           is_marketing_bonus: bonus,
         })
@@ -460,6 +478,7 @@
       const name = document.getElementById("act-name").value;
       const km = document.getElementById("act-km").value;
       const cont = document.getElementById("act-continent").value || null;
+      const badge_name = document.getElementById("act-badge-name").value || name;
       const badge_url = document.getElementById("act-badge-url").value || null;
       const bonus = document.getElementById("act-bonus").checked;
 
@@ -471,6 +490,7 @@
             name,
             base_points_km: km,
             continent_id: cont,
+            badge_name,
             badge_url,
             is_marketing_bonus: bonus,
           },
@@ -548,7 +568,21 @@
     }
 
     init();
+    setupCropper();
   </script>
+
+  <!-- Cropper Modal -->
+  <div id="cropper-modal" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.8); z-index:9999; flex-direction:column; align-items:center; justify-content:center; padding:20px;">
+    <h3 style="color:white; margin-bottom:15px;">Crop Badge (1:1 Ratio)</h3>
+    <div style="width:100%; max-width:500px; max-height:60vh; background:black; margin-bottom:20px;">
+      <img id="cropper-image" style="max-width:100%; display:block;" />
+    </div>
+    <div style="display:flex; gap:15px;">
+      <button id="btn-crop-confirm" class="btn-large" style="background:var(--accent-success);">Crop & Use</button>
+      <button onclick="document.getElementById('cropper-modal').style.display='none'" class="btn-large" style="background:#555;">Cancel</button>
+    </div>
+  </div>
+
 </body>
 
 </html>
