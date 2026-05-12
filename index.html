@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Samo Passport Terminal</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/main.css">
+</head>
+
+<body class="landing">
+    <div class="terminal-container">
+        <h1>Life is a Journey ✈️</h1>
+        <p>Medical Student wellness passport system.</p>
+        <button id="google-login" class="btn-large">Login with @kkumail.com</button>
+        <div style="margin-top: 25px;">
+            <a href="admin.html" class="text-link">Admin Portal</a>
+        </div>
+    </div>
+
+    <script type="module">
+        import { supabase } from './js/app.js';
+
+        async function checkLogin() {
+            const { data } = await supabase.auth.getSession();
+            if (data.session) {
+                // Already logged in, redirect to passport
+                window.location.href = 'dashboard.html';
+            }
+        }
+
+        async function loginWithGoogle() {
+            await supabase.auth.signInWithOAuth({
+                provider: 'google',
+                options: {
+                    redirectTo: window.location.origin + '/dashboard.html',
+                    // Optional: Restrict domain if Google allows it in OAuth config
+                    // hd: 'kkumail.com' 
+                }
+            });
+        }
+
+        document.getElementById('google-login').addEventListener('click', loginWithGoogle);
+        checkLogin();
+    </script>
+</body>
+
+</html>

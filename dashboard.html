@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>My Passport | Life is a Journey</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/main.css" />
+    <link rel="stylesheet" href="css/passport.css" />
+  </head>
+
+  <body class="boarding-pass-theme">
+    <div class="boarding-pass">
+      <div class="pass-left">
+        <div class="pass-header">
+          <h1>SAMO PASSPORT</h1>
+          <div class="flight-no">FLIGHT: Wellness 2024</div>
+        </div>
+
+        <div class="pass-content">
+          <div class="passenger-details">
+            <span class="label">PASSENGER:</span>
+            <h2 id="p-name">Loading...</h2>
+          </div>
+
+          <div class="travel-stats">
+            <div class="stat-box km">
+              <span class="label">DISTANCE TRAVELED</span>
+              <div class="stat-value"><span id="p-km">0</span> km</div>
+            </div>
+            <div class="stat-box tier">
+              <span class="label">TRAVEL STATUS</span>
+              <div class="stat-value" id="p-tier">Novice</div>
+            </div>
+          </div>
+
+          <div class="visa-section" id="visa-visa" style="display: none">
+            <div class="visa-stamp">TRAVEL VISA ACTIVE ⭐</div>
+            <small>Streak Bonus: 3 Events last Month!</small>
+          </div>
+        </div>
+      </div>
+
+      <div class="pass-right">
+        <div class="stub-header">CITY STAMPS</div>
+        <div
+          class="stamps-grid"
+          id="stamps-container"
+          style="min-height: 60px"
+        ></div>
+
+        <div class="stub-header" style="margin-top: 10px">FLIGHT LOG</div>
+        <div id="activity-list">
+          <div style="opacity: 0.5">No flights yet.</div>
+        </div>
+
+        <a href="#" id="logout-btn" class="logout-link">Logout</a>
+      </div>
+    </div>
+
+    <script type="module">
+      import { supabase } from "./js/app.js";
+      import { checkSession, logout } from "./js/auth.js";
+
+      async function init() {
+        // 1. Attach logout listener FIRST
+        document
+          .getElementById("logout-btn")
+          .addEventListener("click", async (e) => {
+            e.preventDefault();
+            await logout();
+          });
+
+        const user = await checkSession();
+        if (!user) {
+          window.location.href = "index.html";
+          return;
+        }
+
+        // 2. Set Passenger Name (Bulletproofed for University Emails)
+        let displayName = "Traveler";
+        if (user.user_metadata?.full_name) {
+          displayName = user.user_metadata.full_name;
+        } else if (user.user_metadata?.name) {
+          displayName = user.user_metadata.name;
+        } else if (user.email) {
+          displayName = user.email.split("@")[0]; // Fallback to student ID/prefix
+        }
+        document.getElementById("p-name").innerText = displayName;
+
+        // 3. Fetch Tier View (for rank, visa status, and NAME BACKUP)
+        const { data: profileTier, error: profileError } = await supabase
+          .from("user_tiers")
+          .select("*")
+          .eq("id", user.id)
+          .single();
+
+        if (!profileError && profileTier) {
+          // OVERRIDE with database name if it exists (fixes missing Google names)
+          if (profileTier.full_name) {
+            document.getElementById("p-name").innerText = profileTier.full_name;
+          }
+          document.getElementById("p-tier").innerText =
+            profileTier.final_tier || "Novice";
+          if (profileTier.has_travel_visa) {
+            document.getElementById("visa-visa").style.display = "block";
+          }
+        } else {
+          console.warn("Tier profile not found yet, using defaults.");
+        }
+
+        // 4. Bulletproof Activity Fetching (Bypasses Foreign Key Errors)
+        try {
+          const { data: scans, error: scansError } = await supabase
+            .from("scans")
+            .select("*")
+            .eq("user_id", user.id);
+
+          if (scansError) throw scansError;
+
+          const { data: allActivities, error: actError } = await supabase
+            .from("activities")
+            .select("*");
+
+          if (actError) throw actError;
+
+          let totalKm = 0;
+          const container = document.getElementById("stamps-container");
+          const activityList = document.getElementById("activity-list");
+
+          container.innerHTML = "";
+          if (scans.length > 0) activityList.innerHTML = "";
+
+          scans.forEach((scan) => {
+            // Match the scan to the activity data manually
+            const activityData =
+              allActivities.find((a) => a.id === scan.activity_id) || {};
+
+            const points =
+              scan.points_awarded || activityData.base_points_km || 0;
+            totalKm += points;
+
+            const activityName = activityData.name || "Unknown Flight";
+
+            // Add to Text Log
+            const logItem = document.createElement("div");
+            logItem.style.marginBottom = "6px";
+            logItem.style.fontWeight = "bold";
+            logItem.innerText = `✈️ ${activityName} (+${points}km)`;
+            activityList.appendChild(logItem);
+
+            // Add Visual Badge
+            if (activityData.badge_url) {
+              const img = document.createElement("img");
+              img.src = activityData.badge_url;
+              img.className = "city-stamp";
+              img.title = activityName;
+              container.appendChild(img);
+            }
+          });
+
+          // 5. Update UI with the final calculated points
+          const dbTotal = profileTier?.total_km || 0;
+          document.getElementById("p-km").innerText = Math.max(
+            dbTotal,
+            totalKm,
+          );
+        } catch (err) {
+          console.error("Failed to load activities:", err);
+          document.getElementById("activity-list").innerHTML =
+            `<div style="color:var(--accent-red); font-weight:bold;">Error loading flights: ${err.message}</div>`;
+        }
+      }
+
+      init();
+    </script>
+  </body>
+</html>

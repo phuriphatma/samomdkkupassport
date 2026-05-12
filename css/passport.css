@@ -1,0 +1,383 @@
+/* css/passport.css */
+body.boarding-pass-theme {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    padding: 20px;
+    /* Uses gradient from main.css */
+}
+
+.boarding-pass {
+    background: rgba(15, 23, 42, 0.6);
+    width: 850px;
+    height: 400px;
+    border-radius: 24px;
+    display: flex;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    overflow: hidden;
+    position: relative;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    transform-style: preserve-3d;
+    transition: transform 0.5s ease;
+}
+
+.boarding-pass:hover {
+    transform: perspective(1000px) rotateX(2deg) rotateY(-2deg) scale(1.02);
+}
+
+/* Glassy Perforation effect */
+.boarding-pass::after {
+    content: "";
+    position: absolute;
+    right: 250px;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background-image: linear-gradient(to bottom, rgba(255, 255, 255, 0.2) 50%, transparent 50%);
+    background-size: 2px 16px;
+    z-index: 10;
+}
+
+.pass-left {
+    padding: 30px 40px;
+    width: 600px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+}
+
+/* Subtle glow behind the card left */
+.pass-left::before {
+    content: "";
+    position: absolute;
+    top: -50px;
+    left: -50px;
+    width: 200px;
+    height: 200px;
+    background: var(--accent-primary);
+    filter: blur(100px);
+    opacity: 0.15;
+    border-radius: 50%;
+    pointer-events: none;
+}
+
+.pass-right {
+    padding: 30px;
+    width: 250px;
+    background: rgba(255, 255, 255, 0.03);
+    border-left: 1px solid rgba(255, 255, 255, 0.05);
+    display: flex;
+    flex-direction: column;
+    position: relative;
+}
+
+.pass-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    padding-bottom: 15px;
+}
+
+.pass-header h1 {
+    font-size: 1.5rem;
+    margin: 0;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--accent-primary);
+}
+
+.flight-no {
+    font-size: 0.85rem;
+    color: var(--text-light);
+    font-family: var(--font-body);
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    background: rgba(56, 189, 248, 0.2);
+    padding: 4px 10px;
+    border-radius: 12px;
+    border: 1px solid rgba(56, 189, 248, 0.3);
+}
+
+.pass-content {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.passenger-details {
+    margin-bottom: 30px;
+}
+
+.passenger-details h2 {
+    font-size: 2.2rem;
+    margin: 0;
+    color: var(--text-light);
+    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+}
+
+.travel-stats {
+    display: flex;
+    gap: 40px;
+    margin-top: auto;
+}
+
+.label {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-weight: 600;
+    display: block;
+    margin-bottom: 8px;
+}
+
+.stat-value {
+    font-size: 2.5rem;
+    font-weight: 800;
+    color: var(--text-light);
+    font-family: var(--font-heading);
+    line-height: 1;
+}
+
+.stat-box {
+    position: relative;
+}
+
+.stat-box.km .stat-value {
+    color: var(--accent-primary);
+    text-shadow: 0 0 20px rgba(56, 189, 248, 0.4);
+}
+
+.stat-box.tier .stat-value {
+    color: var(--accent-secondary);
+    text-shadow: 0 0 20px rgba(129, 140, 248, 0.4);
+}
+
+.visa-section {
+    position: absolute;
+    top: 30px;
+    right: 40px;
+    text-align: right;
+    animation: stampIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+@keyframes stampIn {
+    0% {
+        transform: scale(3) rotate(-30deg);
+        opacity: 0;
+    }
+
+    100% {
+        transform: scale(1) rotate(-10deg);
+        opacity: 1;
+    }
+}
+
+.visa-stamp {
+    border: 3px solid var(--accent-success);
+    color: var(--accent-success);
+    padding: 10px 15px;
+    display: inline-block;
+    font-weight: 800;
+    font-family: var(--font-heading);
+    text-transform: uppercase;
+    border-radius: 8px;
+    letter-spacing: 2px;
+    box-shadow: 0 0 15px rgba(52, 211, 153, 0.2), inset 0 0 10px rgba(52, 211, 153, 0.2);
+}
+
+.visa-section small {
+    display: block;
+    color: var(--text-muted);
+    font-size: 0.7rem;
+    margin-top: 8px;
+    transform: rotate(10deg);
+}
+
+.stub-header {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--text-light);
+    letter-spacing: 1px;
+    margin-bottom: 15px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    padding-bottom: 8px;
+}
+
+.stamps-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.city-stamp {
+    width: 45px;
+    height: 45px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    animation: popIn 0.4s ease forwards;
+}
+
+.city-stamp:hover {
+    transform: scale(1.1) translateY(-2px);
+    box-shadow: 0 6px 15px rgba(56, 189, 248, 0.4);
+    border-color: var(--accent-primary);
+}
+
+@keyframes popIn {
+    0% {
+        transform: scale(0);
+        opacity: 0;
+    }
+
+    80% {
+        transform: scale(1.1);
+        opacity: 1;
+    }
+
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+#activity-list {
+    flex-grow: 1;
+    max-height: 120px;
+    overflow-y: auto;
+    margin-bottom: 20px;
+}
+
+#activity-list div {
+    padding: 8px 10px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 6px;
+    margin-bottom: 8px;
+    color: var(--text-light) !important;
+    font-size: 0.75rem;
+    font-weight: 500 !important;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    transition: background 0.2s;
+}
+
+#activity-list div:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.logout-link {
+    position: absolute;
+    bottom: 20px;
+    right: 30px;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    text-decoration: none;
+    transition: color 0.2s;
+    font-weight: 500;
+}
+
+.logout-link:hover {
+    color: var(--accent-danger);
+}
+
+/* Scrollbar for activity list */
+#activity-list::-webkit-scrollbar {
+    width: 4px;
+}
+
+#activity-list::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.1);
+}
+
+#activity-list::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+}
+
+/* --- Mobile Responsive Fixes --- */
+@media (max-width: 900px) {
+    .boarding-pass {
+        width: 90%;
+        /* Take up most of the screen width */
+        max-width: 450px;
+        /* Don't let it get too wide on tablets */
+        height: auto;
+        /* Let content dictate height */
+        flex-direction: column;
+        /* Stack the left and right sides vertically */
+    }
+
+    .pass-left {
+        width: 100%;
+        padding: 25px 20px;
+    }
+
+    .pass-right {
+        width: 100%;
+        padding: 25px 20px;
+        border-left: none;
+        /* Change vertical perforation to horizontal */
+        border-top: 2px dashed rgba(255, 255, 255, 0.2);
+    }
+
+    /* Hide the old vertical glassy perforation on mobile */
+    .boarding-pass::after {
+        display: none;
+    }
+
+    /* Shrink the header */
+    .pass-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+        margin-bottom: 20px;
+    }
+
+    /* Scale down the name and let it wrap if it's too long */
+    .passenger-details h2 {
+        font-size: 1.6rem;
+        word-break: break-word;
+        /* Prevents long names from overflowing */
+    }
+
+    /* Adjust the stats grid */
+    .travel-stats {
+        gap: 20px;
+        justify-content: space-between;
+    }
+
+    .stat-value {
+        font-size: 1.8rem;
+    }
+
+    /* Keep the visa stamp from overlapping */
+    .visa-section {
+        position: relative;
+        top: 0;
+        right: 0;
+        text-align: left;
+        margin-bottom: 20px;
+        order: -1;
+        /* Puts the stamp above the stats */
+    }
+
+    /* Fix the logout button positioning */
+    .logout-link {
+        position: relative;
+        bottom: 0;
+        right: 0;
+        display: block;
+        margin-top: 20px;
+        text-align: center;
+    }
+}
