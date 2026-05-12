@@ -4,7 +4,6 @@ body.boarding-pass-theme {
     justify-content: center;
     align-items: center;
     flex-direction: column;
-    /* FIX: Stacks items vertically so the back button doesn't overlap */
     min-height: 100vh;
     padding: 20px;
 }
@@ -12,7 +11,10 @@ body.boarding-pass-theme {
 .boarding-pass {
     background: rgba(15, 23, 42, 0.6);
     width: 850px;
-    height: 400px;
+    min-height: 400px;
+    /* CHANGED: Card will be at least 400px tall... */
+    height: auto;
+    /* CHANGED: ...but will grow taller if there are many flights */
     border-radius: 24px;
     display: flex;
     box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
@@ -255,9 +257,9 @@ body.boarding-pass-theme {
 
 #activity-list {
     flex-grow: 1;
-    max-height: 120px;
-    overflow-y: auto;
-    margin-bottom: 20px;
+    /* CHANGED: Removed max-height and overflow-y to let the list fully expand */
+    margin-bottom: 50px;
+    /* Increased bottom margin so it doesn't overlap the logout button */
 }
 
 #activity-list div {
@@ -272,7 +274,11 @@ body.boarding-pass-theme {
     transition: background 0.2s;
 }
 
-#activity-list div:hover {
+#activity-list div.skeleton {
+    border: none;
+}
+
+#activity-list div:hover:not(.skeleton) {
     background: rgba(255, 255, 255, 0.1);
 }
 
@@ -289,20 +295,6 @@ body.boarding-pass-theme {
 
 .logout-link:hover {
     color: var(--accent-danger);
-}
-
-/* Scrollbar for activity list */
-#activity-list::-webkit-scrollbar {
-    width: 4px;
-}
-
-#activity-list::-webkit-scrollbar-track {
-    background: rgba(0, 0, 0, 0.1);
-}
-
-#activity-list::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.2);
-    border-radius: 4px;
 }
 
 /* --- Mobile Responsive Fixes --- */
@@ -371,15 +363,13 @@ body.boarding-pass-theme {
 }
 
 /* =========================================
-   NEW: SKELETON LOADING ANIMATION
+   SKELETON LOADING ANIMATION
 ========================================= */
 .skeleton {
     position: relative;
     overflow: hidden;
     background-color: rgba(255, 255, 255, 0.05);
-    /* Gray background */
     color: transparent !important;
-    /* Hide the placeholder text */
     border-radius: 6px;
     user-select: none;
     display: inline-block;
