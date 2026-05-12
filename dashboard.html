@@ -92,9 +92,9 @@
       }
 
       // === NEW FIX: Resume scan if they were redirected to login ===
-      const pendingUrl = sessionStorage.getItem('pendingScanUrl');
+      const pendingUrl = localStorage.getItem('pendingScanUrl'); // Changed to localStorage
       if (pendingUrl) {
-        sessionStorage.removeItem('pendingScanUrl');
+        localStorage.removeItem('pendingScanUrl');
         window.location.href = pendingUrl;
         return;
       }

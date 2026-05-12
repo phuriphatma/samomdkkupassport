@@ -1,19 +1,19 @@
 // js/scanning.js
 import { supabase } from './app.js';
-import { checkSession, logout } from './auth.js'; // Make sure logout is imported!
+import { checkSession, logout } from './auth.js';
 
 export async function processScan() {
     const titleEl = document.getElementById('scan-title');
     const msgEl = document.getElementById('scan-message');
     const spinner = document.getElementById('loading-spinner');
     const actions = document.getElementById('action-buttons');
-    const confirmSection = document.getElementById('confirm-section'); // New UI element
+    const confirmSection = document.getElementById('confirm-section');
 
     // 1. Verify User Session
     const user = await checkSession();
     if (!user) {
-        // Not logged in? Save intent and redirect to login
-        sessionStorage.setItem('pendingScanUrl', window.location.href);
+        // Not logged in? Save intent in persistent localStorage and redirect to login
+        localStorage.setItem('pendingScanUrl', window.location.href);
         window.location.href = 'index.html';
         return;
     }
@@ -40,63 +40,18 @@ export async function processScan() {
         return;
     }
 
-    // --- QR GENERATION ---
-    function startRotatingQR() {
-        document.getElementById("event-creation").style.display = "none";
-        document.getElementById("manage-section").style.display = "none";
-        document.getElementById("qr-section").style.display = "block";
+    // --- RESTORED ANTI-CHEAT CHECK ---
+    const now = new Date();
+    const expiresAt = new Date(activity.token_expires_at);
 
-        if (rotationInterval) clearInterval(rotationInterval);
-        if (timerInterval) clearInterval(timerInterval);
-        document.getElementById("qrcode").innerHTML = "";
+    const isDynamicMatch = activity.active_token === token && now <= expiresAt;
+    const isStaticMatch = activity.static_token === token;
 
-        qrGenerator = new QRCode(document.getElementById("qrcode"), {
-            width: 300,
-            height: 300,
-        });
-
-        if (qrType === "dynamic") {
-            generateAndSaveToken(false);
-            rotationInterval = setInterval(
-                () => generateAndSaveToken(false),
-                15000,
-            );
-
-            let secondsLeftRemaining = 15;
-            document.querySelector(".timer").style.display = "block";
-            timerInterval = setInterval(() => {
-                secondsLeftRemaining--;
-                document.getElementById("time-left").innerText =
-                    secondsLeftRemaining;
-                if (secondsLeftRemaining <= 0) secondsLeftRemaining = 15;
-            }, 1000);
-            document.getElementById("qr-info-text").innerText =
-                "This token rotates automatically to prevent cheating.";
-        } else {
-            generateAndSaveToken(true);
-            document.querySelector(".timer").style.display = "none";
-            document.getElementById("qr-info-text").innerText =
-                "This is a static QR code. You can screenshot or print it.";
-        }
+    if (!isDynamicMatch && !isStaticMatch) {
+        showStatus('QR Code Expired or Invalid', 'This QR code is invalid or has expired to prevent cheating. Please scan the current code.', 'error');
+        return;
     }
-
-    async function generateAndSaveToken(isStatic) {
-        const newToken = generateUUID();
-        const expireMs = isStatic ? 10 * 365 * 24 * 60 * 60 * 1000 : 20000;
-        const expires = new Date(Date.now() + expireMs).toISOString();
-
-        const { error } = await supabase
-            .from("activities")
-            .update({ active_token: newToken, token_expires_at: expires })
-            .eq("id", currentActivityId);
-
-        if (error) return;
-
-        const currentUrl = window.location.origin;
-        const scanUrl = `${currentUrl}/scan.html?aid=${currentActivityId}&tk=${newToken}`;
-
-        qrGenerator.makeCode(scanUrl);
-    }
+    // ---------------------------------
 
     // 4. SHOW CONFIRMATION UI INSTEAD OF AUTO-INSERTING
     spinner.style.display = 'none';
@@ -114,7 +69,6 @@ export async function processScan() {
 
     // 5. Handle button clicks
     document.getElementById('btn-confirm-add').onclick = async () => {
-        // Hide confirm UI, show spinner again
         confirmSection.style.display = 'none';
         spinner.style.display = 'block';
         document.querySelector('#loading-spinner h2').innerText = 'Stamping Passport...';
@@ -137,19 +91,21 @@ export async function processScan() {
             return;
         }
 
+        // Clear the pending scan so it doesn't trigger again later
+        localStorage.removeItem('pendingScanUrl');
+
         // Success!
         showStatus('Passport Stamped! ✈️', `Successfully earned ${activity.base_points_km} km for ${activity.name}!`, 'success');
     };
 
     document.getElementById('btn-change-account').onclick = async () => {
-        // Logs out the user and sends them back to the login page
         await logout();
     };
 
     // Helper function to update status UI
     function showStatus(title, message, type) {
         spinner.style.display = 'none';
-        confirmSection.style.display = 'none'; // Ensure confirm section hides if error occurs
+        confirmSection.style.display = 'none';
         titleEl.innerText = title;
         titleEl.className = type;
         msgEl.innerText = message;

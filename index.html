@@ -64,7 +64,6 @@
         }
 
         async function initAuth() {
-            // FIX: Added try-catch so it never gets stuck on "Reading device cache..."
             try {
                 const { data: { session }, error } = await supabase.auth.getSession();
                 if (error) throw error;
@@ -84,19 +83,27 @@
             loadingText.innerText = 'Redirecting to Google...';
             loginBtn.style.display = 'none';
 
+            // FIX: If we have a pending scan URL, pass it to Google so we land right back on the scan!
+            let redirectUrl = window.location.origin + '/dashboard.html';
+            const pendingUrl = localStorage.getItem('pendingScanUrl');
+
+            if (pendingUrl) {
+                redirectUrl = pendingUrl;
+            }
+
             await supabase.auth.signInWithOAuth({
                 provider: 'google',
                 options: {
-                    redirectTo: window.location.origin + '/dashboard.html',
+                    redirectTo: redirectUrl,
                 }
             });
         });
 
         document.getElementById('continue-btn').addEventListener('click', () => {
-            // FIX: Resume scan if user clicked continue from cache
-            const pendingUrl = sessionStorage.getItem('pendingScanUrl');
+            // FIX: Changed sessionStorage to localStorage
+            const pendingUrl = localStorage.getItem('pendingScanUrl');
             if (pendingUrl) {
-                sessionStorage.removeItem('pendingScanUrl');
+                localStorage.removeItem('pendingScanUrl');
                 window.location.href = pendingUrl;
             } else {
                 window.location.href = 'dashboard.html';
@@ -109,7 +116,6 @@
             loadingText.innerText = 'Clearing device cache...';
             loggedInSection.style.display = 'none';
 
-            // FIX: Prevent hanging if signOut fails due to an already dead session
             try {
                 await supabase.auth.signOut();
             } catch (err) {
