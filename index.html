@@ -18,22 +18,23 @@
         <h1>Life is a Journey ✈️</h1>
         <p>Medical Student wellness passport system.</p>
 
-        <p id="loading-text" style="color: var(--accent-primary); font-weight: 600; margin: 20px 0;">Checking session...
-        </p>
+        <p id="loading-text" style="color: var(--accent-primary); font-weight: 600; margin: 20px 0;">Reading device
+            cache...</p>
 
         <button id="google-login" class="btn-large" style="display: none;">Login with @kkumail.com</button>
 
         <div id="logged-in-section" style="display: none; margin-top: 20px;">
             <div
                 style="background: rgba(0,0,0,0.2); padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid var(--glass-border);">
-                <p style="margin-bottom: 5px; font-size: 0.9rem; color: var(--text-muted);">Remembered Account:</p>
+                <p style="margin-bottom: 5px; font-size: 0.9rem; color: var(--text-muted);">Welcome back!</p>
                 <h3 id="user-email-display" style="margin: 0; color: var(--accent-primary); word-break: break-all;">
                 </h3>
             </div>
 
             <button id="continue-btn" class="btn-large" style="margin-bottom: 15px;">Continue to My Passport</button>
-            <button id="logout-btn" class="btn-large"
-                style="background: linear-gradient(135deg, var(--accent-danger), #be123c); box-shadow: 0 4px 15px rgba(251, 113, 133, 0.3);">Logout</button>
+            <a href="#" id="logout-btn" class="text-link"
+                style="color: var(--accent-danger); font-weight: bold; display: inline-block; margin-top: 10px;">Sign
+                Out of this Device</a>
         </div>
 
         <div style="margin-top: 25px;">
@@ -44,52 +45,71 @@
     <script type="module">
         import { supabase } from './js/app.js';
 
-        async function checkLogin() {
-            const loadingText = document.getElementById('loading-text');
-            const loginBtn = document.getElementById('google-login');
-            const loggedInSection = document.getElementById('logged-in-section');
-            const emailDisplay = document.getElementById('user-email-display');
+        const loadingText = document.getElementById('loading-text');
+        const loginBtn = document.getElementById('google-login');
+        const loggedInSection = document.getElementById('logged-in-section');
+        const emailDisplay = document.getElementById('user-email-display');
 
-            // Ask Supabase for the current cached session
-            const { data } = await supabase.auth.getSession();
-
-            // Hide the loading text
+        // Function to update the screen based on session status
+        function updateUI(session) {
             loadingText.style.display = 'none';
 
-            if (data.session) {
-                // Display the remembered user interface
+            if (session && session.user) {
+                // Device cache found a user! Show the continue screen.
                 loggedInSection.style.display = 'block';
-                emailDisplay.innerText = data.session.user.email;
+                loginBtn.style.display = 'none';
+                emailDisplay.innerText = session.user.email;
             } else {
-                // No session found, show the login button
+                // No cache found. Show the login button.
+                loggedInSection.style.display = 'none';
                 loginBtn.style.display = 'block';
             }
         }
 
-        async function loginWithGoogle() {
+        async function initAuth() {
+            // 1. Immediately check for an existing session in cache
+            const { data: { session } } = await supabase.auth.getSession();
+            updateUI(session);
+
+            // 2. Setup a listener just in case the device cache loads a fraction of a second later
+            supabase.auth.onAuthStateChange((_event, session) => {
+                updateUI(session);
+            });
+        }
+
+        // Login Action
+        document.getElementById('google-login').addEventListener('click', async () => {
+            loadingText.style.display = 'block';
+            loadingText.innerText = 'Redirecting to Google...';
+            loginBtn.style.display = 'none';
+
             await supabase.auth.signInWithOAuth({
                 provider: 'google',
                 options: {
                     redirectTo: window.location.origin + '/dashboard.html',
                 }
             });
-        }
+        });
 
-        // Attach Event Listeners
-        document.getElementById('google-login').addEventListener('click', loginWithGoogle);
-
+        // Continue Action
         document.getElementById('continue-btn').addEventListener('click', () => {
             window.location.href = 'dashboard.html';
         });
 
-        document.getElementById('logout-btn').addEventListener('click', async () => {
-            // Sign out the user and reload the page to clear the UI
+        // Logout Action
+        document.getElementById('logout-btn').addEventListener('click', async (e) => {
+            e.preventDefault();
+            loadingText.style.display = 'block';
+            loadingText.innerText = 'Clearing device cache...';
+            loggedInSection.style.display = 'none';
+
+            // Wipe the session from local storage
             await supabase.auth.signOut();
             window.location.reload();
         });
 
-        // Run the session check on page load
-        checkLogin();
+        // Start checking as soon as the script runs
+        initAuth();
     </script>
 </body>
 
