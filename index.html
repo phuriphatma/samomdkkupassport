@@ -65,11 +65,14 @@
 
         async function initAuth() {
             try {
-                const { data: { session }, error } = await supabase.auth.getSession();
-                if (error) throw error;
-                updateUI(session);
+                const response = await Promise.race([
+                    supabase.auth.getSession(),
+                    new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 3000))
+                ]);
+                if (response.error) throw response.error;
+                updateUI(response.data.session);
             } catch (err) {
-                console.error("Session check error:", err);
+                console.error("Session check error or timeout:", err);
                 updateUI(null);
             }
 

@@ -53,6 +53,14 @@ export async function checkSession() {
 }
 
 export async function logout() {
-  await supabase.auth.signOut();
-  window.location.href = "index.html";
+  try {
+      await Promise.race([
+          supabase.auth.signOut(),
+          new Promise(resolve => setTimeout(resolve, 2000))
+      ]);
+  } catch (err) {
+      console.error("Logout error:", err);
+  }
+  // Clear any hashed tokens from URL just in case
+  window.location.href = window.location.pathname.replace("dashboard.html", "index.html").replace("scan.html", "index.html");
 }
