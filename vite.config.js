@@ -6,9 +6,9 @@ export default defineConfig({
     rollupOptions: {
       input: {
         main: resolve(__dirname, 'index.html'),
-        dashboard: resolve(__dirname, 'dashboard.html'),
-        admin: resolve(__dirname, 'admin.html'),
-        scan: resolve(__dirname, 'scan.html')
+        dashboard: resolve(__dirname, 'html/dashboard.html'),
+        admin: resolve(__dirname, 'html/admin.html'),
+        scan: resolve(__dirname, 'html/scan.html')
       }
     }
   }

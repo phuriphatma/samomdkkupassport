@@ -2,6 +2,7 @@
 import { supabase } from './app.js';
 import { checkSession, logout } from './auth.js';
 import { fixGoogleDriveUrl, getPendingScanUrl, clearPendingScanUrl } from './utils.js';
+import { ROUTES } from './routes.js';
 
 // Configure the appearance of your continent badges here
 const continentThemes = {
@@ -18,11 +19,11 @@ async function init() {
             await logout();
         });
 
-    const user = await checkSession();
-    if (!user) {
-        window.location.href = 'index.html';
-        return;
-    }
+const user = await checkSession();
+if (!user) {
+    window.location.href = ROUTES.HOME; // Updated from 'index.html'
+    return;
+}
 
     // === NEW FIX: Resume scan if they were redirected to login ===
     const pendingUrl = getPendingScanUrl();
