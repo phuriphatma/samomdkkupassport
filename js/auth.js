@@ -1,5 +1,6 @@
 // js/auth.js
 import { supabase } from "./app.js";
+import { ROUTES } from './routes.js';
 
 export async function checkSession() {
   // 1. Catch OAuth errors from the URL before they get wiped
@@ -61,6 +62,7 @@ export async function logout() {
   } catch (err) {
       console.error("Logout error:", err);
   }
-  // Clear any hashed tokens from URL just in case
-  window.location.href = window.location.pathname.replace("dashboard.html", "index.html").replace("scan.html", "index.html");
+  
+  // CLEANUP: Simply redirect to the home route instead of string replacing
+  window.location.href = ROUTES.HOME;
 }

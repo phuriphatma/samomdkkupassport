@@ -1,6 +1,7 @@
 // js/admin-page.js — Admin terminal logic
 import { supabase } from './app.js';
 import { generateUUID } from './utils.js';
+import { ROUTES } from './routes.js';
 
 let currentActivityId = null;
 let editingActivityId = null;
@@ -275,7 +276,7 @@ async function generateStaticAndStartDynamic() {
         await supabase.from('activities').update({ static_token: staticToken }).eq('id', currentActivityId);
     }
 
-    const scanUrlStatic = `${window.location.origin}/scan.html?aid=${currentActivityId}&tk=${staticToken}`;
+const scanUrlStatic = `${window.location.origin}${ROUTES.SCAN}?aid=${currentActivityId}&tk=${staticToken}`;
     qrStaticGenerator.makeCode(scanUrlStatic);
 
     // 2. Start dynamic rotation
@@ -300,7 +301,7 @@ async function rotateDynamicToken() {
         .update({ active_token: newToken, token_expires_at: expires })
         .eq('id', currentActivityId);
 
-    const scanUrl = `${window.location.origin}/scan.html?aid=${currentActivityId}&tk=${newToken}`;
+const scanUrl = `${window.location.origin}${ROUTES.SCAN}?aid=${currentActivityId}&tk=${newToken}`;
     qrDynamicGenerator.makeCode(scanUrl);
 }
 

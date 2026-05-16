@@ -2,6 +2,7 @@
 import { supabase } from './app.js';
 import { checkSession } from './auth.js';
 import { fixGoogleDriveUrl, savePendingScanUrl, clearPendingScanUrl } from './utils.js';
+import { ROUTES } from './routes.js';
 
 export async function processScan() {
     const titleEl = document.getElementById('scan-title');
@@ -89,11 +90,10 @@ export async function processScan() {
 
     // 5. Handle button clicks
     document.getElementById('btn-confirm-add').onclick = async () => {
-        if (!user) {
-            // Not logged in? Redirect to login
-            window.location.href = 'index.html';
-            return;
-        }
+if (!user) {
+    window.location.href = ROUTES.HOME; // Updated
+    return;
+}
 
         confirmSection.style.display = 'none';
         spinner.style.display = 'block';
@@ -127,12 +127,12 @@ export async function processScan() {
         // Sign out, then immediately open Google account picker — no intermediate page.
         // Dashboard will pick up the pending scan URL and redirect back here.
         await supabase.auth.signOut();
-        await supabase.auth.signInWithOAuth({
-            provider: 'google',
-            options: {
-                redirectTo: window.location.origin + '/dashboard.html',
-            }
-        });
+await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: {
+        redirectTo: window.location.origin + ROUTES.DASHBOARD, // Updated
+    }
+});
     };
 
     // Helper function to update status UI

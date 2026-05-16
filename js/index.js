@@ -1,6 +1,7 @@
 // js/index.js — Landing page auth logic
 import { supabase } from './app.js';
 import { getPendingScanUrl, clearPendingScanUrl } from './utils.js';
+import { ROUTES } from './routes.js';
 
 const loadingText = document.getElementById('loading-text');
 const loginBtn = document.getElementById('google-login');
@@ -46,12 +47,12 @@ loginBtn.addEventListener('click', async () => {
     // Always redirect to dashboard after OAuth.
     // If there's a pending scan URL, dashboard.js will pick it up from localStorage
     // and redirect there. This avoids OAuth stripping query params from scan URLs.
-    await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-            redirectTo: window.location.origin + '/dashboard.html',
-        }
-    });
+await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: {
+        redirectTo: window.location.origin + ROUTES.DASHBOARD, // Updated
+    }
+});
 });
 
 document.getElementById('continue-btn').addEventListener('click', () => {
@@ -61,11 +62,11 @@ document.getElementById('continue-btn').addEventListener('click', () => {
         clearPendingScanUrl();
     }
 
-    if (pendingUrl) {
-        window.location.href = pendingUrl;
-    } else {
-        window.location.href = 'dashboard.html';
-    }
+if (pendingUrl) {
+    window.location.href = pendingUrl;
+} else {
+    window.location.href = ROUTES.DASHBOARD; // Updated
+}
 });
 
 document.getElementById('logout-btn').addEventListener('click', async (e) => {

@@ -5,8 +5,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Stamping Passport...</title>
-  <link rel="stylesheet" href="css/main.css" />
-  <link rel="stylesheet" href="css/scan.css" />
+<link rel="stylesheet" href="/css/main.css" />
+<link rel="stylesheet" href="/css/scan.css" />
 </head>
 
 <body>
@@ -47,18 +47,16 @@
     <p id="scan-message"></p>
 
     <div id="action-buttons" style="display: none; margin-top: 30px">
-      <button onclick="window.location.href = 'dashboard.html'" class="btn-large">
+<button onclick="window.location.href = '/html/dashboard.html'" class="btn-large">
         View My Passport
       </button>
     </div>
   </div>
 
-  <script type="module">
-    import { processScan } from "./js/scanning.js";
-
-    // Run the scan processor as soon as the page loads
-    processScan();
-  </script>
+<script type="module">
+  import { processScan } from "/js/scanning.js";
+  processScan();
+</script>
 </body>
 
 </html>
