@@ -25,29 +25,33 @@ Students attend wellness activities, scan QR codes, and earn "km" points that ac
 
 ## Project Structure
 
-```
+```text
 passport/
 ├── index.html              # Landing page (login / continue)
-├── dashboard.html           # Student boarding pass dashboard
-├── admin.html               # Admin terminal (CRUD + QR generation)
-├── scan.html                # QR scan processor & confirmation
+├── html/                   # Application views
+│   ├── admin.html          # Admin terminal (CRUD + QR generation)
+│   ├── dashboard.html      # Student boarding pass dashboard
+│   └── scan.html           # QR scan processor & confirmation
 ├── css/
-│   ├── main.css             # Global design system (colors, typography, glass effects)
-│   ├── passport.css         # Boarding pass dashboard styles
-│   ├── admin.css            # Admin page styles (toggle, QR layout, cards)
-│   └── scan.css             # Scan page styles (spinner, status)
+│   ├── admin.css           # Admin page styles (toggle, QR layout, cards)
+│   ├── main.css            # Global design system (colors, typography, glass effects)
+│   ├── passport.css        # Boarding pass dashboard styles
+│   └── scan.css            # Scan page styles (spinner, status)
 ├── js/
-│   ├── app.js               # Supabase client initialization
-│   ├── auth.js              # Session checking, OAuth error handling, logout
-│   ├── utils.js             # Shared helpers (UUID, Google Drive URL fixer, localStorage)
-│   ├── index.js             # Landing page logic
-│   ├── dashboard.js         # Dashboard data fetching & rendering
-│   ├── admin-page.js        # Admin CRUD, login, QR token rotation
-│   ├── scanning.js          # Scan processing, token verification, stamp insertion
-│   └── cropper-setup.js     # Image cropper for badge uploads (optional)
-├── vite.config.js           # Multi-page Vite build config
-├── package.json
-└── .env                     # Supabase credentials (not committed)
+│   ├── admin-page.js       # Admin CRUD, login, QR token rotation
+│   ├── app.js              # Supabase client initialization
+│   ├── auth.js             # Session checking, OAuth error handling, logout
+│   ├── cropper-setup.js    # Image cropper for badge uploads (optional)
+│   ├── dashboard.js        # Dashboard data fetching & rendering
+│   ├── index.js            # Landing page logic
+│   ├── routes.js           # Centralized routing constants
+│   ├── scanning.js         # Scan processing, token verification, stamp insertion
+│   └── utils.js            # Shared helpers (UUID, Google Drive URL fixer, localStorage)
+├── .env.example            # Template for environment variables
+├── .gitignore              # Ignored files and directories for Git
+├── package.json            # Project metadata, dependencies, and NPM scripts
+├── package-lock.json       # Exact dependency versions tree
+└── vite.config.js          # Multi-page Vite build config
 ```
 
 ## Getting Started
@@ -60,17 +64,17 @@ passport/
 ### Installation
 
 ```bash
-git clone https://github.com/samodevmdkku69/passport.git
+git clone [https://github.com/samodevmdkku69/passport.git](https://github.com/samodevmdkku69/passport.git)
 cd passport
 npm install
 ```
 
 ### Environment Variables
 
-Create a `.env` file (see `.env.example`):
+Create a `.env` file based on `.env.example`:
 
 ```env
-VITE_SUPABASE_URL=https://your-project.supabase.co
+VITE_SUPABASE_URL=[https://your-project.supabase.co](https://your-project.supabase.co)
 VITE_SUPABASE_ANON_KEY=your-anon-key
 ```
 
@@ -88,6 +92,14 @@ Opens at `http://localhost:5173`. Hot-reloads on file changes.
 npm run build
 npm run preview   # Preview the production build locally
 ```
+
+## 🤝 Contributing
+
+We welcome contributions from the SAMO IT team! If you want to add a new feature, fix a bug, or make changes to this repository, **please read our step-by-step Git guide first**:
+
+👉 **[Read the CONTRIBUTING.md guide](./CONTRIBUTING.md)** 👈
+
+Following this workflow ensures that you can safely test your code using Cloudflare Preview deployments without breaking the live app for other medical students.
 
 ## Deployment
 
