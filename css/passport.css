@@ -255,11 +255,40 @@ body.boarding-pass-theme {
     }
 }
 
+#stamps-container {
+    max-height: 120px;
+    overflow-y: auto;
+    padding-right: 5px;
+}
+
 #activity-list {
     flex-grow: 1;
-    /* CHANGED: Removed max-height and overflow-y to let the list fully expand */
+    max-height: 150px;
+    overflow-y: auto;
     margin-bottom: 50px;
-    /* Increased bottom margin so it doesn't overlap the logout button */
+    padding-right: 5px;
+}
+
+#stamps-container::-webkit-scrollbar,
+#activity-list::-webkit-scrollbar {
+    width: 6px;
+}
+
+#stamps-container::-webkit-scrollbar-track,
+#activity-list::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 3px;
+}
+
+#stamps-container::-webkit-scrollbar-thumb,
+#activity-list::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 3px;
+}
+
+#stamps-container::-webkit-scrollbar-thumb:hover,
+#activity-list::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.3);
 }
 
 #activity-list div {
