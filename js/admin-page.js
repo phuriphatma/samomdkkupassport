@@ -5,13 +5,8 @@ import { ROUTES } from './routes.js';
 
 let currentActivityId = null;
 let editingActivityId = null;
-let qrGenerator = null;
-let rotationInterval = null;
-let timerInterval = null;
-let qrType = 'dynamic';
 
 // --- QR GENERATION ---
-let qrDynamicGenerator = null;
 let qrStaticGenerator = null;
 
 async function init() {
@@ -105,8 +100,7 @@ async function loadActivities() {
 
 window.startScannerFor = (id) => {
     currentActivityId = id;
-    qrType = 'dynamic'; // Defaulting to dynamic when resuming from list
-    startRotatingQR();
+    startStaticQR();
 };
 
 window.editActivity = async (id) => {
@@ -246,27 +240,23 @@ async function createActivity(e) {
 
     currentActivityId = data[0].id;
     loadActivities(); // Refresh the list
-    startRotatingQR();
+    startStaticQR();
 }
 
-function startRotatingQR() {
+function startStaticQR() {
     document.getElementById('event-creation').style.display = 'none';
     document.getElementById('manage-section').style.display = 'none';
     document.getElementById('qr-section').style.display = 'block';
 
-    if (rotationInterval) clearInterval(rotationInterval);
-    if (timerInterval) clearInterval(timerInterval);
+    const staticQrContainer = document.getElementById('qrcode-static');
+    staticQrContainer.innerHTML = '';
 
-    document.getElementById('qrcode-dynamic').innerHTML = '';
-    document.getElementById('qrcode-static').innerHTML = '';
+    qrStaticGenerator = new QRCode(staticQrContainer, { width: 220, height: 220 });
 
-    qrDynamicGenerator = new QRCode(document.getElementById('qrcode-dynamic'), { width: 220, height: 220 });
-    qrStaticGenerator = new QRCode(document.getElementById('qrcode-static'), { width: 220, height: 220 });
-
-    generateStaticAndStartDynamic();
+    generateStaticQR();
 }
 
-async function generateStaticAndStartDynamic() {
+async function generateStaticQR() {
     // 1. Get or create the Static Token
     const { data: act } = await supabase.from('activities').select('static_token').eq('id', currentActivityId).single();
     let staticToken = act?.static_token;
@@ -276,33 +266,8 @@ async function generateStaticAndStartDynamic() {
         await supabase.from('activities').update({ static_token: staticToken }).eq('id', currentActivityId);
     }
 
-const scanUrlStatic = `${window.location.origin}${ROUTES.SCAN}?aid=${currentActivityId}&tk=${staticToken}`;
+    const scanUrlStatic = `${window.location.origin}${ROUTES.SCAN}?aid=${currentActivityId}&tk=${staticToken}`;
     qrStaticGenerator.makeCode(scanUrlStatic);
-
-    // 2. Start dynamic rotation
-    rotateDynamicToken();
-    rotationInterval = setInterval(rotateDynamicToken, 15000);
-
-    let secondsLeftRemaining = 15;
-    document.getElementById('time-left').innerText = secondsLeftRemaining;
-    timerInterval = setInterval(() => {
-        secondsLeftRemaining--;
-        document.getElementById('time-left').innerText = secondsLeftRemaining;
-        if (secondsLeftRemaining <= 0) secondsLeftRemaining = 15;
-    }, 1000);
-}
-
-async function rotateDynamicToken() {
-    const newToken = generateUUID();
-    const expires = new Date(Date.now() + 20000).toISOString();
-
-    await supabase
-        .from('activities')
-        .update({ active_token: newToken, token_expires_at: expires })
-        .eq('id', currentActivityId);
-
-const scanUrl = `${window.location.origin}${ROUTES.SCAN}?aid=${currentActivityId}&tk=${newToken}`;
-    qrDynamicGenerator.makeCode(scanUrl);
 }
 
 init();
