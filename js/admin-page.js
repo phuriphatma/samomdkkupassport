@@ -38,6 +38,34 @@ async function init() {
             sessionStorage.removeItem('admin_logged_in');
             window.location.reload();
         });
+
+    const downloadBtn = document.getElementById('download-qr-btn');
+    if (downloadBtn) {
+        downloadBtn.addEventListener('click', () => {
+            const qrContainer = document.getElementById('qrcode-static');
+            const img = qrContainer.querySelector('img');
+            const canvas = qrContainer.querySelector('canvas');
+
+            let dataUrl = '';
+            // Attempt to get base64 source from either img src or canvas toDataURL
+            if (img && img.src && img.src.startsWith('data:image')) {
+                dataUrl = img.src;
+            } else if (canvas) {
+                dataUrl = canvas.toDataURL('image/png');
+            }
+
+            if (dataUrl) {
+                const link = document.createElement('a');
+                link.href = dataUrl;
+                link.download = `static-qr-${currentActivityId || 'code'}.png`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            } else {
+                alert('QR Code is still rendering. Please try again in a moment.');
+            }
+        });
+    }
 }
 
 function showAdminPanel() {
