@@ -235,6 +235,7 @@ async function createActivity(e) {
 
     if (error) {
         console.error(error);
+        alert('Failed to create activity: ' + error.message);
         return;
     }
 
@@ -243,7 +244,12 @@ async function createActivity(e) {
     startStaticQR();
 }
 
-function startStaticQR() {
+async function startStaticQR() {
+    if (!currentActivityId) {
+        alert('Error: No active activity selected.');
+        return;
+    }
+    
     document.getElementById('event-creation').style.display = 'none';
     document.getElementById('manage-section').style.display = 'none';
     document.getElementById('qr-section').style.display = 'block';
@@ -253,17 +259,43 @@ function startStaticQR() {
 
     qrStaticGenerator = new QRCode(staticQrContainer, { width: 220, height: 220 });
 
-    generateStaticQR();
+    try {
+        await generateStaticQR();
+    } catch (error) {
+        console.error(error);
+        alert(error.message || 'An error occurred while generating the QR code.');
+
+        // กู้คืน UI หน้าหลักเดิมกลับมาในกรณีที่ทำงานล้มเหลว
+        document.getElementById('event-creation').style.display = 'block';
+        document.getElementById('manage-section').style.display = 'block';
+        document.getElementById('qr-section').style.display = 'none';
+    }
 }
 
 async function generateStaticQR() {
     // 1. Get or create the Static Token
-    const { data: act } = await supabase.from('activities').select('static_token').eq('id', currentActivityId).single();
+    const { data: act, error: selectError } = await supabase
+        .from('activities')
+        .select('static_token')
+        .eq('id', currentActivityId)
+        .single();
+
+    if (selectError) {
+        throw new Error('Failed to fetch activity: ' + selectError.message);
+    }
+
     let staticToken = act?.static_token;
 
     if (!staticToken) {
         staticToken = generateUUID();
-        await supabase.from('activities').update({ static_token: staticToken }).eq('id', currentActivityId);
+        const { error: updateError } = await supabase
+            .from('activities')
+            .update({ static_token: staticToken })
+            .eq('id', currentActivityId);
+
+        if (updateError) {
+            throw new Error('Failed to update activity token: ' + updateError.message);
+        }
     }
 
     const scanUrlStatic = `${window.location.origin}${ROUTES.SCAN}?aid=${currentActivityId}&tk=${staticToken}`;
