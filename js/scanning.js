@@ -33,15 +33,11 @@ export async function processScan() {
         return;
     }
 
-    // --- RESTORED ANTI-CHEAT CHECK ---
-    const now = new Date();
-    const expiresAt = new Date(activity.token_expires_at);
+    // --- STATIC MATCH CHECK ---
+    const isStaticMatch = activity.static_token && token && activity.static_token === token;
 
-    const isDynamicMatch = activity.active_token === token && now <= expiresAt;
-    const isStaticMatch = activity.static_token === token;
-
-    if (!isDynamicMatch && !isStaticMatch) {
-        showStatus('QR Code Expired or Invalid', 'This QR code is invalid or has expired to prevent cheating. Please scan the current code.', 'error');
+    if (!isStaticMatch) {
+        showStatus('QR Code Invalid', 'This QR code is invalid. Please scan the current authorized code.', 'error');
         return;
     }
     // ---------------------------------

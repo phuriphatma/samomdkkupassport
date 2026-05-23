@@ -105,24 +105,13 @@
       </div>
 
       <div id="qr-section" style="display: none; text-align: center;">
-        <h3>Activity Scanners</h3>
-        <p style="margin-bottom: 20px;">Leave this page open to display the dynamic QR code.</p>
-
+        <h3>Activity Scanner</h3>
+        <p style="margin-bottom: 20px;">Display this QR code for participants to stamp their passport.</p>
+      
         <div class="qr-display-row">
           <div class="qr-area" style="margin-top: 0;">
-            <h4 style="color: var(--accent-primary);">Dynamic QR</h4>
-            <small style="display: block; margin-bottom: 15px; color: var(--text-muted);">Auto-rotates to prevent
-              cheating</small>
-            <div id="qrcode-dynamic" class="qr-box"></div>
-            <div class="timer" style="margin-top: 15px;">
-              Refreshing in <span id="time-left">15</span>s
-            </div>
-          </div>
-
-          <div class="qr-area" style="margin-top: 0;">
             <h4 style="color: var(--accent-secondary);">Static QR</h4>
-            <small style="display: block; margin-bottom: 15px; color: var(--text-muted);">Printable. Does not
-              expire.</small>
+            <small style="display: block; margin-bottom: 15px; color: var(--text-muted);">Printable. Does not expire.</small>
             <div id="qrcode-static" class="qr-box"></div>
             <button id="download-qr-btn" class="btn-action"
               style="display: block; margin: 15px auto 0 auto; width: auto;">Download QR Code</button>
@@ -131,8 +120,8 @@
             </div>
           </div>
         </div>
-
-        <button onclick="window.location.reload()" class="qr-close-btn">Close Scanners</button>
+      
+        <button onclick="window.location.reload()" class="qr-close-btn">Close Scanner</button>
       </div>
     </div>
   </div>
