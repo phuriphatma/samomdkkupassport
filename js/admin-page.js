@@ -318,7 +318,6 @@ async function createActivity(e) {
                 department_id: dept,
                 sub_department_id: subDept,
                 badge_name,
-                base_points_km: km,
                 badge_url,
                 is_marketing_bonus: bonus,
             },
