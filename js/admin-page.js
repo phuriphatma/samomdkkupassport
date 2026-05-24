@@ -19,15 +19,16 @@ let qrStaticGenerator = null;
 async function init() {
     setupSubDepartmentToggle('act-department', 'act-sub-department');
     setupSubDepartmentToggle('edit-department', 'edit-sub-department');
-
+    
     const preventScrollChange = (id) => {
-        const el = document.getElementById(id);
-        if (el) {
-            el.addEventListener('wheel', (e) => {
-                e.preventDefault();
-            }, { passive: false });
-        }
-    };
+    const el = document.getElementById(id);
+    if (el) {
+        el.addEventListener('wheel', () => {
+            el.blur();
+        });
+    }
+};
+    
     preventScrollChange('act-km');
     preventScrollChange('edit-km');
 
