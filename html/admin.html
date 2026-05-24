@@ -48,10 +48,23 @@
             200x200) to Google Drive, make it public, and paste the direct link here.</small>
           <input type="url" id="act-badge-url" placeholder="Badge Image URL" /><br />
 
-          <select id="act-continent">
-            <option value="">Select Continent Theme (Optional)</option>
-            <option value="1">Novatopia (Green)</option>
-            <option value="2">Empathia (Red)</option>
+          <select id="act-department">
+            <option value="">เลือกฝ่ายอุปนายก (Optional)</option>
+            <option value="1">อุปนายกฝ่ายบริหารองค์กร</option>
+            <option value="2">ดิจิทัลและสื่อสารองค์กร</option>
+            <option value="3">กิจการภายใน</option>
+            <option value="4">กิจการภายนอก</option>
+            <option value="5">กิจการมหาวิทยาลัย</option>
+            <option value="6">วิชาการ</option>
+            <option value="7">ยุทธศาสตร์และพัฒนาองค์กร</option>
+            <option value="8">คุณภาพชีวิตและสิ่งแวดล้อม</option>
+            <option value="9">เวชนิทัศน์</option>
+            <option value="10">รังสีเทคนิค</option>
+          </select><br />
+          
+          <!-- ตัวเลือกย่อย (ซ่อนอยู่และจะแสดงเมื่อเลือก ฝ่ายกิจการภายใน หรือ กิจการมหาวิทยาลัย) -->
+          <select id="act-sub-department" style="display: none;">
+            <option value="">เลือกประเภทฝ่ายย่อย</option>
           </select><br />
 
           <div class="bonus-container">
@@ -74,10 +87,23 @@
           <input type="text" id="edit-badge-name" placeholder="Badge Display Name (Optional)" /><br />
           <input type="url" id="edit-badge-url" placeholder="Badge Image URL" /><br />
 
-          <select id="edit-continent">
-            <option value="">Select Continent Theme (Optional)</option>
-            <option value="1">Novatopia (Green)</option>
-            <option value="2">Empathia (Red)</option>
+          <select id="edit-department">
+            <option value="">เลือกฝ่ายอุปนายก (Optional)</option>
+            <option value="1">อุปนายกฝ่ายบริหารองค์กร</option>
+            <option value="2">ดิจิทัลและสื่อสารองค์กร</option>
+            <option value="3">กิจการภายใน</option>
+            <option value="4">กิจการภายนอก</option>
+            <option value="5">กิจการมหาวิทยาลัย</option>
+            <option value="6">วิชาการ</option>
+            <option value="7">ยุทธศาสตร์และพัฒนาองค์กร</option>
+            <option value="8">คุณภาพชีวิตและสิ่งแวดล้อม</option>
+            <option value="9">เวชนิทัศน์</option>
+            <option value="10">รังสีเทคนิค</option>
+          </select><br />
+          
+          <!-- ตัวเลือกย่อยฟอร์มแก้ไข -->
+          <select id="edit-sub-department" style="display: none;">
+            <option value="">เลือกประเภทฝ่ายย่อย</option>
           </select><br />
 
           <div class="bonus-container">

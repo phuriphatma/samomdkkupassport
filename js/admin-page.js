@@ -3,6 +3,13 @@ import { supabase } from './app.js';
 import { generateUUID } from './utils.js';
 import { ROUTES } from './routes.js';
 
+// --- CONFIG ---
+const SUB_DEPT_OPTIONS = {
+    '3': [{ value: '1', label: 'โครงการ' }, { value: '2', label: 'ชุมนุม' }],
+    '5': [{ value: '3', label: 'จิตอาสา' }, { value: '4', label: '7 คณะ' }]
+};
+
+// --- STATE ---
 let currentActivityId = null;
 let editingActivityId = null;
 
@@ -10,6 +17,20 @@ let editingActivityId = null;
 let qrStaticGenerator = null;
 
 async function init() {
+    setupSubDepartmentToggle('act-department', 'act-sub-department');
+    setupSubDepartmentToggle('edit-department', 'edit-sub-department');
+
+    const preventScrollChange = (id) => {
+        const el = document.getElementById(id);
+        if (el) {
+            el.addEventListener('wheel', (e) => {
+                e.preventDefault();
+            }, { passive: false });
+        }
+    };
+    preventScrollChange('act-km');
+    preventScrollChange('edit-km');
+
     if (
         localStorage.getItem('admin_logged_in') === 'true' ||
         sessionStorage.getItem('admin_logged_in') === 'true'
@@ -61,6 +82,33 @@ async function init() {
             }
         });
     }
+}
+
+function setupSubDepartmentToggle(deptSelectId, subDeptSelectId) {
+    const deptEl = document.getElementById(deptSelectId);
+    const subEl = document.getElementById(subDeptSelectId);
+
+    if (!deptEl || !subEl) return;
+
+    deptEl.addEventListener('change', () => {
+        const selectedValue = deptEl.value;
+        const options = SUB_DEPT_OPTIONS[selectedValue];
+
+        // ล้างค่าเดิมและเพิ่มค่าเริ่มต้น
+        subEl.innerHTML = '<option value="">เลือกประเภทย่อย</option>';
+
+        if (options) {
+            options.forEach(opt => {
+                subEl.innerHTML += `<option value="${opt.value}">${opt.label}</option>`;
+            });
+            subEl.style.display = 'block';
+            subEl.required = true; // บังคับเลือกเมื่อแสดงผล
+        } else {
+            subEl.style.display = 'none';
+            subEl.value = '';
+            subEl.required = false;
+        }
+    });
 }
 
 function showAdminPanel() {
@@ -147,8 +195,15 @@ window.editActivity = async (id) => {
     document.getElementById('edit-km').value = data.base_points_km;
     document.getElementById('edit-badge-name').value = data.badge_name || '';
     document.getElementById('edit-badge-url').value = data.badge_url || '';
-    document.getElementById('edit-continent').value =
-        data.continent_id || '';
+
+    // ตั้งค่าตัวเลือกฝ่ายหลัก
+    const deptVal = data.department_id || '';
+    document.getElementById('edit-department').value = deptVal;
+
+    document.getElementById('edit-department').dispatchEvent(new Event('change'));
+
+    document.getElementById('edit-sub-department').value = data.sub_department_id || '';
+
     document.getElementById('edit-bonus').checked = data.is_marketing_bonus;
 
     document.getElementById('event-creation').style.display = 'none';
@@ -200,8 +255,11 @@ window.deleteActivity = async (id) => {
 async function submitEditActivity(e) {
     e.preventDefault();
     const name = document.getElementById('edit-name').value;
-    const km = document.getElementById('edit-km').value;
-    const cont = document.getElementById('edit-continent').value || null;
+    const km = parseInt(document.getElementById('edit-km').value, 10);
+    const deptRaw = document.getElementById('edit-department').value;
+    const dept = deptRaw ? parseInt(deptRaw, 10) : null;
+    const subDeptRaw = document.getElementById('edit-sub-department').value;
+    const subDept = subDeptRaw ? parseInt(subDeptRaw, 10) : null;
     const badge_name = document.getElementById('edit-badge-name').value || name;
     const badge_url = document.getElementById('edit-badge-url').value || null;
     const bonus = document.getElementById('edit-bonus').checked;
@@ -212,7 +270,8 @@ async function submitEditActivity(e) {
         .update({
             name,
             base_points_km: km,
-            continent_id: cont,
+            department_id: dept,
+            sub_department_id: subDept,
             badge_name,
             badge_url,
             is_marketing_bonus: bonus,
@@ -241,8 +300,11 @@ async function submitEditActivity(e) {
 async function createActivity(e) {
     e.preventDefault();
     const name = document.getElementById('act-name').value;
-    const km = document.getElementById('act-km').value;
-    const cont = document.getElementById('act-continent').value || null;
+    const km = parseInt(document.getElementById('act-km').value, 10);
+    const deptRaw = document.getElementById('act-department').value;
+    const dept = deptRaw ? parseInt(deptRaw, 10) : null;
+    const subDeptRaw = document.getElementById('act-sub-department').value;
+    const subDept = subDeptRaw ? parseInt(subDeptRaw, 10) : null;
     const badge_name = document.getElementById('act-badge-name').value || name;
     const badge_url = document.getElementById('act-badge-url').value || null;
     const bonus = document.getElementById('act-bonus').checked;
@@ -253,8 +315,10 @@ async function createActivity(e) {
             {
                 name,
                 base_points_km: km,
-                continent_id: cont,
+                department_id: dept,
+                sub_department_id: subDept,
                 badge_name,
+                base_points_km: km,
                 badge_url,
                 is_marketing_bonus: bonus,
             },
