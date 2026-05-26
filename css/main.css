@@ -1,20 +1,19 @@
 /* css/main.css */
 :root {
-    --bg-gradient: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
-    /* Deep space gradient */
-    --text-light: #f8fafc;
-    --text-muted: #94a3b8;
-    --accent-primary: #38bdf8;
-    --accent-secondary: #818cf8;
-    --accent-success: #34d399;
-    --accent-danger: #fb7185;
+    --bg-gradient: linear-gradient(160deg, #f8f0e8 0%, #eff1ee 48%, #e7f2f8 100%);
+    --text-light: #1b1c27;
+    --text-muted: #65403a;
+    --accent-primary: #1e527a;
+    --accent-secondary: #65403a;
+    --accent-success: #4a7c5a;
+    --accent-danger: #b5423a;
 
-    --glass-bg: rgba(255, 255, 255, 0.05);
-    --glass-border: rgba(255, 255, 255, 0.1);
-    --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+    --glass-bg: rgba(239, 241, 238, 0.78);
+    --glass-border: rgba(158, 193, 215, 0.38);
+    --glass-shadow: 0 8px 32px 0 rgba(30, 82, 122, 0.12);
     --border-radius: 16px;
-    --font-heading: 'Outfit', sans-serif;
-    --font-body: 'Inter', sans-serif;
+    --font-heading: 'Prompt', sans-serif;
+    --font-body: 'Noto Sans Thai', sans-serif;
 }
 
 * {
@@ -23,22 +22,28 @@
     padding: 0;
 }
 
-/* Fixes white flashing on mobile overscroll */
-html {
-    background-color: #0f2027;
+html,
+body {
     min-height: 100vh;
 }
 
 body {
     font-family: var(--font-body);
-    background-color: #0f2027;
-    /* Fallback color for white flashing fix */
     background-image: var(--bg-gradient);
     background-attachment: fixed;
+    background-repeat: no-repeat;
+    background-size: cover;
     color: var(--text-light);
     line-height: 1.6;
-    min-height: 100vh;
     overflow-x: hidden;
+
+    min-height: 100dvh;
+
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    padding: 20px;
 }
 
 h1,
@@ -85,7 +90,8 @@ p {
 
 .terminal-container {
     max-width: 450px;
-    margin: 10vh auto;
+    width: 100%;
+    margin: 0;
     text-align: center;
     padding: 50px 40px;
     background: var(--glass-bg);
@@ -99,11 +105,11 @@ p {
 
 .terminal-container:hover {
     transform: translateY(-5px);
-    box-shadow: 0 15px 40px 0 rgba(0, 0, 0, 0.45);
+    box-shadow: 0 15px 40px 0 rgba(100, 116, 139, 0.25);
 }
 
 .terminal-container h1 {
-    background: linear-gradient(to right, var(--accent-primary), var(--accent-secondary));
+    background: linear-gradient(to right, #18465a, #9ec1d7);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     font-weight: 800;
@@ -111,8 +117,8 @@ p {
 
 .btn-large,
 button {
-    background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
-    color: white;
+    background: linear-gradient(135deg, #18465a, #65403a);
+    color: #eff1ee;
     border: none;
     padding: 14px 28px;
     font-size: 1rem;
@@ -121,15 +127,15 @@ button {
     border-radius: 8px;
     cursor: pointer;
     transition: all 0.3s ease;
-    box-shadow: 0 4px 15px rgba(56, 189, 248, 0.3);
+    box-shadow: 0 4px 15px rgba(24, 70, 90, 0.28);
     width: 100%;
 }
 
 button:hover,
 .btn-large:hover {
     transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(56, 189, 248, 0.5);
-    background: linear-gradient(135deg, #0ea5e9, #6366f1);
+    box-shadow: 0 6px 20px rgba(24, 70, 90, 0.42);
+    background: linear-gradient(135deg, #113648, #4a2d28);
 }
 
 button:active {
@@ -141,8 +147,8 @@ select {
     width: 100%;
     padding: 14px;
     margin-bottom: 20px;
-    background: rgba(0, 0, 0, 0.2);
-    border: 1px solid var(--glass-border);
+    background: rgba(239, 241, 238, 0.88);
+    border: 1px solid rgba(158, 193, 215, 0.45);
     border-radius: 8px;
     color: var(--text-light);
     font-family: var(--font-body);
@@ -154,11 +160,11 @@ input:focus,
 select:focus {
     outline: none;
     border-color: var(--accent-primary);
-    box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.2);
+    box-shadow: 0 0 0 3px rgba(24, 70, 90, 0.15);
 }
 
 input::placeholder {
-    color: rgba(255, 255, 255, 0.3);
+    color: rgba(101, 64, 58, 0.5);
 }
 
 hr {
