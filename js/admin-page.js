@@ -19,6 +19,7 @@ let qrStaticGenerator = null;
 async function init() {
     setupSubDepartmentToggle('act-department', 'act-sub-department');
     setupSubDepartmentToggle('edit-department', 'edit-sub-department');
+    setupSubDepartmentToggle('filter-department', 'filter-sub-department'); // กรณีที่เปลี่ยนแผนกหลักในหน้าสร้างใหม่แล้วไปแก้ไขต่อ จะได้แสดงตัวเลือกแผนกย่อยถูกต้อง
     
     const preventScrollChange = (id) => {
     const el = document.getElementById(id);
@@ -55,6 +56,14 @@ async function init() {
             sessionStorage.removeItem('admin_logged_in');
             window.location.reload();
         });
+
+    document
+        .getElementById('filter-department')
+        .addEventListener('change', renderActivityList);
+
+    document
+        .getElementById('filter-sub-department')
+        .addEventListener('change', renderActivityList);
 
     const downloadBtn = document.getElementById('download-qr-btn');
     if (downloadBtn) {
@@ -138,6 +147,7 @@ function handleLogin(e) {
 }
 
 // --- ACTIVITY LIST & MANAGEMENT ---
+let activitiesCache = [];
 async function loadActivities() {
     const { data, error } = await supabase
         .from('activities')
@@ -149,16 +159,33 @@ async function loadActivities() {
         return;
     }
 
+    activitiesCache = data; // เก็บข้อมูลใน cache เพื่อใช้กับฟิลเตอร์
+
+    renderActivityList();
+}
+
+function renderActivityList(){
+
     const list = document.getElementById('activities-list');
     list.innerHTML = '';
 
-    if (data.length === 0) {
+    if (activitiesCache.length === 0) {
         list.innerHTML =
             '<p style="font-size: 0.9rem;">No activities created yet.</p>';
         return;
     }
+    const filterDept = document.getElementById('filter-department').value;
+    const filterSubDept = document.getElementById('filter-sub-department').value;
 
-    data.forEach((act) => {
+    activitiesCache.forEach((act) => {
+        // Apply filters
+        if (filterDept && act.department_id !== parseInt(filterDept, 10)) {
+            return;
+        }
+        if (filterSubDept && act.sub_department_id !== parseInt(filterSubDept, 10)) {
+            return;
+        }
+
         list.innerHTML += `
           <div class="activity-card">
             <div class="activity-card-header">
@@ -173,6 +200,10 @@ async function loadActivities() {
           </div>
         `;
     });
+
+    if(activitiesCache.length > 0 && list.innerHTML === '') {
+        list.innerHTML = '<p style="font-size: 0.9rem;">No activities match the selected filters.</p>';
+    }
 }
 
 window.startScannerFor = (id) => {
