@@ -33,7 +33,6 @@ html {
 
 body {
     font-family: var(--font-body);
-    background-color: #dbeafe;
     background-image: var(--bg-gradient);
     background-repeat: no-repeat;
     background-size: cover;
