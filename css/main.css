@@ -1,16 +1,16 @@
 /* css/main.css */
 :root {
-    --bg-gradient: linear-gradient(135deg, #dbeafe 0%, #f0f9ff 50%, #fdf4ff 100%);
-    --text-light: #1e293b;
-    --text-muted: #64748b;
-    --accent-primary: #0284c7;
-    --accent-secondary: #7c3aed;
-    --accent-success: #059669;
-    --accent-danger: #e11d48;
+    --bg-gradient: linear-gradient(160deg, #f8f0e8 0%, #eff1ee 48%, #e7f2f8 100%);
+    --text-light: #1b1c27;
+    --text-muted: #65403a;
+    --accent-primary: #1e527a;
+    --accent-secondary: #65403a;
+    --accent-success: #4a7c5a;
+    --accent-danger: #b5423a;
 
-    --glass-bg: rgba(255, 255, 255, 0.75);
-    --glass-border: rgba(148, 163, 184, 0.3);
-    --glass-shadow: 0 8px 32px 0 rgba(100, 116, 139, 0.15);
+    --glass-bg: rgba(239, 241, 238, 0.78);
+    --glass-border: rgba(158, 193, 215, 0.38);
+    --glass-shadow: 0 8px 32px 0 rgba(30, 82, 122, 0.12);
     --border-radius: 16px;
     --font-heading: 'Prompt', sans-serif;
     --font-body: 'Noto Sans Thai', sans-serif;
@@ -27,13 +27,10 @@ body {
     min-height: 100vh;
 }
 
-html {
-    background-color: #dbeafe;
-}
-
 body {
     font-family: var(--font-body);
     background-image: var(--bg-gradient);
+    background-attachment: fixed;
     background-repeat: no-repeat;
     background-size: cover;
     color: var(--text-light);
@@ -112,7 +109,7 @@ p {
 }
 
 .terminal-container h1 {
-    background: linear-gradient(to right, var(--accent-primary), var(--accent-secondary));
+    background: linear-gradient(to right, #18465a, #9ec1d7);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     font-weight: 800;
@@ -120,8 +117,8 @@ p {
 
 .btn-large,
 button {
-    background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
-    color: white;
+    background: linear-gradient(135deg, #18465a, #65403a);
+    color: #eff1ee;
     border: none;
     padding: 14px 28px;
     font-size: 1rem;
@@ -130,15 +127,15 @@ button {
     border-radius: 8px;
     cursor: pointer;
     transition: all 0.3s ease;
-    box-shadow: 0 4px 15px rgba(2, 132, 199, 0.3);
+    box-shadow: 0 4px 15px rgba(24, 70, 90, 0.28);
     width: 100%;
 }
 
 button:hover,
 .btn-large:hover {
     transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(2, 132, 199, 0.45);
-    background: linear-gradient(135deg, #0369a1, #6d28d9);
+    box-shadow: 0 6px 20px rgba(24, 70, 90, 0.42);
+    background: linear-gradient(135deg, #113648, #4a2d28);
 }
 
 button:active {
@@ -150,8 +147,8 @@ select {
     width: 100%;
     padding: 14px;
     margin-bottom: 20px;
-    background: rgba(255, 255, 255, 0.85);
-    border: 1px solid rgba(148, 163, 184, 0.4);
+    background: rgba(239, 241, 238, 0.88);
+    border: 1px solid rgba(158, 193, 215, 0.45);
     border-radius: 8px;
     color: var(--text-light);
     font-family: var(--font-body);
@@ -163,11 +160,11 @@ input:focus,
 select:focus {
     outline: none;
     border-color: var(--accent-primary);
-    box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.15);
+    box-shadow: 0 0 0 3px rgba(24, 70, 90, 0.15);
 }
 
 input::placeholder {
-    color: rgba(100, 116, 139, 0.6);
+    color: rgba(101, 64, 58, 0.5);
 }
 
 hr {
