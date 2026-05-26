@@ -4,12 +4,6 @@ import { checkSession, logout } from './auth.js';
 import { fixGoogleDriveUrl, getPendingScanUrl, clearPendingScanUrl } from './utils.js';
 import { ROUTES } from './routes.js';
 
-// Configure the appearance of your continent badges here
-const continentThemes = {
-    '1': { name: 'Novatopia', bg: 'rgba(52, 211, 153, 0.15)', border: 'rgba(52, 211, 153, 0.4)', text: '#34d399' }, // Green
-    '2': { name: 'Empathia', bg: 'rgba(251, 113, 133, 0.15)', border: 'rgba(251, 113, 133, 0.4)', text: '#fb7185' }  // Red
-};
-
 async function init() {
     // 1. Attach logout listener FIRST
     document
@@ -104,18 +98,10 @@ if (!user) {
 
             const activityName = activityData.name || 'Unknown Flight';
 
-            // Beautiful Continent Badge
-            let badgeHTML = '';
-            if (activityData.continent_id && continentThemes[activityData.continent_id]) {
-                const theme = continentThemes[activityData.continent_id];
-                badgeHTML = `<span class="continent-badge" style="background: ${theme.bg}; color: ${theme.text}; border: 1px solid ${theme.border};">${theme.name}</span>`;
-            }
-
             const logItem = document.createElement('div');
             logItem.className = 'flight-log-item';
 
-            // Using innerHTML so the badge renders nicely
-            logItem.innerHTML = `<span>✈️ ${activityName} ${badgeHTML}</span> <span style="opacity:0.8;">+${points}km</span>`;
+            logItem.innerHTML = `<span>✈️ ${activityName}</span> <span style="opacity:0.8;">+${points}km</span>`;
 
             activityList.appendChild(logItem);
 

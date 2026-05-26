@@ -10,7 +10,6 @@ Students attend wellness activities, scan QR codes, and earn "km" points that ac
 - 📱 **QR Code Scanning** — Dynamic (rotating, anti-cheat) and static (printable) QR codes
 - 🎫 **Boarding Pass Dashboard** — Travel-themed passport UI with tier progression and city stamps
 - 🛡️ **Admin Terminal** — Create, edit, delete activities and generate QR scanners
-- 🌍 **Continent Themes** — Activities tagged with themed continent badges (Novatopia, Empathia)
 - ⭐ **Travel Visa** — Streak bonus for consistent participation
 
 ## Tech Stack
@@ -147,7 +146,7 @@ Default admin credentials (change in production):
 
 | Table | Purpose |
 |-------|---------|
-| `activities` | Activity definitions (name, km, badge, continent, tokens) |
+| `activities` | Activity definitions (name, km, badge, department, sub-department, tokens) |
 | `scans` | Records of user scans (user_id, activity_id, points_awarded) |
 | `user_tiers` | Computed view of user totals, tiers, and visa status |
 
