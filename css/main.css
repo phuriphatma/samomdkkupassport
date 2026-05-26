@@ -1,6 +1,6 @@
 /* css/main.css */
 :root {
-    --bg-gradient: linear-gradient(180deg,#eef6ff 0%,#f7fbff 45%,#fcf7ff 100%);
+    --bg-gradient: linear-gradient(135deg, #dbeafe 0%, #f0f9ff 50%, #fdf4ff 100%);
     --text-light: #1e293b;
     --text-muted: #64748b;
     --accent-primary: #0284c7;
@@ -27,8 +27,13 @@ body {
     min-height: 100vh;
 }
 
+html {
+    background-color: #dbeafe;
+}
+
 body {
     font-family: var(--font-body);
+    background-color: #dbeafe;
     background-image: var(--bg-gradient);
     background-repeat: no-repeat;
     background-size: cover;
