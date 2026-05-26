@@ -22,20 +22,31 @@
     padding: 0;
 }
 
+html,
+body {
+    min-height: 100vh;
+}
+
 html {
     background-color: #dbeafe;
-    min-height: 100vh;
 }
 
 body {
     font-family: var(--font-body);
-    background-color: #dbeafe;
     background-image: var(--bg-gradient);
-    background-attachment: fixed;
+    background-repeat: no-repeat;
+    background-size: cover;
     color: var(--text-light);
     line-height: 1.6;
-    min-height: 100vh;
     overflow-x: hidden;
+
+    min-height: 100dvh;
+
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    padding: 20px;
 }
 
 h1,
@@ -82,7 +93,8 @@ p {
 
 .terminal-container {
     max-width: 450px;
-    margin: 10vh auto;
+    width: 100%;
+    margin: 0;
     text-align: center;
     padding: 50px 40px;
     background: var(--glass-bg);
