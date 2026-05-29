@@ -76,7 +76,7 @@
 input:checked+.slider {
     background-color: var(--accent-primary);
     border-color: var(--accent-primary);
-    box-shadow: 0 0 10px rgba(2, 132, 199, 0.3);
+    box-shadow: 0 0 10px rgba(249, 115, 22, 0.3);
 }
 
 input:checked+.slider:before {
@@ -137,7 +137,7 @@ input:checked+.slider:before {
 
 .activity-card-name {
     color: var(--accent-primary);
-    font-size: 1.1rem;
+    font-size: 1rem;
 }
 
 .activity-card-km {

@@ -1,16 +1,19 @@
 /* css/main.css */
 :root {
-    --bg-gradient: linear-gradient(135deg, #dbeafe 0%, #f0f9ff 50%, #fdf4ff 100%);
-    --text-light: #1e293b;
-    --text-muted: #64748b;
-    --accent-primary: #0284c7;
-    --accent-secondary: #7c3aed;
-    --accent-success: #059669;
-    --accent-danger: #e11d48;
+    --bg: #FFFBF2;
+    --bg-gradient: linear-gradient(135deg, #FFFBF2 0%, #FEF9EC 60%, #FDF6E3 100%);
+    --sidebar-bg: #F5E4BC;
+    --sidebar-border: rgba(196, 160, 90, 0.25);
+    --text-light: #1C1917;
+    --text-muted: #78716C;
+    --accent-primary: #F97316;
+    --accent-secondary: #0EA5E9;
+    --accent-success: #22C55E;
+    --accent-danger: #EF4444;
 
-    --glass-bg: rgba(255, 255, 255, 0.75);
-    --glass-border: rgba(148, 163, 184, 0.3);
-    --glass-shadow: 0 8px 32px 0 rgba(100, 116, 139, 0.15);
+    --glass-bg: rgba(255, 255, 255, 0.88);
+    --glass-border: rgba(214, 211, 209, 0.5);
+    --glass-shadow: 0 8px 32px 0 rgba(120, 113, 108, 0.12);
     --border-radius: 16px;
     --font-heading: 'Prompt', sans-serif;
     --font-body: 'Noto Sans Thai', sans-serif;
@@ -28,7 +31,7 @@ body {
 }
 
 html {
-    background-color: #dbeafe;
+    background-color: var(--bg);
 }
 
 body {
@@ -39,46 +42,264 @@ body {
     color: var(--text-light);
     line-height: 1.6;
     overflow-x: hidden;
-
     min-height: 100dvh;
-
     display: flex;
     justify-content: center;
     align-items: center;
-
     padding: 20px;
 }
 
-h1,
-h2,
-h3,
-h4,
-h5,
-h6 {
+h1, h2, h3, h4, h5, h6 {
     font-family: var(--font-heading);
     font-weight: 600;
     letter-spacing: -0.02em;
 }
 
-h1 {
-    margin-bottom: 15px;
-    font-size: 2.5rem;
-}
-
-h2 {
-    margin-bottom: 12px;
-}
-
-h3 {
-    margin-bottom: 10px;
-}
+h1 { margin-bottom: 15px; font-size: 2.5rem; }
+h2 { margin-bottom: 12px; }
+h3 { margin-bottom: 10px; }
 
 p {
     margin-bottom: 20px;
     color: var(--text-muted);
 }
 
-/* Main Glassmorphism Container */
+/* =========================================
+   LANDING PAGE LAYOUT
+========================================= */
+body.landing {
+    display: block;
+    padding: 0;
+    background: var(--bg);
+}
+
+.landing-layout {
+    display: flex;
+    min-height: 100vh;
+}
+
+.landing-left {
+    width: 360px;
+    min-width: 360px;
+    background: var(--sidebar-bg);
+    border-right: 1px solid var(--sidebar-border);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 48px 36px;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Decorative dotted flight path */
+.landing-left::before {
+    content: "";
+    position: absolute;
+    top: 30%;
+    left: -20px;
+    width: 140%;
+    height: 2px;
+    background-image: radial-gradient(circle, rgba(196, 150, 80, 0.4) 1.5px, transparent 1.5px);
+    background-size: 18px 2px;
+    transform: rotate(-15deg);
+    pointer-events: none;
+}
+
+.landing-left::after {
+    content: "";
+    position: absolute;
+    top: 55%;
+    left: -20px;
+    width: 140%;
+    height: 2px;
+    background-image: radial-gradient(circle, rgba(196, 150, 80, 0.25) 1.5px, transparent 1.5px);
+    background-size: 18px 2px;
+    transform: rotate(-15deg);
+    pointer-events: none;
+}
+
+.landing-brand h1 {
+    font-size: 2.2rem;
+    font-weight: 800;
+    color: var(--text-light);
+    margin-bottom: 10px;
+    line-height: 1.2;
+    position: relative;
+}
+
+.landing-brand .brand-subtitle {
+    font-size: 0.95rem;
+    color: #92694A;
+    font-weight: 500;
+    margin-bottom: 0;
+    line-height: 1.5;
+}
+
+.landing-deco {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 24px 0;
+    position: relative;
+    z-index: 1;
+}
+
+.landing-deco-emoji {
+    font-size: 3.5rem;
+    filter: drop-shadow(0 4px 12px rgba(196, 150, 80, 0.3));
+}
+
+.landing-deco-compass {
+    font-size: 1.4rem;
+    opacity: 0.7;
+}
+
+.landing-user-section {
+    position: relative;
+    z-index: 1;
+}
+
+#loading-text {
+    color: #92694A;
+    font-weight: 600;
+    margin: 20px 0;
+    font-size: 0.9rem;
+}
+
+.welcome-card {
+    background: rgba(255, 255, 255, 0.65);
+    padding: 14px 18px;
+    border-radius: 12px;
+    margin-bottom: 18px;
+    border: 1px solid rgba(196, 160, 90, 0.3);
+}
+
+.welcome-card p {
+    margin-bottom: 4px;
+    font-size: 0.82rem;
+    color: #92694A;
+}
+
+.welcome-card h3 {
+    margin: 0;
+    color: var(--accent-primary);
+    word-break: break-all;
+    font-size: 0.95rem;
+}
+
+.landing-links {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 14px;
+}
+
+.sign-out-link {
+    color: var(--accent-danger) !important;
+    font-weight: 600;
+}
+
+.admin-link {
+    color: #92694A;
+    font-size: 0.82rem;
+}
+
+.landing-right {
+    flex: 1;
+    background-image: var(--bg-gradient);
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Subtle map grid decoration */
+.landing-right::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image:
+        radial-gradient(circle, rgba(196, 150, 80, 0.12) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+}
+
+.landing-right-content {
+    position: relative;
+    z-index: 1;
+    text-align: center;
+    padding: 40px;
+}
+
+.landing-right-content .route-card {
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    border-radius: 20px;
+    padding: 32px 40px;
+    box-shadow: var(--glass-shadow);
+    max-width: 340px;
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+}
+
+.route-card-title {
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--accent-primary);
+    margin-bottom: 20px;
+}
+
+.route-points {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    text-align: left;
+}
+
+.route-point {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.route-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.route-dot.origin { background: var(--accent-primary); }
+.route-dot.dest { background: var(--accent-secondary); }
+.route-dot.connector {
+    width: 2px;
+    height: 24px;
+    border-radius: 2px;
+    margin-left: 4px;
+    background: linear-gradient(to bottom, var(--accent-primary), var(--accent-secondary));
+    opacity: 0.4;
+}
+
+.route-label {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    font-weight: 500;
+}
+
+.route-value {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--text-light);
+    display: block;
+}
+
+/* =========================================
+   MAIN GLASS CONTAINER (non-landing pages)
+========================================= */
 .container {
     max-width: 800px;
     margin: 50px auto;
@@ -91,67 +312,46 @@ p {
     box-shadow: var(--glass-shadow);
 }
 
-.terminal-container {
-    max-width: 450px;
-    width: 100%;
-    margin: 0;
-    text-align: center;
-    padding: 50px 40px;
-    background: var(--glass-bg);
-    border: 1px solid var(--glass-border);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border-radius: var(--border-radius);
-    box-shadow: var(--glass-shadow);
-    transition: transform 0.3s ease, box-shadow 0.3s ease;
-}
-
-.terminal-container:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 15px 40px 0 rgba(100, 116, 139, 0.25);
-}
-
-.terminal-container h1 {
-    background: linear-gradient(to right, var(--accent-primary), var(--accent-secondary));
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    font-weight: 800;
-}
-
+/* =========================================
+   BUTTONS
+========================================= */
 .btn-large,
 button {
-    background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+    background: linear-gradient(135deg, var(--accent-primary), #EA580C);
     color: white;
     border: none;
     padding: 14px 28px;
     font-size: 1rem;
     font-weight: 600;
     font-family: var(--font-body);
-    border-radius: 8px;
+    border-radius: 10px;
     cursor: pointer;
     transition: all 0.3s ease;
-    box-shadow: 0 4px 15px rgba(2, 132, 199, 0.3);
+    box-shadow: 0 4px 15px rgba(249, 115, 22, 0.3);
     width: 100%;
 }
 
 button:hover,
 .btn-large:hover {
     transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(2, 132, 199, 0.45);
-    background: linear-gradient(135deg, #0369a1, #6d28d9);
+    box-shadow: 0 6px 20px rgba(249, 115, 22, 0.45);
+    background: linear-gradient(135deg, #EA580C, #C2410C);
 }
 
 button:active {
     transform: translateY(1px);
 }
 
+/* =========================================
+   INPUTS
+========================================= */
 input,
 select {
     width: 100%;
     padding: 14px;
     margin-bottom: 20px;
     background: rgba(255, 255, 255, 0.85);
-    border: 1px solid rgba(148, 163, 184, 0.4);
+    border: 1px solid rgba(196, 160, 90, 0.35);
     border-radius: 8px;
     color: var(--text-light);
     font-family: var(--font-body);
@@ -163,11 +363,11 @@ input:focus,
 select:focus {
     outline: none;
     border-color: var(--accent-primary);
-    box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.15);
+    box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.15);
 }
 
 input::placeholder {
-    color: rgba(100, 116, 139, 0.6);
+    color: rgba(120, 113, 108, 0.6);
 }
 
 hr {
@@ -176,13 +376,16 @@ hr {
     margin: 30px 0;
 }
 
-/* Standard Text Link */
+/* =========================================
+   TEXT LINKS
+========================================= */
 .text-link {
     color: var(--text-muted);
     text-decoration: none;
     font-size: 0.85rem;
     font-weight: 500;
     transition: color 0.3s ease;
+    display: inline-block;
 }
 
 .text-link:hover {
@@ -194,5 +397,24 @@ hr {
 @media (max-width: 900px) {
     body {
         background-attachment: scroll;
+    }
+
+    body.landing {
+        display: block;
+    }
+
+    .landing-layout {
+        flex-direction: column;
+    }
+
+    .landing-left {
+        width: 100%;
+        min-width: unset;
+        padding: 40px 24px 32px;
+        min-height: auto;
+    }
+
+    .landing-right {
+        display: none;
     }
 }
