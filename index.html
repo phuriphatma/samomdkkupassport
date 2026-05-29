@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -12,78 +11,61 @@
 </head>
 
 <body class="landing">
+
+    <!-- Floating clouds -->
+    <div class="sky-bg">
+        <div class="sky-cloud cloud-1"></div>
+        <div class="sky-cloud cloud-2"></div>
+        <div class="sky-cloud cloud-3"></div>
+        <div class="sky-cloud cloud-4"></div>
+        <div class="sky-cloud cloud-5"></div>
+        <div class="sky-cloud cloud-6"></div>
+    </div>
+
     <div class="landing-layout">
 
-        <!-- Left Branding Panel -->
+        <!-- ── LEFT PANEL ── -->
         <div class="landing-left">
+
             <div class="landing-brand">
-                <h1>Life is a Journey ✈️</h1>
+                <h1>Life is a<br>Journey ✈️</h1>
                 <p class="brand-subtitle">Medical Student wellness<br>passport system.</p>
             </div>
 
             <div class="landing-deco">
-                <div class="landing-deco-emoji">🎒</div>
-                <div class="landing-deco-compass">🧭 &nbsp; 📍 &nbsp; 🗺️</div>
+                <div class="landing-deco-character">🧳</div>
+                <div class="landing-deco-icons">🧭 &nbsp; 📍 &nbsp; 🗺️</div>
             </div>
 
             <div class="landing-user-section">
-                <p id="loading-text" style="color: #92694A; font-weight: 600; margin: 0 0 16px;">Reading device cache...</p>
+                <p id="loading-text">Reading device cache...</p>
 
-                <button id="google-login" style="display: none;">Login with @kkumail.com</button>
+                <button id="google-login" style="display:none;">Login with @kkumail.com</button>
 
-                <div id="logged-in-section" style="display: none;">
+                <div id="logged-in-section" style="display:none;">
                     <div class="welcome-card">
                         <p>Welcome back!</p>
                         <h3 id="user-email-display"></h3>
                     </div>
-
-                    <button id="continue-btn" style="margin-bottom: 12px;">Board Your Flight</button>
-
+                    <button id="continue-btn" style="margin-bottom:10px;">Board Your Flight ✈️</button>
                     <div class="landing-links">
                         <a href="#" id="logout-btn" class="text-link sign-out-link">Sign Out</a>
                     </div>
                 </div>
 
-                <div style="margin-top: 18px;">
-                    <a href="/html/admin.html" class="text-link admin-link">Admin Portal</a>
-                </div>
+                <a href="/html/admin.html" class="text-link admin-link admin-link-bottom">Admin Portal</a>
             </div>
+
         </div>
 
-        <!-- Right Decorative Panel -->
+        <!-- ── RIGHT PANEL ── -->
         <div class="landing-right">
-            <div class="landing-right-content">
-                <div class="route-card">
-                    <div class="route-card-title">Wellness Journey</div>
-                    <div class="route-points">
-                        <div class="route-point">
-                            <div class="route-dot origin"></div>
-                            <div>
-                                <span class="route-label">Departure</span>
-                                <span class="route-value">Year 1</span>
-                            </div>
-                        </div>
-                        <div class="route-point">
-                            <div class="route-dot connector"></div>
-                        </div>
-                        <div class="route-point">
-                            <div class="route-dot" style="background: #F59E0B;"></div>
-                            <div>
-                                <span class="route-label">Milestone</span>
-                                <span class="route-value">Wellness 2027 ✈️</span>
-                            </div>
-                        </div>
-                        <div class="route-point">
-                            <div class="route-dot connector" style="background: linear-gradient(to bottom, #F59E0B, #0EA5E9); opacity: 0.4;"></div>
-                        </div>
-                        <div class="route-point">
-                            <div class="route-dot dest"></div>
-                            <div>
-                                <span class="route-label">Destination</span>
-                                <span class="route-value">The Explorer 🏆</span>
-                            </div>
-                        </div>
-                    </div>
+            <div class="passport-preview-wrap">
+                <div class="passport-preview-book">
+                    <div class="preview-emblem">🌏</div>
+                    <div class="preview-divider"></div>
+                    <div class="preview-title">SAMO<br>PASSPORT</div>
+                    <div class="preview-subtitle">WELLNESS 2027</div>
                 </div>
             </div>
         </div>
@@ -92,5 +74,4 @@
 
     <script type="module" src="/js/index.js"></script>
 </body>
-
 </html>
