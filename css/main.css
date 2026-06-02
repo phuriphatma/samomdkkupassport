@@ -139,6 +139,7 @@ body.landing {
     align-items: center;
     gap: 10px;
     text-align: center;
+    width: 100%;
 }
 
 .landing-deco-character {
@@ -152,20 +153,26 @@ body.landing {
     50%       { transform: translateY(-8px); }
 }
 
+.landing-brand {
+    width: 100%;
+}
+
 .landing-brand h1 {
-    font-size: 1.9rem;
+    font-size: 1.65rem;
     font-weight: 800;
     color: white;
     text-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
     margin-bottom: 4px;
     line-height: 1.2;
+    word-break: break-word;
 }
 
 .landing-brand .brand-subtitle {
-    font-size: 0.88rem;
+    font-size: 0.85rem;
     color: rgba(255, 255, 255, 0.85);
     font-weight: 500;
     margin-bottom: 0;
+    word-break: break-word;
 }
 
 .passport-preview-wrap {
