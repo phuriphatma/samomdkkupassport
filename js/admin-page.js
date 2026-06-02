@@ -205,8 +205,6 @@ window.editActivity = async (id) => {
 
     document.getElementById('edit-sub-department').value = data.sub_department_id || '';
 
-    document.getElementById('edit-bonus').checked = data.is_marketing_bonus;
-
     document.getElementById('event-creation').style.display = 'none';
     document.getElementById('manage-section').style.display = 'none';
     document.getElementById('edit-section').style.display = 'block';
@@ -263,7 +261,6 @@ async function submitEditActivity(e) {
     const subDept = subDeptRaw ? parseInt(subDeptRaw, 10) : null;
     const badge_name = document.getElementById('edit-badge-name').value || name;
     const badge_url = document.getElementById('edit-badge-url').value || null;
-    const bonus = document.getElementById('edit-bonus').checked;
 
     // 1. Update the activity details
     const { error } = await supabase
@@ -275,7 +272,6 @@ async function submitEditActivity(e) {
             sub_department_id: subDept,
             badge_name,
             badge_url,
-            is_marketing_bonus: bonus,
         })
         .eq('id', editingActivityId);
 
@@ -308,7 +304,6 @@ async function createActivity(e) {
     const subDept = subDeptRaw ? parseInt(subDeptRaw, 10) : null;
     const badge_name = document.getElementById('act-badge-name').value || name;
     const badge_url = document.getElementById('act-badge-url').value || null;
-    const bonus = document.getElementById('act-bonus').checked;
 
     const { data, error } = await supabase
         .from('activities')
@@ -320,7 +315,6 @@ async function createActivity(e) {
                 sub_department_id: subDept,
                 badge_name,
                 badge_url,
-                is_marketing_bonus: bonus,
             },
         ])
         .select();
