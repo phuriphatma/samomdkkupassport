@@ -49,6 +49,7 @@ body.passport-page-theme {
 .passport-page {
     width: 340px;
     min-height: 480px;
+    max-height: 90dvh;
     border-radius: 4px 16px 16px 4px;
     overflow: hidden;
     box-shadow:
@@ -804,25 +805,27 @@ body.passport-page-theme {
 ========================================= */
 @media (max-width: 480px) {
     body.passport-page-theme {
-        height: 100svh;  /* svh = always excludes browser UI — safe fallback */
+        height: 100svh;
         height: 100dvh;
         overflow: hidden;
+        justify-content: flex-start; /* topbar always at top, sky below nav */
     }
 
     .passport-topbar {
         max-width: 100%;
         flex-shrink: 0;
-        padding: 10px 16px 6px; /* reduced to save vertical space */
+        padding: 10px 16px 6px;
     }
 
     .passport-container {
         flex: 1;
         min-height: 0;
+        max-height: 80dvh; /* cap height — remaining viewport becomes visible sky */
         display: flex;
         flex-direction: column;
-        width: calc(100% - 52px); /* 26px each side for breathing room */
+        width: calc(100% - 52px);
         max-width: 360px;
-        margin: 16px auto 0; /* more top space = shorter passport */
+        margin: 20px auto 0;
     }
 
     /* Mobile photo slightly larger than desktop default */
