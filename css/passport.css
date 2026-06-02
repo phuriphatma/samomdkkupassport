@@ -217,8 +217,10 @@ body.passport-page-theme {
    INFO PAGE LAYOUT
 ────────────────────────────── */
 .info-section {
-    display: flex;
-    gap: 18px;
+    display: grid;
+    grid-template-columns: auto 1fr;
+    column-gap: 18px;
+    align-content: start; /* rows pack at top, no stretch gap */
     flex: 1;
 }
 
@@ -262,7 +264,7 @@ body.passport-page-theme {
     flex: 1;
     display: flex;
     flex-direction: column;
-    gap: 14px;
+    gap: 8px;
 }
 
 .info-field { display: flex; flex-direction: column; gap: 2px; }
@@ -278,7 +280,7 @@ body.passport-page-theme {
 
 .field-value {
     font-family: var(--font-heading);
-    font-size: 0.88rem;
+    font-size: 0.78rem;
     font-weight: 700;
     color: var(--text-dark);
     line-height: 1.2;
@@ -286,7 +288,7 @@ body.passport-page-theme {
 
 .rank-value { color: var(--passport-navy); }
 
-.km-value { color: var(--accent-primary); font-size: 1.05rem; }
+.km-value { color: var(--accent-primary); font-size: 0.9rem; }
 .km-unit  { font-size: 0.8rem; color: var(--text-muted); font-weight: 500; }
 
 .small-value { font-size: 0.72rem; font-weight: 500; color: var(--text-muted); word-break: break-all; }
@@ -326,8 +328,8 @@ body.passport-page-theme {
    FLIGHT LOG IN INFO PAGE
 ────────────────────────────── */
 .info-flight-log {
-    margin-top: 12px;
-    flex-shrink: 0;
+    grid-column: 1 / -1; /* spans photo col + fields col = full passport width */
+    margin-top: 8px;
 }
 
 .info-divider-label {
@@ -826,6 +828,11 @@ body.passport-page-theme {
     /* Mobile photo slightly larger than desktop default */
     .info-photo-box { width: 84px; height: 118px; }
     .info-photo-placeholder { font-size: 2.4rem; }
+
+    /* Mobile field sizes — keep comfortable reading sizes */
+    .info-fields-col { gap: 12px; }
+    .field-value { font-size: 0.88rem; }
+    .km-value { font-size: 1.05rem; }
 
     /* Passport page fills container; becomes a flex column so children fill height */
     .passport-page {
