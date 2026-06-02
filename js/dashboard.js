@@ -211,16 +211,16 @@ function openMemoryModal(activity, scan) {
         wrap.innerHTML = `<span class="modal-badge-placeholder">🏅</span>`;
     }
 
-    // Show memory body, hide locked
-    document.getElementById('modal-body').style.display = '';
     document.getElementById('modal-locked').style.display = 'none';
 
-    // Load saved text
-    const memKey = `mem_${currentUserId}_${activity.id}`;
-    document.getElementById('modal-memory-text').value = localStorage.getItem(memKey) || '';
-
-    // Load saved photos
-    loadPhotoPreview(activity.id);
+    // If memory or photos exist → view card; otherwise → write form
+    const savedText = localStorage.getItem(`mem_${currentUserId}_${activity.id}`) || '';
+    const savedPhotos = JSON.parse(localStorage.getItem(`photos_${currentUserId}_${activity.id}`) || '[]');
+    if (savedText || savedPhotos.length > 0) {
+        showMemoryView(savedText, savedPhotos);
+    } else {
+        showMemoryWrite(activity.id);
+    }
 
     showModal();
 }
@@ -242,8 +242,38 @@ function openLockedModal(activity) {
 
     document.getElementById('modal-locked').style.display = '';
     document.getElementById('modal-body').style.display = 'none';
+    document.getElementById('modal-view').style.display = 'none';
 
     showModal();
+}
+
+function showMemoryView(text, photos) {
+    document.getElementById('memory-modal').classList.add('view-mode');
+    document.getElementById('modal-body').style.display = 'none';
+    document.getElementById('modal-view').style.display = '';
+
+    const textEl = document.getElementById('memory-view-text');
+    textEl.textContent = text;
+    textEl.style.display = text ? '' : 'none';
+
+    const photosEl = document.getElementById('memory-view-photos');
+    photosEl.innerHTML = '';
+    photos.forEach(dataUrl => {
+        const img = document.createElement('img');
+        img.src = dataUrl;
+        img.className = 'photo-thumb';
+        photosEl.appendChild(img);
+    });
+    photosEl.style.display = photos.length > 0 ? '' : 'none';
+}
+
+function showMemoryWrite(activityId) {
+    document.getElementById('memory-modal').classList.remove('view-mode');
+    document.getElementById('modal-view').style.display = 'none';
+    document.getElementById('modal-body').style.display = '';
+    document.getElementById('modal-memory-text').value =
+        localStorage.getItem(`mem_${currentUserId}_${activityId}`) || '';
+    loadPhotoPreview(activityId);
 }
 
 function showModal() {
@@ -253,7 +283,9 @@ function showModal() {
 }
 
 function closeModal() {
-    document.getElementById('memory-modal').style.display = 'none';
+    const modal = document.getElementById('memory-modal');
+    modal.style.display = 'none';
+    modal.classList.remove('view-mode');
     document.body.style.overflow = '';
     currentModalActivity = null;
     currentModalScan = null;
@@ -353,6 +385,10 @@ async function init() {
     // Modal close
     document.getElementById('modal-close').addEventListener('click', closeModal);
     document.getElementById('modal-backdrop').addEventListener('click', closeModal);
+    document.getElementById('modal-edit').addEventListener('click', () => {
+        if (!currentModalActivity) return;
+        showMemoryWrite(currentModalActivity.id);
+    });
 
     // Photo zone click
     document.getElementById('photo-zone').addEventListener('click', () => {
@@ -365,7 +401,6 @@ async function init() {
         this.value = '';
     });
 
-    // Save memory
     document.getElementById('modal-save').addEventListener('click', () => {
         if (!currentModalActivity) return;
         const key = `mem_${currentUserId}_${currentModalActivity.id}`;

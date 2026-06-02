@@ -552,6 +552,43 @@ body.passport-page-theme {
     z-index: 100;
 }
 
+/* View mode — centered square popup */
+.memory-modal.view-mode {
+    align-items: center;
+}
+
+.memory-modal.view-mode .modal-card {
+    width: min(300px, 85vw);
+    height: min(300px, 85vw);
+    border-radius: 20px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    animation: popIn 0.22s ease;
+}
+
+/* Compact hero in view mode — padding-right clears the close button */
+.memory-modal.view-mode .modal-hero {
+    margin-bottom: 0;
+    padding-right: 40px;
+    gap: 10px;
+}
+
+.memory-modal.view-mode .modal-badge-wrap {
+    width: 40px;
+    height: 40px;
+    border-width: 2px;
+}
+
+.memory-modal.view-mode .modal-badge-placeholder { font-size: 1.2rem; }
+.memory-modal.view-mode .modal-title { font-size: 0.88rem; margin-bottom: 4px; }
+.memory-modal.view-mode .modal-km-chip { font-size: 0.75rem; padding: 2px 8px; }
+
+@keyframes popIn {
+    from { opacity: 0; transform: scale(0.88); }
+    to   { opacity: 1; transform: scale(1); }
+}
+
 .modal-backdrop {
     position: absolute;
     inset: 0;
@@ -762,6 +799,60 @@ body.passport-page-theme {
 }
 
 .photo-thumb-remove:hover { background: #DC2626; transform: scale(1.1); box-shadow: none; }
+
+.memory-view-card {
+    font-size: 0.88rem;
+    line-height: 1.7;
+    color: var(--text-dark);
+    white-space: pre-wrap;
+    word-break: break-word;
+    margin-bottom: 12px;
+}
+
+#memory-view-photos .photo-thumb { border: none; }
+
+.memory-view-divider {
+    border: none;
+    border-top: 1px solid rgba(27, 63, 107, 0.1);
+    margin: 10px 0;
+}
+
+.memory-view-topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+}
+
+.memory-view-topbar .modal-section-label {
+    margin-bottom: 0;
+    display: flex;
+    align-items: center;
+}
+
+.modal-edit-sign {
+    background: none;
+    border: none;
+    box-shadow: none;
+    padding: 0 0 0 8px;
+    height: 28px;
+    width: auto;
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-family: var(--font-heading);
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.modal-edit-sign:hover {
+    color: var(--accent-primary);
+    background: none;
+    box-shadow: none;
+    transform: none;
+}
 
 .modal-save-btn {
     margin-top: 20px;

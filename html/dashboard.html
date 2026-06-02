@@ -137,7 +137,18 @@
         <p class="modal-locked-hint">Attend this activity to unlock your memory page!</p>
       </div>
 
-      <!-- Memory body (only for active stamps) -->
+      <!-- View mode: shown when a memory already exists -->
+      <div class="modal-view-section" id="modal-view" style="display:none;">
+        <hr class="memory-view-divider">
+        <div class="memory-view-topbar">
+          <span class="modal-section-label">📝 Your Memory</span>
+          <button class="modal-edit-sign" id="modal-edit">Edit ✏️</button>
+        </div>
+        <div class="memory-view-card" id="memory-view-text"></div>
+        <div class="photo-preview-grid" id="memory-view-photos"></div>
+      </div>
+
+      <!-- Write mode: shown when no memory yet, or when editing -->
       <div class="modal-body-section" id="modal-body">
         <label class="modal-section-label">📝 Your Memory</label>
         <textarea id="modal-memory-text" class="modal-textarea" placeholder="Write about this activity…" rows="4"></textarea>
