@@ -845,6 +845,8 @@ body.passport-page-theme {
         border-radius: 4px 12px 12px 4px;
         overflow-y: auto;
         overflow-x: hidden;
+        overscroll-behavior: contain; /* stops scroll escaping to parent when at top/bottom */
+        -webkit-overflow-scrolling: touch; /* iOS momentum scroll */
         display: flex;
         flex-direction: column;
     }
