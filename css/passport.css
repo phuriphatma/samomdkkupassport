@@ -329,7 +329,7 @@ body.passport-page-theme {
 ────────────────────────────── */
 .info-flight-log {
     grid-column: 1 / -1; /* spans photo col + fields col = full passport width */
-    margin-top: 8px;
+    margin-top: 14px;
 }
 
 .info-divider-label {
