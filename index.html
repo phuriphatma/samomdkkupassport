@@ -22,44 +22,15 @@
         <div class="sky-cloud cloud-6"></div>
     </div>
 
-    <div class="landing-layout">
+    <div class="landing-wrap">
 
-        <!-- ── LEFT PANEL ── -->
-        <div class="landing-left">
-
+        <!-- Hero: brand + floating passport preview -->
+        <div class="landing-hero">
+            <div class="landing-deco-character">🧳</div>
             <div class="landing-brand">
-                <h1>Life is a<br>Journey ✈️</h1>
-                <p class="brand-subtitle">Medical Student wellness<br>passport system.</p>
+                <h1>Life is a Journey ✈️</h1>
+                <p class="brand-subtitle">Medical Student wellness passport system.</p>
             </div>
-
-            <div class="landing-deco">
-                <div class="landing-deco-character">🧳</div>
-                <div class="landing-deco-icons">🧭 &nbsp; 📍 &nbsp; 🗺️</div>
-            </div>
-
-            <div class="landing-user-section">
-                <p id="loading-text">Reading device cache...</p>
-
-                <button id="google-login" style="display:none;">Login with @kkumail.com</button>
-
-                <div id="logged-in-section" style="display:none;">
-                    <div class="welcome-card">
-                        <p>Welcome back!</p>
-                        <h3 id="user-email-display"></h3>
-                    </div>
-                    <button id="continue-btn" style="margin-bottom:10px;">Board Your Flight ✈️</button>
-                    <div class="landing-links">
-                        <a href="#" id="logout-btn" class="text-link sign-out-link">Sign Out</a>
-                    </div>
-                </div>
-
-                <a href="/html/admin.html" class="text-link admin-link admin-link-bottom">Admin Portal</a>
-            </div>
-
-        </div>
-
-        <!-- ── RIGHT PANEL ── -->
-        <div class="landing-right">
             <div class="passport-preview-wrap">
                 <div class="passport-preview-book">
                     <div class="preview-emblem">🌏</div>
@@ -68,6 +39,26 @@
                     <div class="preview-subtitle">WELLNESS 2027</div>
                 </div>
             </div>
+        </div>
+
+        <!-- Login card -->
+        <div class="landing-card">
+            <p id="loading-text">Reading device cache...</p>
+
+            <button id="google-login" style="display:none;">Login with @kkumail.com</button>
+
+            <div id="logged-in-section" style="display:none;">
+                <div class="welcome-card">
+                    <p>Welcome back!</p>
+                    <h3 id="user-email-display"></h3>
+                </div>
+                <button id="continue-btn" style="margin-bottom:10px;">Board Your Flight ✈️</button>
+                <div class="landing-links">
+                    <a href="#" id="logout-btn" class="text-link sign-out-link">Sign Out</a>
+                </div>
+            </div>
+
+            <a href="/html/admin.html" class="text-link admin-link">Admin Portal</a>
         </div>
 
     </div>

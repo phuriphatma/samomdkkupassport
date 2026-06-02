@@ -6,12 +6,12 @@ import { ROUTES } from './routes.js';
 
 // ─── State ───────────────────────────────────────────────
 let currentPageIndex = 0;
-let totalPages = 3; // cover + info + log (stamp pages added dynamically)
+let totalPages = 2; // cover + info (stamp pages added dynamically)
 let currentUserId = null;
 let currentModalActivity = null;
 let currentModalScan = null;
 
-const STAMPS_PER_PAGE = 6; // 3-col × 2-row grid
+const STAMPS_PER_PAGE = 12; // 3-col × 4-row grid
 
 // ─── Page navigation ─────────────────────────────────────
 function goToPage(idx) {
@@ -45,11 +45,11 @@ function buildPageDots() {
 function buildStampPages(allActivities, userScans) {
     const scannedIds = new Set(userScans.map(s => s.activity_id));
     const numStampPages = Math.ceil(allActivities.length / STAMPS_PER_PAGE);
-    const book = document.getElementById('page-2').parentElement; // passport-container
+    const book = document.getElementById('page-1').parentElement; // passport-container
 
     for (let p = 0; p < numStampPages; p++) {
         const pageActivities = allActivities.slice(p * STAMPS_PER_PAGE, (p + 1) * STAMPS_PER_PAGE);
-        const globalPageIdx = 3 + p;
+        const globalPageIdx = 2 + p;
         const pageNumLabel = String(globalPageIdx).padStart(2, '0');
 
         const page = document.createElement('div');
@@ -77,12 +77,9 @@ function buildStampPages(allActivities, userScans) {
             const slot = document.createElement('div');
 
             if (!activity) {
-                // Empty filler slot
-                slot.className = 'stamp-slot inactive';
-                slot.innerHTML = `
-                    <div class="stamp-circle"></div>
-                    <div class="stamp-name"></div>
-                `;
+                // Blank future slot (shadow placeholder)
+                slot.className = 'stamp-slot blank';
+                slot.innerHTML = `<div class="stamp-circle"></div><div class="stamp-name"></div>`;
                 grid.appendChild(slot);
                 continue;
             }
@@ -128,7 +125,7 @@ function buildStampPages(allActivities, userScans) {
         }
     }
 
-    totalPages = 3 + numStampPages;
+    totalPages = 2 + numStampPages;
     buildPageDots();
     // Re-wire nav buttons
     document.getElementById('next-page').disabled = totalPages <= 1;
@@ -396,8 +393,8 @@ async function init() {
         if (allActivities.length > 0) {
             buildStampPages(allActivities, scans);
         } else {
-            // No activities in DB yet, just build dots for 3 static pages
-            totalPages = 3;
+            // No activities in DB yet, just build dots for 2 static pages
+            totalPages = 2;
             buildPageDots();
         }
 
@@ -407,7 +404,7 @@ async function init() {
             `<div style="color:var(--accent-danger);font-size:0.85rem;">Error loading activities.</div>`;
         pKm.textContent = '0';
         pKm.classList.remove('skeleton');
-        totalPages = 3;
+        totalPages = 2;
         buildPageDots();
     }
 
