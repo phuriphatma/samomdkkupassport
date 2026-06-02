@@ -70,13 +70,7 @@
             <option value="">เลือกประเภทฝ่ายย่อย</option>
           </select><br />
 
-          <div class="bonus-container">
-            <span class="bonus-text">Marketing Bonus (x2 km)</span>
-            <label class="toggle-switch">
-              <input type="checkbox" id="act-bonus" />
-              <span class="slider"></span>
-            </label>
-          </div>
+          <!-- Delete bonus container -->
 
           <button type="submit">Create Activity</button>
         </form>
@@ -109,13 +103,7 @@
             <option value="">เลือกประเภทฝ่ายย่อย</option>
           </select><br />
 
-          <div class="bonus-container">
-            <span class="bonus-text">Marketing Bonus (x2 km)</span>
-            <label class="toggle-switch">
-              <input type="checkbox" id="edit-bonus" />
-              <span class="slider"></span>
-            </label>
-          </div>
+          <!-- Delete bonus container -->
 
           <button type="submit" style="margin-bottom: 10px">
             Update Activity
@@ -129,7 +117,28 @@
       <hr />
 
       <div id="manage-section">
-        <h3>Manage Existing Activities</h3>
+        <div>
+          <h3>Manage Existing Activities</h3>
+          <select id="filter-department">
+            <option value="">Filter by Department</option>
+            <option value="1">อุปนายกฝ่ายบริหารองค์กร</option>
+            <option value="2">ดิจิทัลและสื่อสารองค์กร</option>
+            <option value="3">กิจการภายใน</option>
+            <option value="4">กิจการภายนอก</option>
+            <option value="5">กิจการมหาวิทยาลัย</option>
+            <option value="6">วิชาการ</option>
+            <option value="7">ยุทธศาสตร์และพัฒนาองค์กร</option>
+            <option value="8">คุณภาพชีวิตและสิ่งแวดล้อม</option>
+            <option value="9">เวชนิทัศน์</option>
+            <option value="10">รังสีเทคนิค</option>
+          </select><br />
+          
+          <!-- ตัวเลือกย่อยฟอร์มแก้ไข -->
+          <select id="filter-sub-department" style="display: none;">
+            <option value="">เลือกประเภทฝ่ายย่อย</option>
+          </select><br />
+          
+        </div>
         <div id="activities-list" style="margin-top: 15px"></div>
       </div>
 
