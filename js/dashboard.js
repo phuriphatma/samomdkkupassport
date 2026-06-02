@@ -191,7 +191,7 @@ function setupProfilePhoto(userId) {
 }
 
 function applyProfilePhoto(box, dataUrl) {
-    box.innerHTML = `<img src="${dataUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:4px;">`;
+    box.innerHTML = `<img src="${dataUrl}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:4px;">`;
 }
 
 // ─── Memory modal ─────────────────────────────────────────
