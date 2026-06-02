@@ -10,6 +10,7 @@ body.passport-page-theme {
     min-height: 100vh;
     padding: 0;
     overflow-y: auto;
+    touch-action: manipulation; /* blocks double-tap zoom on the whole page */
 }
 
 /* =========================================
