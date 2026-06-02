@@ -7,7 +7,6 @@ body.passport-page-theme {
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: flex-start;
     min-height: 100vh;
     padding: 0;
     overflow-y: auto;
@@ -296,7 +295,7 @@ body.passport-page-theme {
 }
 
 /* ──────────────────────────────
-   ACTIVITY LOG PAGE
+   FLIGHT LOG (embedded in info page)
 ────────────────────────────── */
 .activity-log-list {
     overflow-y: auto;
@@ -396,7 +395,6 @@ body.passport-page-theme {
 
 .stamp-slot.active .stamp-circle {
     border: 2.5px solid var(--accent-primary);
-    border-style: solid;
     box-shadow: 0 4px 14px rgba(249, 115, 22, 0.25);
     background: white;
 }
@@ -477,7 +475,6 @@ body.passport-page-theme {
     box-shadow: 0 4px 14px rgba(27, 63, 107, 0.2);
     transition: all 0.2s;
     padding: 0;
-    width: 44px;
     flex-shrink: 0;
 }
 
@@ -509,7 +506,6 @@ body.passport-page-theme {
     transition: all 0.2s;
     padding: 0;
     box-shadow: none;
-    width: 8px;
     flex-shrink: 0;
 }
 
@@ -531,7 +527,6 @@ body.passport-page-theme {
     align-items: flex-end;
     justify-content: center;
     z-index: 100;
-    padding: 0;
 }
 
 .modal-backdrop {
@@ -580,7 +575,6 @@ body.passport-page-theme {
     justify-content: center;
     padding: 0;
     box-shadow: none;
-    width: 32px;
     flex-shrink: 0;
 }
 
@@ -742,7 +736,6 @@ body.passport-page-theme {
     cursor: pointer;
     box-shadow: 0 2px 6px rgba(239,68,68,0.4);
     padding: 0;
-    width: 20px;
 }
 
 .photo-thumb-remove:hover { background: #DC2626; transform: scale(1.1); box-shadow: none; }
@@ -834,7 +827,6 @@ body.passport-page-theme {
         margin: 10px auto 14px;
     }
 
-    .memory-modal { align-items: flex-end; }
     .modal-card { max-height: 92vh; border-radius: 20px 20px 0 0; }
 }
 
