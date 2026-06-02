@@ -47,6 +47,7 @@ function buildStampPages(allActivities, userScans) {
     const numStampPages = Math.ceil(allActivities.length / STAMPS_PER_PAGE);
     const book = document.getElementById('page-1').parentElement; // passport-container
 
+    // Activity stamp pages
     for (let p = 0; p < numStampPages; p++) {
         const pageActivities = allActivities.slice(p * STAMPS_PER_PAGE, (p + 1) * STAMPS_PER_PAGE);
         const globalPageIdx = 2 + p;
@@ -71,13 +72,11 @@ function buildStampPages(allActivities, userScans) {
 
         const grid = page.querySelector(`#stamp-grid-${p}`);
 
-        // Fill up to STAMPS_PER_PAGE slots (grey placeholders for missing spots)
         for (let s = 0; s < STAMPS_PER_PAGE; s++) {
             const activity = pageActivities[s];
             const slot = document.createElement('div');
 
             if (!activity) {
-                // Blank future slot (shadow placeholder)
                 slot.className = 'stamp-slot blank';
                 slot.innerHTML = `<div class="stamp-circle"></div><div class="stamp-name"></div>`;
                 grid.appendChild(slot);
@@ -114,21 +113,85 @@ function buildStampPages(allActivities, userScans) {
             slot.appendChild(label);
 
             slot.addEventListener('click', () => {
-                if (isActive) {
-                    openMemoryModal(activity, scan);
-                } else {
-                    openLockedModal(activity);
-                }
+                if (isActive) openMemoryModal(activity, scan);
+                else openLockedModal(activity);
             });
 
             grid.appendChild(slot);
         }
     }
 
-    totalPages = 2 + numStampPages;
+    // Future stamps page — always present
+    const futureIdx = 2 + numStampPages;
+    const futurePage = document.createElement('div');
+    futurePage.className = 'passport-page page-inner';
+    futurePage.id = `page-${futureIdx}`;
+    futurePage.style.display = 'none';
+    const futureGrid = Array(STAMPS_PER_PAGE)
+        .fill('<div class="stamp-slot blank"><div class="stamp-circle"></div><div class="stamp-name"></div></div>')
+        .join('');
+    futurePage.innerHTML = `
+        <div class="inner-page-watermark">⭐</div>
+        <div class="inner-page-header">
+            <span class="inner-page-label">FUTURE STAMPS</span>
+            <span class="inner-page-num">—</span>
+        </div>
+        <div class="stamp-page-grid">${futureGrid}</div>
+        <div class="inner-page-footer"><div class="barcode-lines"></div></div>
+    `;
+    book.appendChild(futurePage);
+
+    // Back cover — always last
+    const backIdx = 2 + numStampPages + 1;
+    const backCover = document.createElement('div');
+    backCover.className = 'passport-page page-back-cover';
+    backCover.id = `page-${backIdx}`;
+    backCover.style.display = 'none';
+    backCover.innerHTML = `
+        <div class="page-cover-inner">
+            <div class="cover-top-bar"></div>
+            <div class="cover-emblem" style="opacity:0.3;">🌏</div>
+            <div class="cover-title" style="opacity:0.2;font-size:1rem;letter-spacing:6px;">SAMO</div>
+            <div class="cover-bottom-bar"></div>
+        </div>
+    `;
+    book.appendChild(backCover);
+
+    totalPages = 2 + numStampPages + 2; // +future +back cover
     buildPageDots();
-    // Re-wire nav buttons
     document.getElementById('next-page').disabled = totalPages <= 1;
+}
+
+// ─── Profile photo ─────────────────────────────────────────
+function setupProfilePhoto(userId) {
+    const box = document.getElementById('profile-photo-box');
+    if (!box) return;
+
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.style.display = 'none';
+    document.body.appendChild(input);
+
+    const saved = localStorage.getItem(`profile_photo_${userId}`);
+    if (saved) applyProfilePhoto(box, saved);
+
+    box.addEventListener('click', () => input.click());
+    input.addEventListener('change', function () {
+        const file = this.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = e => {
+            localStorage.setItem(`profile_photo_${userId}`, e.target.result);
+            applyProfilePhoto(box, e.target.result);
+        };
+        reader.readAsDataURL(file);
+        this.value = '';
+    });
+}
+
+function applyProfilePhoto(box, dataUrl) {
+    box.innerHTML = `<img src="${dataUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:4px;">`;
 }
 
 // ─── Memory modal ─────────────────────────────────────────
@@ -319,6 +382,7 @@ async function init() {
     if (pendingUrl) { clearPendingScanUrl(); window.location.href = pendingUrl; return; }
 
     currentUserId = user.id;
+    setupProfilePhoto(currentUserId);
 
     // ── Display name ────────────────────────────────────────
     let displayName = user.user_metadata?.full_name
@@ -389,14 +453,8 @@ async function init() {
             });
         }
 
-        // ── Stamp pages ──────────────────────────────────────
-        if (allActivities.length > 0) {
-            buildStampPages(allActivities, scans);
-        } else {
-            // No activities in DB yet, just build dots for 2 static pages
-            totalPages = 2;
-            buildPageDots();
-        }
+        // ── Stamp pages (always builds future + back cover too) ─
+        buildStampPages(allActivities, scans);
 
     } catch (err) {
         console.error('Failed to load activities:', err);
@@ -404,8 +462,7 @@ async function init() {
             `<div style="color:var(--accent-danger);font-size:0.85rem;">Error loading activities.</div>`;
         pKm.textContent = '0';
         pKm.classList.remove('skeleton');
-        totalPages = 2;
-        buildPageDots();
+        buildStampPages([], []); // still shows future stamps + back cover
     }
 
     // Initial render
