@@ -1,9 +1,8 @@
 <!doctype html>
 <html lang="en">
-
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>My Passport | Life is a Journey</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -12,59 +11,167 @@
   <link rel="stylesheet" href="/css/passport.css" />
 </head>
 
-<body class="boarding-pass-theme">
+<body class="passport-page-theme">
 
-  <div style="width: 100%; max-width: 850px; margin-bottom: 15px; padding: 0 10px;">
-    <a href="/" class="text-link" style="font-size: 1rem; font-weight: 600;">&larr; Back to Home</a>
+  <!-- Floating clouds -->
+  <div class="sky-bg">
+    <div class="sky-cloud cloud-1"></div>
+    <div class="sky-cloud cloud-2"></div>
+    <div class="sky-cloud cloud-3"></div>
+    <div class="sky-cloud cloud-4"></div>
+    <div class="sky-cloud cloud-5"></div>
   </div>
 
-  <div class="boarding-pass">
-    <div class="pass-left">
-      <div class="pass-header">
-        <h1>SAMO PASSPORT</h1>
-        <div class="flight-no">FLIGHT: Wellness 2027</div>
-      </div>
+  <!-- Top navigation bar -->
+  <div class="passport-topbar">
+    <a href="/" class="text-link topbar-back">← Home</a>
+    <div class="topbar-title">My Passport</div>
+    <a href="#" id="logout-btn" class="text-link topbar-logout">Sign Out</a>
+  </div>
 
-      <div class="pass-content">
-        <div class="passenger-details">
-          <span class="label">PASSENGER:</span>
-          <h2 id="p-name" class="skeleton" style="min-width: 250px;">Loading Traveler</h2>
-        </div>
+  <!-- Passport book wrapper -->
+  <div class="passport-container">
 
-        <div class="travel-stats">
-          <div class="stat-box km">
-            <span class="label">DISTANCE TRAVELED</span>
-            <div class="stat-value"><span id="p-km" class="skeleton" style="min-width: 80px;">00</span> km</div>
-          </div>
-          <div class="stat-box tier">
-            <span class="label">TRAVEL STATUS</span>
-            <div class="stat-value"><span id="p-tier" class="skeleton" style="min-width: 120px;">Loading</span></div>
-          </div>
-        </div>
-
-        <div class="visa-section" id="visa-visa" style="display: none">
-          <div class="visa-stamp">TRAVEL VISA ACTIVE ⭐</div>
-          <small>Streak Bonus: 3 Events last Month!</small>
-        </div>
+    <!-- ══════════ PAGE 0: COVER ══════════ -->
+    <div class="passport-page" id="page-0">
+      <div class="page-cover-inner">
+        <div class="cover-top-bar"></div>
+        <div class="cover-emblem">🌏</div>
+        <div class="cover-country-label">MEDICAL STUDENT</div>
+        <div class="cover-title">SAMO<br>PASSPORT</div>
+        <div class="cover-subtitle">WELLNESS JOURNEY 2027</div>
+        <div class="cover-bottom-bar"></div>
+        <div class="cover-open-hint">Open to view →</div>
       </div>
     </div>
 
-    <div class="pass-right">
-      <div class="stub-header">CITY STAMPS</div>
-      <div class="stamps-grid" id="stamps-container" style="min-height: 60px">
+    <!-- ══════════ PAGE 1: PERSONAL INFO ══════════ -->
+    <div class="passport-page page-inner" id="page-1" style="display:none;">
+      <div class="inner-page-watermark">🌏</div>
+      <div class="inner-page-header">
+        <span class="inner-page-label">PERSONAL INFORMATION</span>
+        <span class="inner-page-num">01</span>
       </div>
 
-      <div class="stub-header" style="margin-top: 10px">FLIGHT LOG</div>
-      <div id="activity-list">
-        <div class="skeleton" style="width: 100%; height: 20px; border: none; margin-bottom: 5px;"></div>
-        <div class="skeleton" style="width: 70%; height: 20px; border: none;"></div>
+      <div class="info-section">
+        <div class="info-photo-col">
+          <div class="info-photo-box" id="profile-photo-box">
+            <div class="info-photo-placeholder">👤</div>
+            <span class="info-photo-hint">📷 tap</span>
+          </div>
+          <div id="visa-visa" class="visa-stamp-block" style="display:none;">
+            <div class="visa-stamp-badge">⭐ VISA ACTIVE</div>
+            <small>Streak bonus!</small>
+          </div>
+        </div>
+
+        <div class="info-fields-col">
+          <div class="info-field">
+            <span class="field-label">FULL NAME</span>
+            <span class="field-value" id="p-name"><span class="skeleton" style="min-width:160px;">&nbsp;</span></span>
+          </div>
+          <div class="info-field">
+            <span class="field-label">STATUS / RANK</span>
+            <span class="field-value rank-value" id="p-tier"><span class="skeleton" style="min-width:100px;">&nbsp;</span></span>
+          </div>
+          <div class="info-field">
+            <span class="field-label">WELLNESS KM</span>
+            <span class="field-value km-value"><span id="p-km" class="skeleton" style="min-width:60px;">&nbsp;</span> <span class="km-unit">km</span></span>
+          </div>
+          <div class="info-field" id="user-id-field" style="display:none;">
+            <span class="field-label">USER ID</span>
+            <span class="field-value small-value" id="p-user-id">—</span>
+          </div>
+        </div>
+
+        <!-- Direct child of the grid — grid-column: 1/-1 makes it span full width -->
+        <div class="info-flight-log">
+          <div class="info-divider-label">✈️ FLIGHT LOG</div>
+          <div class="activity-log-list" id="activity-list">
+            <div class="skeleton" style="width:100%;height:16px;margin-bottom:8px;border-radius:4px;"></div>
+            <div class="skeleton" style="width:80%;height:16px;margin-bottom:8px;border-radius:4px;"></div>
+            <div class="skeleton" style="width:60%;height:16px;border-radius:4px;"></div>
+          </div>
+        </div>
       </div>
 
-      <a href="#" id="logout-btn" class="logout-link">Logout</a>
+      <div class="inner-page-footer">
+        <div class="barcode-lines"></div>
+      </div>
+    </div>
+
+    <!-- ══════════ STAMP PAGES: injected by dashboard.js ══════════ -->
+
+  </div>
+
+  <!-- Page navigation -->
+  <div class="passport-nav-row">
+    <button class="page-nav-btn" id="prev-page" disabled>‹</button>
+    <div class="page-dots-row" id="page-dots"></div>
+    <button class="page-nav-btn" id="next-page">›</button>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       MEMORY MODAL (stamp click popup)
+  ══════════════════════════════════════════ -->
+  <div class="memory-modal" id="memory-modal" style="display:none;" aria-modal="true" role="dialog">
+    <div class="modal-backdrop" id="modal-backdrop"></div>
+    <div class="modal-card">
+
+      <button class="modal-close-btn" id="modal-close" aria-label="Close">✕</button>
+
+      <!-- Stamp header -->
+      <div class="modal-hero">
+        <div class="modal-badge-wrap" id="modal-badge-wrap">
+          <span class="modal-badge-placeholder">🏅</span>
+        </div>
+        <div class="modal-hero-info">
+          <h3 class="modal-title" id="modal-title">Activity Name</h3>
+          <span class="modal-km-chip" id="modal-km">+0 km</span>
+        </div>
+      </div>
+
+      <!-- If inactive stamp -->
+      <div class="modal-locked" id="modal-locked" style="display:none;">
+        <p>You haven't earned this stamp yet.</p>
+        <p class="modal-locked-hint">Attend this activity to unlock your memory page!</p>
+      </div>
+
+      <!-- View mode: shown when a memory already exists -->
+      <div class="modal-view-section" id="modal-view" style="display:none;">
+        <hr class="memory-view-divider">
+        <div class="memory-view-topbar">
+          <span class="modal-section-label">📝 Your Memory</span>
+          <button class="modal-edit-sign" id="modal-edit">Edit ✏️</button>
+        </div>
+        <div class="memory-view-card" id="memory-view-text"></div>
+        <div class="photo-preview-grid" id="memory-view-photos"></div>
+      </div>
+
+      <!-- Write mode: shown when no memory yet, or when editing -->
+      <div class="modal-body-section" id="modal-body">
+        <label class="modal-section-label">📝 Your Memory</label>
+        <textarea id="modal-memory-text" class="modal-textarea" placeholder="Write about this activity…" rows="4"></textarea>
+
+        <label class="modal-section-label" style="margin-top:14px;">📷 Photos</label>
+        <div class="modal-photo-zone" id="photo-zone">
+          <input type="file" id="photo-input" accept="image/*" multiple style="display:none;">
+          <div class="photo-upload-hint" id="upload-hint">
+            <span>📷</span>
+            <span>Tap to add photos</span>
+          </div>
+          <div class="photo-preview-grid" id="photo-preview-grid"></div>
+        </div>
+
+        <button class="modal-save-btn" id="modal-save">Save Memory ✓</button>
+      </div>
+
     </div>
   </div>
+
+  <!-- Toast notification -->
+  <div class="toast" id="toast" style="display:none;"></div>
 
 <script type="module" src="/js/dashboard.js"></script>
 </body>
-
 </html>

@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -12,35 +11,58 @@
 </head>
 
 <body class="landing">
-    <div class="terminal-container">
-        <h1>Life is a Journey ✈️</h1>
-        <p>Medical Student wellness passport system.</p>
 
-        <p id="loading-text" style="color: var(--accent-primary); font-weight: 600; margin: 20px 0;">Reading device
-            cache...</p>
-
-        <button id="google-login" class="btn-large" style="display: none;">Login with @kkumail.com</button>
-
-        <div id="logged-in-section" style="display: none; margin-top: 20px;">
-            <div
-                style="background: rgba(241,245,249,0.7); padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid var(--glass-border);">
-                <p style="margin-bottom: 5px; font-size: 0.9rem; color: var(--text-muted);">Welcome back!</p>
-                <h3 id="user-email-display" style="margin: 0; color: var(--accent-primary); word-break: break-all;">
-                </h3>
-            </div>
-
-            <button id="continue-btn" class="btn-large" style="margin-bottom: 15px;">Continue to My Passport</button>
-            <a href="#" id="logout-btn" class="text-link"
-                style="color: var(--accent-danger); font-weight: bold; display: inline-block; margin-top: 10px;">Sign
-                Out of this Device</a>
-        </div>
-
-        <div style="margin-top: 25px;">
-<a href="/html/admin.html" class="text-link">Admin Portal</a>
-        </div>
+    <!-- Floating clouds -->
+    <div class="sky-bg">
+        <div class="sky-cloud cloud-1"></div>
+        <div class="sky-cloud cloud-2"></div>
+        <div class="sky-cloud cloud-3"></div>
+        <div class="sky-cloud cloud-4"></div>
+        <div class="sky-cloud cloud-5"></div>
+        <div class="sky-cloud cloud-6"></div>
     </div>
 
-<script type="module" src="/js/index.js"></script>
-</body>
+    <div class="landing-wrap">
 
+        <!-- Hero: brand + floating passport preview -->
+        <div class="landing-hero">
+            <div class="landing-deco-character">🧳</div>
+            <div class="landing-brand">
+                <h1>Life is a Journey ✈️</h1>
+                <p class="brand-subtitle">Medical Student wellness passport system.</p>
+            </div>
+            <div class="passport-preview-wrap">
+                <div class="passport-preview-book">
+                    <div class="preview-emblem">🌏</div>
+                    <div class="preview-divider"></div>
+                    <div class="preview-title">SAMO<br>PASSPORT</div>
+                    <div class="preview-subtitle">WELLNESS 2027</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Login card -->
+        <div class="landing-card">
+            <p id="loading-text">Reading device cache...</p>
+
+            <button id="google-login" style="display:none;">Login with @kkumail.com</button>
+
+            <div id="logged-in-section" style="display:none;">
+                <div class="welcome-card">
+                    <p>Welcome back!</p>
+                    <h3 id="user-email-display"></h3>
+                </div>
+                <button id="continue-btn" style="margin-bottom:10px;">Board Your Flight ✈️</button>
+                <div class="landing-links">
+                    <a href="#" id="logout-btn" class="text-link sign-out-link">Sign Out</a>
+                </div>
+            </div>
+
+            <a href="/html/admin.html" class="text-link admin-link">Admin Portal</a>
+        </div>
+
+    </div>
+
+    <script type="module" src="/js/index.js"></script>
+</body>
 </html>

@@ -16,74 +16,6 @@
     font-weight: bold;
 }
 
-.bonus-container {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin: 15px 0 25px 0;
-    padding: 15px 20px;
-    background: rgba(239, 241, 238, 0.65);
-    border-radius: 12px;
-    border: 1px solid var(--glass-border);
-    box-shadow: inset 0 2px 4px rgba(24, 70, 90, 0.06);
-}
-
-.bonus-text {
-    font-weight: 500;
-    font-size: 1rem;
-    color: var(--text-light);
-}
-
-.toggle-switch {
-    position: relative;
-    display: inline-block;
-    width: 54px;
-    height: 28px;
-}
-
-.toggle-switch input {
-    opacity: 0;
-    width: 0;
-    height: 0;
-}
-
-.slider {
-    position: absolute;
-    cursor: pointer;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-color: rgba(158, 193, 215, 0.35);
-    transition: 0.4s;
-    border-radius: 34px;
-    border: 1px solid var(--glass-border);
-}
-
-.slider:before {
-    position: absolute;
-    content: "";
-    height: 20px;
-    width: 20px;
-    left: 4px;
-    bottom: 3px;
-    background-color: white;
-    transition: 0.4s;
-    border-radius: 50%;
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
-}
-
-input:checked+.slider {
-    background-color: var(--accent-primary);
-    border-color: var(--accent-primary);
-    box-shadow: 0 0 10px rgba(30, 82, 122, 0.3);
-}
-
-input:checked+.slider:before {
-    transform: translateX(24px);
-    background-color: white;
-}
-
 /* Admin page layout helpers */
 .admin-topbar {
     display: flex;
@@ -121,7 +53,7 @@ input:checked+.slider:before {
 
 /* Activity list cards */
 .activity-card {
-    background: rgba(239, 241, 238, 0.65);
+    background: rgba(255, 255, 255, 0.65);
     padding: 15px;
     margin-bottom: 15px;
     border-radius: 8px;
@@ -137,11 +69,11 @@ input:checked+.slider:before {
 
 .activity-card-name {
     color: var(--accent-primary);
-    font-size: 1.1rem;
+    font-size: 1rem;
 }
 
 .activity-card-km {
-    background: rgba(158, 193, 215, 0.18);
+    background: rgba(148, 163, 184, 0.15);
     padding: 4px 8px;
     border-radius: 6px;
     font-size: 0.85rem;
@@ -170,8 +102,8 @@ input:checked+.slider:before {
 }
 
 .btn-cancel-edit {
-    background: rgba(158, 193, 215, 0.18);
-    border: 1px solid rgba(158, 193, 215, 0.38);
+    background: rgba(100, 116, 139, 0.15);
+    border: 1px solid rgba(100, 116, 139, 0.3);
     color: var(--text-light);
 }
 
