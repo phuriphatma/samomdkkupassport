@@ -65,11 +65,11 @@ npm run preview  # serve the production build locally
 - `scans` — `user_id`, `activity_id`, `scanned_at`, `points_awarded`.
 - `user_tiers` — `full_name`, `total_km`, `final_tier`, `has_travel_visa`.
 - `certificates` — multiple per activity (`label`, `background_url`, name placement,
-  `font_family`). Run `db/certificates.sql` + `db/certificates-font.sql`.
+  `font_family`). Run `db/0001_certificates.sql` + `db/0002_certificates_font.sql`.
 - `profiles` — `full_name`, `email`, `total_km`. Source of truth for the name;
-  leaderboards read from here. `db/profiles-name-policy.sql` allows own-name edits.
+  leaderboards read from here. `db/0003_profiles_name_policy.sql` allows own-name edits.
 - `seasons` — named, scoped (overall/department/subdepartment), dated windows for
-  leaderboards/history. Run `db/seasons.sql`. Standings are computed by filtering
+  leaderboards/history. Run `db/0004_seasons.sql`. Standings are computed by filtering
   scans to the window (no snapshots), so a finished season is naturally frozen.
 
 Image uploads: admin drag-drop posts to a Google Apps Script web app (`gas/Upload.gs`)

@@ -32,7 +32,7 @@ before loading. See `js/certificate.js`. Errors are caught and surfaced as a toa
 ## Certificate features look broken until the table exists
 **Symptom:** Admin "Certificates" shows a load error; students see no certificate buttons.
 **Cause:** The `certificates` table hasn't been created yet.
-**Fix:** Run `db/certificates.sql` in the Supabase SQL editor. The code is written to
+**Fix:** Run `db/0001_certificates.sql` in the Supabase SQL editor. The code is written to
 degrade gracefully (cert fetch errors are ignored) so the rest of the app is unaffected.
 
 ## User memories/photos "disappear"

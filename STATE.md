@@ -31,10 +31,10 @@ Last updated: 2026-06-06.
 ## Pending / required config
 
 Run these in the Supabase SQL editor (safe, idempotent):
-- [ ] `db/certificates.sql` — certificates table (if not already run).
-- [ ] `db/certificates-font.sql` — adds `font_family` (cert font picker).
-- [ ] `db/profiles-name-policy.sql` — lets a user update their own name.
-- [ ] `db/seasons.sql` — seasons + history.
+- [ ] `db/0001_certificates.sql` — certificates table (if not already run).
+- [ ] `db/0002_certificates_font.sql` — adds `font_family` (cert font picker).
+- [ ] `db/0003_profiles_name_policy.sql` — lets a user update their own name.
+- [ ] `db/0004_seasons.sql` — seasons + history.
 
 Other:
 - [ ] **Local OAuth:** add `http://localhost:5173/**` to Supabase Redirect URLs.

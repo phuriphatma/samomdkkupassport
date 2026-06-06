@@ -10,7 +10,7 @@ You cannot create tables/columns or policies from the app or with the anon key. 
 be run by a human in the Supabase SQL editor.
 
 ## Workflow for a schema change
-1. Write the SQL as a file in `db/` (e.g. `db/certificates.sql`). Use
+1. Write the SQL as a file in `db/` (e.g. `db/0001_certificates.sql`). Use
    `create table if not exists` / `add column if not exists` so it's re-runnable.
 2. Include RLS: `alter table … enable row level security;` plus policies. Mirror the
    existing permissive `activities` access (anon read/write) unless real auth exists —
@@ -30,4 +30,4 @@ A `PGRST205` error means the table doesn't exist yet (migration not run).
 
 ## Current known tables
 `activities`, `scans`, `user_tiers`, `profiles`, and `certificates` (needs
-`db/certificates.sql`). See CLAUDE.md for columns.
+`db/0001_certificates.sql`). See CLAUDE.md for columns.

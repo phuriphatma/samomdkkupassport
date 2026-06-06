@@ -7,9 +7,11 @@ body.passport-page-theme {
     display: flex;
     flex-direction: column;
     align-items: center;
-    min-height: 100vh;
+    justify-content: flex-start;
+    height: 100svh;
+    height: 100dvh;        /* fit the viewport on every device — no page scroll */
     padding: 0;
-    overflow-y: auto;
+    overflow: hidden;
     touch-action: manipulation; /* blocks double-tap zoom on the whole page */
 }
 
@@ -19,10 +21,11 @@ body.passport-page-theme {
 .passport-topbar {
     width: 100%;
     max-width: 480px;
+    flex-shrink: 0;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 16px 20px 8px;
+    padding: 14px 20px 6px;
     position: relative;
     z-index: 10;
 }
@@ -40,19 +43,31 @@ body.passport-page-theme {
    PASSPORT CONTAINER & PAGE
 ========================================= */
 .passport-container {
-    width: 340px;
     position: relative;
     z-index: 5;
-    margin: 10px auto 0;
+    flex: 1 1 auto;
+    min-height: 0;
+    max-height: 660px;          /* cap on large screens; shrinks to fit small ones */
+    width: 360px;
+    max-width: calc(100% - 36px);
+    display: flex;
+    flex-direction: column;
+    margin: 8px auto 0;
 }
 
-/* Every passport page shares this base */
+/* Every passport page shares this base: fills the container, scrolls internally */
 .passport-page {
-    width: 340px;
-    min-height: 480px;
-    max-height: 90dvh;
+    width: 100%;
+    flex: 1;
+    min-height: 0;
     border-radius: 4px 16px 16px 4px;
-    overflow: hidden;
+    overflow-y: auto;
+    overflow-x: hidden;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;        /* vertical scroll stays; horizontal = page swipe */
+    display: flex;
+    flex-direction: column;
     box-shadow:
         -6px 0 0 #0D2444,
         0 24px 60px rgba(27, 63, 107, 0.45);
@@ -77,8 +92,8 @@ body.passport-page-theme {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    height: 100%;
-    min-height: 480px;
+    flex: 1;
+    min-height: 0;
     padding: 36px 28px;
     gap: 12px;
     color: white;
@@ -154,7 +169,8 @@ body.passport-page-theme {
     padding: 24px 22px 20px;
     display: flex;
     flex-direction: column;
-    min-height: 480px;
+    flex: 1;
+    min-height: 0;
 }
 
 .inner-page-watermark {
@@ -335,8 +351,8 @@ body.passport-page-theme {
    FLIGHT LOG (embedded in info page)
 ────────────────────────────── */
 .activity-log-list {
-    overflow-y: auto;
-    max-height: 160px;
+    /* No independent scroll — the whole page (.page-inner) is the scroll container,
+       so the log can't overlap the page edges. */
     padding-right: 4px;
 }
 
@@ -638,7 +654,9 @@ body.passport-page-theme {
     display: flex;
     align-items: center;
     gap: 16px;
-    margin: 18px auto 24px;
+    flex-shrink: 0;
+    margin: 12px auto;
+    padding-bottom: max(env(safe-area-inset-bottom, 0px), 4px);
     position: relative;
     z-index: 10;
 }
@@ -1087,29 +1105,9 @@ body.passport-page-theme {
    RESPONSIVE
 ========================================= */
 @media (max-width: 480px) {
-    body.passport-page-theme {
-        height: 100svh;
-        height: 100dvh;
-        overflow: hidden;
-        justify-content: flex-start; /* topbar always at top, sky below nav */
-    }
-
-    .passport-topbar {
-        max-width: 100%;
-        flex-shrink: 0;
-        padding: 10px 16px 6px;
-    }
-
-    .passport-container {
-        flex: 1;
-        min-height: 0;
-        max-height: 80dvh; /* cap height — remaining viewport becomes visible sky */
-        display: flex;
-        flex-direction: column;
-        width: calc(100% - 52px);
-        max-width: 360px;
-        margin: 20px auto 0;
-    }
+    .passport-topbar { padding: 10px 16px 6px; }
+    .passport-container { width: 100%; max-width: 360px; margin: 8px auto 0; }
+    .passport-page { border-radius: 4px 12px 12px 4px; }
 
     /* Mobile photo slightly larger than desktop default */
     .info-photo-box { width: 84px; height: 118px; }
@@ -1120,53 +1118,10 @@ body.passport-page-theme {
     .field-value { font-size: 0.88rem; }
     .km-value { font-size: 1.05rem; }
 
-    /* Passport page fills container; becomes a flex column so children fill height */
-    .passport-page {
-        flex: 1;
-        min-height: 0 !important;
-        width: 100%;
-        border-radius: 4px 12px 12px 4px;
-        overflow-y: auto;
-        overflow-x: hidden;
-        overscroll-behavior: contain; /* stops scroll escaping to parent when at top/bottom */
-        -webkit-overflow-scrolling: touch; /* iOS momentum scroll */
-        display: flex;
-        flex-direction: column;
-    }
-
-    /* Page contents fill the passport page height */
-    .page-cover-inner {
-        flex: 1;
-        min-height: 0;
-    }
-
-    .page-inner {
-        flex: 1;
-        min-height: 0;
-    }
-
-    /* Nav row pinned at bottom, above OS home indicator */
-    .passport-nav-row {
-        flex-shrink: 0;
-        margin: 6px auto 0;
-        padding-bottom: max(env(safe-area-inset-bottom, 0px), 10px);
-    }
-
     .modal-card { max-height: 92vh; border-radius: 20px 20px 0 0; }
 }
 
-@media (min-width: 481px) {
-    .passport-container,
-    .passport-page { width: 360px; }
-
-    /* All pages share one height so switching pages doesn't move the book or
-       the nav row (depends only on the viewport, never on page content). */
-    .passport-page {
-        height: min(620px, 82dvh);
-        min-height: 0;
-        max-height: none;
-    }
-
-    /* Inner pages scroll internally if their content is taller than the page. */
-    .page-inner { overflow-y: auto; }
+/* Tablet / desktop: a touch wider for comfortable reading */
+@media (min-width: 700px) {
+    .passport-container { width: 420px; max-height: 680px; }
 }

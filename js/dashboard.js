@@ -722,6 +722,22 @@ async function init() {
         if (currentPageIndex < totalPages - 1) goToPage(currentPageIndex + 1);
     });
 
+    // Swipe left/right to turn pages (horizontal gestures only — vertical scrolls)
+    const book = document.querySelector('.passport-container');
+    let sx = 0, sy = 0;
+    book.addEventListener('touchstart', (e) => {
+        const t = e.changedTouches[0];
+        sx = t.clientX; sy = t.clientY;
+    }, { passive: true });
+    book.addEventListener('touchend', (e) => {
+        const t = e.changedTouches[0];
+        const dx = t.clientX - sx, dy = t.clientY - sy;
+        if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.4) {
+            if (dx < 0 && currentPageIndex < totalPages - 1) goToPage(currentPageIndex + 1);
+            else if (dx > 0 && currentPageIndex > 0) goToPage(currentPageIndex - 1);
+        }
+    }, { passive: true });
+
     // Modal close
     document.getElementById('modal-close').addEventListener('click', closeModal);
     document.getElementById('modal-backdrop').addEventListener('click', closeModal);
