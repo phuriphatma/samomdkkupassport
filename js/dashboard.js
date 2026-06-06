@@ -17,8 +17,6 @@ const certsByActivity = new Map(); // activity_id -> [certificate, ...]
 const allStamps = []; // flat registry for search: { activity, isActive, scan }
 let userScansCache = [];
 const activityById = new Map();
-let seasonsList = [];
-const archivedResults = new Map(); // season_id -> this user's archived points
 
 // ── SamoYear / Season (new immutable model) ──
 let currentYear = null;          // open samo_year
@@ -288,7 +286,8 @@ function openMemoryModal(activity, scan) {
 
     document.getElementById('modal-locked').style.display = 'none';
 
-    populateCerts(activity.id);
+    // Season-scoped certs: show the cert for the season this scan was earned in.
+    populateCerts(activity.id, scan?.season_id ?? null);
 
     // If memory or photos exist → view card; otherwise → write form
     const savedText = localStorage.getItem(`mem_${currentUserId}_${activity.id}`) || '';
@@ -326,10 +325,15 @@ function openLockedModal(activity) {
 }
 
 // ─── Certificates ─────────────────────────────────────────
-function populateCerts(activityId) {
+function populateCerts(activityId, scanSeasonId = null) {
     const section = document.getElementById('modal-certs');
     const list = document.getElementById('modal-certs-list');
-    const certs = certsByActivity.get(activityId) || [];
+    const all = certsByActivity.get(activityId) || [];
+
+    // Prefer certs for the season this scan was earned in; otherwise fall back to
+    // the activity's seasonless (default) certs. Keeps past earners on their cert.
+    let certs = all.filter(c => (c.season_id ?? null) === (scanSeasonId ?? null));
+    if (certs.length === 0) certs = all.filter(c => !c.season_id);
 
     if (certs.length === 0) {
         section.style.display = 'none';
@@ -661,278 +665,15 @@ function pointsOfScan(s) {
     return s.points_awarded || activityById.get(s.activity_id)?.base_points_km || 0;
 }
 
-// The current วาระสโม window = the active 'overall' season covering today;
-// otherwise the current calendar year. Points reset each วาระสโม.
+// Fallback window used for the headline only when no SamoYear is declared yet:
+// the current calendar year.
 function currentVaraWindow() {
-    const today = new Date().toISOString().slice(0, 10);
-    // Archived seasons are closed — they must not drive the "current" window,
-    // otherwise an archived season keeps showing as the live leaderboard.
-    const overall = seasonsList
-        .filter(s => s.scope === 'overall' && !s.archived_at && s.start_date <= today && today <= s.end_date)
-        .sort((a, b) => b.start_date.localeCompare(a.start_date))[0];
-    if (overall) return { start: overall.start_date, end: overall.end_date, name: overall.name };
     const y = new Date().getFullYear();
     return { start: `${y}-01-01`, end: `${y}-12-31`, name: 'This year' };
 }
 
-function userPointsInWindow(startDate, endDate, scope, scopeId) {
-    let total = 0;
-    userScansCache.forEach(s => {
-        const d = (s.scanned_at || '').slice(0, 10);
-        if (startDate && d < startDate) return;
-        if (endDate && d > endDate) return;
-        const act = activityById.get(s.activity_id);
-        if (scope === 'department' && (!act || act.department_id !== scopeId)) return;
-        if (scope === 'subdepartment' && (!act || act.sub_department_id !== scopeId)) return;
-        total += pointsOfScan(s);
-    });
-    return total;
-}
-
-function seasonScopeLabel(s) {
-    if (s.scope === 'department') return DEPARTMENTS[s.scope_id] || 'Department';
-    if (s.scope === 'subdepartment') return SUBDEPARTMENTS[s.scope_id] || 'Sub-department';
-    return 'วาระสโม (overall)';
-}
-
-function openHistory() {
-    const modal = document.getElementById('history-modal');
-    const body = document.getElementById('history-body');
-    modal.style.display = 'flex';
-    syncModalViewport();
-
-    // Yearly วาระสโม totals (points + badges earned that year)
-    const byYear = new Map(); // year -> { pts, badges:Set(activityId) }
-    userScansCache.forEach(s => {
-        const y = (s.scanned_at || '').slice(0, 4);
-        if (!y) return;
-        if (!byYear.has(y)) byYear.set(y, { pts: 0, badges: new Set() });
-        const e = byYear.get(y);
-        e.pts += pointsOfScan(s);
-        if (activityById.get(s.activity_id)?.badge_url) e.badges.add(s.activity_id);
-    });
-    const years = [...byYear.entries()].sort((a, b) => b[0].localeCompare(a[0]));
-
-    const today = new Date().toISOString().slice(0, 10);
-    const currentName = currentVaraWindow().name;
-
-    let html = '<div class="hist-section"><div class="hist-h">วาระสโม — yearly totals</div>';
-    if (years.length === 0) {
-        html += '<p class="hist-empty">No activity yet.</p>';
-    } else {
-        years.forEach(([y, e]) => {
-            html += `<div class="hist-row">
-                <span><strong>วาระสโม ${y}</strong><small>${e.badges.size} badge${e.badges.size === 1 ? '' : 's'}</small></span>
-                <span class="hist-pts">${e.pts} km</span></div>`;
-        });
-    }
-    html += `<p class="hist-empty" style="margin-top:6px;">Current: ${escapeHtmlText(currentName)} — your score resets each วาระสโม.</p>`;
-    html += '</div>';
-
-    html += '<div class="hist-section"><div class="hist-h">Seasons</div>';
-    if (seasonsList.length === 0) {
-        html += '<p class="hist-empty">No seasons yet.</p>';
-    } else {
-        seasonsList.forEach(s => {
-            // Archived seasons use the frozen snapshot (survives activity deletion);
-            // active seasons are computed live from the user's scans.
-            const archived = !!s.archived_at;
-            const pts = archived
-                ? (archivedResults.get(s.id) || 0)
-                : userPointsInWindow(s.start_date, s.end_date, s.scope, s.scope_id);
-            const status = archived ? '🔒 archived' : (s.end_date < today ? 'ended' : 'ongoing');
-            html += `
-              <div class="hist-row hist-season">
-                <span>
-                  <strong>${escapeHtmlText(s.name)}</strong>
-                  <small>${seasonScopeLabel(s)} · ${s.start_date} → ${s.end_date} · ${status}</small>
-                </span>
-                <span class="hist-pts">${pts} km</span>
-              </div>`;
-        });
-    }
-    html += '</div>';
-
-    body.innerHTML = html;
-}
-
-function closeHistory() {
-    const modal = document.getElementById('history-modal');
-    modal.style.display = 'none';
-    resetModalViewport(modal);
-}
-
 function escapeHtmlText(s) {
     return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-}
-
-// ─── Leaderboard ──────────────────────────────────────────
-// A single board that can show: the current วาระ (live), all-time total, and
-// every season (live windows or frozen archived snapshots) — optionally sliced
-// by department. Everyone's scans + names are fetched once and cached.
-let lbAllScans = null;
-let lbNameById = null;
-
-async function ensureLbData() {
-    if (lbAllScans) return true;
-    const [{ data: scans, error: e1 }, { data: profiles, error: e2 }] = await Promise.all([
-        supabase.from('scans').select('user_id, activity_id, points_awarded, scanned_at'),
-        supabase.from('profiles').select('id, full_name'),
-    ]);
-    if (e1 || e2) return false;
-    lbAllScans = scans || [];
-    lbNameById = new Map((profiles || []).map(p => [p.id, p.full_name]));
-    return true;
-}
-
-function lbComputeRanking(startDate, endDate, deptId) {
-    const totals = new Map();
-    lbAllScans.forEach(s => {
-        const d = (s.scanned_at || '').slice(0, 10);
-        if (startDate && d < startDate) return;
-        if (endDate && d > endDate) return;
-        const act = activityById.get(s.activity_id);
-        if (deptId && (!act || act.department_id !== deptId)) return;
-        totals.set(s.user_id, (totals.get(s.user_id) || 0) + pointsOfScan(s));
-    });
-    return [...totals.entries()]
-        .map(([uid, pts]) => ({ uid, pts, name: lbNameById.get(uid) || 'Traveler' }))
-        .sort((a, b) => b.pts - a.pts);
-}
-
-function populateLbControls() {
-    const viewSel = document.getElementById('lb-view');
-    const deptSel = document.getElementById('lb-dept');
-    const today = new Date().toISOString().slice(0, 10);
-    const win = currentVaraWindow();
-
-    let opts = `<option value="current">🔥 ${escapeHtmlText(win.name)} · now</option>`;
-    opts += '<option value="all">🏆 All-time total</option>';
-    seasonsList.forEach(s => {
-        const tag = s.archived_at ? '🔒' : (s.end_date < today ? '✓' : '•');
-        opts += `<option value="season:${s.id}">${tag} ${escapeHtmlText(s.name)}</option>`;
-    });
-    viewSel.innerHTML = opts;
-
-    deptSel.innerHTML = '<option value="">🌏 All departments</option>' +
-        Object.entries(DEPARTMENTS).map(([id, n]) => `<option value="${id}">${escapeHtmlText(n)}</option>`).join('');
-}
-
-async function renderLeaderboardView() {
-    const list = document.getElementById('lb-list');
-    const podium = document.getElementById('lb-podium');
-    const yourank = document.getElementById('lb-yourank');
-    const titleEl = document.querySelector('.lb-modal-title');
-    const viewVal = document.getElementById('lb-view').value;
-    const deptSel = document.getElementById('lb-dept');
-    const deptId = deptSel.value ? parseInt(deptSel.value, 10) : null;
-
-    list.innerHTML = '<p class="lb-loading">Loading…</p>';
-    podium.innerHTML = '';
-    yourank.style.display = 'none';
-
-    if (!(await ensureLbData())) {
-        list.innerHTML = '<p class="lb-loading">Could not load leaderboard.</p>';
-        return;
-    }
-
-    let rows = [];
-    let label = '';
-    let deptApplies = true;
-    const today = new Date().toISOString().slice(0, 10);
-
-    if (viewVal === 'all') {
-        rows = lbComputeRanking(null, null, deptId);
-        label = 'All-time total';
-    } else if (viewVal.startsWith('season:')) {
-        const sid = viewVal.slice(7);
-        const s = seasonsList.find(x => x.id === sid);
-        if (s && s.archived_at) {
-            // Frozen snapshot — survives activity deletion; can't slice by dept.
-            deptApplies = false;
-            const { data } = await supabase
-                .from('season_results').select('user_id, full_name, points')
-                .eq('season_id', sid).order('points', { ascending: false });
-            rows = (data || []).map(r => ({ uid: r.user_id, pts: r.points, name: r.full_name || 'Traveler' }));
-            label = `${s.name} · 🔒 archived`;
-        } else if (s) {
-            rows = lbComputeRanking(s.start_date, s.end_date, deptId);
-            label = `${s.name}${s.end_date < today ? ' · ended' : ''}`;
-        }
-    } else { // 'current'
-        const win = currentVaraWindow();
-        rows = lbComputeRanking(win.start, win.end, deptId);
-        label = win.name;
-    }
-
-    // Dept filter is meaningless on a frozen snapshot.
-    deptSel.disabled = !deptApplies;
-    deptSel.style.opacity = deptApplies ? '' : '0.45';
-    if (deptApplies && deptId) label += ` · ${DEPARTMENTS[deptId]}`;
-
-    titleEl.textContent = '🏆 Leaderboard';
-    document.getElementById('lb-podium').setAttribute('data-label', label);
-
-    if (rows.length === 0) {
-        list.innerHTML = `<p class="lb-loading">No rankings yet for “${escapeHtmlText(label)}”.</p>`;
-        return;
-    }
-
-    // Podium for the top 3
-    const medals = ['🥇', '🥈', '🥉'];
-    const order = [1, 0, 2]; // visual order: 2nd, 1st, 3rd
-    podium.innerHTML = `<div class="lb-scope-pill">${escapeHtmlText(label)}</div><div class="lb-podium-row">` +
-        order.filter(i => rows[i]).map(i => {
-            const r = rows[i];
-            return `<div class="lb-podium-spot lb-podium-${i + 1}${r.uid === currentUserId ? ' lb-me' : ''}">
-                <div class="lb-podium-medal">${medals[i]}</div>
-                <div class="lb-podium-name">${escapeHtmlText(r.name)}</div>
-                <div class="lb-podium-pts">${r.pts}<small>km</small></div>
-              </div>`;
-        }).join('') + '</div>';
-
-    // Ranks 4+
-    const rest = rows.slice(3, 100);
-    list.innerHTML = '';
-    rest.forEach((r, i) => {
-        const row = document.createElement('div');
-        row.className = 'lb-row' + (r.uid === currentUserId ? ' lb-me' : '');
-        row.innerHTML = `<span class="lb-rank">${i + 4}</span>`;
-        const nameEl = document.createElement('span');
-        nameEl.className = 'lb-row-name';
-        nameEl.textContent = r.name;
-        row.appendChild(nameEl);
-        const pts = document.createElement('span');
-        pts.className = 'lb-row-pts';
-        pts.textContent = `${r.pts} km`;
-        row.appendChild(pts);
-        list.appendChild(row);
-    });
-    if (rest.length === 0) list.innerHTML = '<p class="lb-loading" style="padding:8px;">That\'s everyone 🎉</p>';
-
-    // Your standing, if you fell outside the visible list
-    const myIdx = rows.findIndex(r => r.uid === currentUserId);
-    if (myIdx >= 100) {
-        const me = rows[myIdx];
-        yourank.style.display = '';
-        yourank.innerHTML = `<span class="lb-rank">#${myIdx + 1}</span>` +
-            `<span class="lb-row-name">You · ${escapeHtmlText(me.name)}</span>` +
-            `<span class="lb-row-pts">${me.pts} km</span>`;
-    }
-}
-
-function openLeaderboard() {
-    const modal = document.getElementById('leaderboard-modal');
-    modal.style.display = 'flex';
-    syncModalViewport();
-    populateLbControls();
-    renderLeaderboardView();
-}
-
-function closeLeaderboard() {
-    const modal = document.getElementById('leaderboard-modal');
-    modal.style.display = 'none';
-    resetModalViewport(modal);
 }
 
 // ─── Edit name ────────────────────────────────────────────
@@ -1370,16 +1111,12 @@ async function init() {
             { data: scans, error: scansError },
             { data: allActivities, error: actError },
             { data: allCerts },
-            { data: allSeasons },
-            { data: myArchived },
             samoCtx,
             { data: samoSeasonRows },
         ] = await Promise.all([
             supabase.from('scans').select('*').eq('user_id', user.id).order('scanned_at', { ascending: false }),
             supabase.from('activities').select('*').order('created_at', { ascending: true }),
             supabase.from('certificates').select('*').order('created_at', { ascending: true }),
-            supabase.from('seasons').select('*').order('start_date', { ascending: false }),
-            supabase.from('season_results').select('season_id, points').eq('user_id', user.id),
             getCurrentContext().catch(() => ({ year: null, season: null })),
             supabase.from('samo_seasons').select('id, name'),
         ]);
@@ -1387,13 +1124,9 @@ async function init() {
         if (scansError) throw scansError;
         if (actError) throw actError;
 
-        // Caches for the history view (seasons are optional — ignore errors)
         userScansCache = scans;
         activityById.clear();
         allActivities.forEach(a => activityById.set(a.id, a));
-        seasonsList = allSeasons || [];
-        archivedResults.clear();
-        (myArchived || []).forEach(r => archivedResults.set(r.season_id, r.points));
 
         // Current SamoYear / Season (new immutable model) + season-name map.
         currentYear = samoCtx?.year || null;
@@ -1437,14 +1170,19 @@ async function init() {
         if (scans.length === 0) {
             logList.innerHTML = '<div style="opacity:0.5;font-size:0.85rem;text-align:center;padding-top:20px;">No activities yet — start scanning! ✈️</div>';
         } else {
-            // Most recent first (scans already ordered by scanned_at desc)
+            // Most recent first (scans already ordered by scanned_at desc).
+            // Prefer the immutable snapshot name so deleted activities still show.
             scans.forEach(scan => {
-                const act = allActivities.find(a => a.id === scan.activity_id) || {};
-                const pts = scan.points_awarded || act.base_points_km || 0;
-                const name = act.name || 'Unknown Activity';
+                const pts = pointsOfScan(scan);
+                const name = scan.activity_name || activityById.get(scan.activity_id)?.name || 'Activity';
                 const item = document.createElement('div');
                 item.className = 'flight-log-item';
-                item.innerHTML = `<span>✈️ ${name}</span><span class="log-km">+${pts} km</span>`;
+                const nameEl = document.createElement('span');
+                nameEl.textContent = `✈️ ${name}`;
+                const kmEl = document.createElement('span');
+                kmEl.className = 'log-km';
+                kmEl.textContent = `+${pts} km`;
+                item.append(nameEl, kmEl);
                 logList.appendChild(item);
             });
         }
