@@ -288,6 +288,20 @@ body.passport-page-theme {
     line-height: 1.2;
 }
 
+.field-value-row { display: flex; align-items: center; gap: 6px; }
+
+.name-edit-btn {
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    font-size: 0.8rem;
+    line-height: 1;
+    padding: 2px;
+    opacity: 0.6;
+    width: auto;
+}
+.name-edit-btn:hover { opacity: 1; }
+
 .rank-value { color: var(--passport-navy); }
 
 .km-value { color: var(--accent-primary); font-size: 0.9rem; }
@@ -345,6 +359,62 @@ body.passport-page-theme {
     border-bottom: 1px solid rgba(27, 63, 107, 0.1);
     margin-bottom: 10px;
 }
+
+/* Stamp search */
+.stamp-search-bar {
+    position: relative;
+    width: 100%;
+    max-width: 360px;
+    margin: 4px auto 0;
+    padding: 0 6px;
+    z-index: 20;
+}
+
+.stamp-search-bar input {
+    width: 100%;
+    padding: 9px 14px;
+    border-radius: 999px;
+    border: 1px solid var(--glass-border);
+    background: rgba(255, 255, 255, 0.92);
+    font-family: var(--font-body);
+    font-size: 0.85rem;
+    color: var(--text-dark);
+    outline: none;
+}
+
+.stamp-search-bar input:focus { border-color: var(--sky-top); }
+
+.stamp-search-results {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 6px;
+    right: 6px;
+    background: #fff;
+    border: 1px solid var(--glass-border);
+    border-radius: 14px;
+    box-shadow: 0 12px 32px rgba(14, 165, 233, 0.22);
+    overflow: hidden auto;
+    max-height: 50dvh;
+}
+
+.stamp-search-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 10px 14px;
+    border: none;
+    border-bottom: 1px solid rgba(27, 63, 107, 0.07);
+    background: #fff;
+    cursor: pointer;
+    text-align: left;
+    font-family: var(--font-body);
+}
+
+.stamp-search-item:hover { background: #F0F9FF; }
+.stamp-search-item .ss-icon { flex-shrink: 0; }
+.stamp-search-item .ss-name { font-size: 0.85rem; color: var(--text-dark); }
+.stamp-search-empty { padding: 12px 14px; font-size: 0.82rem; color: var(--text-muted); }
 
 /* Data backup row (export / import on-device user content) */
 .info-backup-row {

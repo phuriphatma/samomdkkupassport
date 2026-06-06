@@ -29,6 +29,12 @@
     <a href="#" id="logout-btn" class="text-link topbar-logout">Sign Out</a>
   </div>
 
+  <!-- Stamp search -->
+  <div class="stamp-search-bar">
+    <input type="search" id="stamp-search" placeholder="🔍 Search your stamps…" autocomplete="off" />
+    <div class="stamp-search-results" id="stamp-search-results" style="display:none;"></div>
+  </div>
+
   <!-- Passport book wrapper -->
   <div class="passport-container">
 
@@ -68,7 +74,10 @@
         <div class="info-fields-col">
           <div class="info-field">
             <span class="field-label">FULL NAME</span>
-            <span class="field-value" id="p-name"><span class="skeleton" style="min-width:160px;">&nbsp;</span></span>
+            <span class="field-value-row">
+              <span class="field-value" id="p-name"><span class="skeleton" style="min-width:160px;">&nbsp;</span></span>
+              <button class="name-edit-btn" id="edit-name-btn" type="button" title="Edit name" aria-label="Edit name">✏️</button>
+            </span>
           </div>
           <div class="info-field">
             <span class="field-label">STATUS / RANK</span>

@@ -13,6 +13,7 @@ let currentUserName = '';
 let currentModalActivity = null;
 let currentModalScan = null;
 const certsByActivity = new Map(); // activity_id -> [certificate, ...]
+const allStamps = []; // flat registry for search: { activity, isActive, scan }
 
 const STAMPS_PER_PAGE = 12; // 3-col × 4-row grid
 
@@ -49,6 +50,16 @@ function buildStampPages(allActivities, userScans) {
     const scannedIds = new Set(userScans.map(s => s.activity_id));
     const numStampPages = Math.ceil(allActivities.length / STAMPS_PER_PAGE);
     const book = document.getElementById('page-1').parentElement; // passport-container
+
+    // Flat registry so users can search across all stamp pages
+    allStamps.length = 0;
+    allActivities.forEach(activity => {
+        allStamps.push({
+            activity,
+            isActive: scannedIds.has(activity.id),
+            scan: userScans.find(sc => sc.activity_id === activity.id),
+        });
+    });
 
     // Activity stamp pages
     for (let p = 0; p < numStampPages; p++) {
@@ -499,6 +510,63 @@ function importUserData(file) {
     reader.readAsText(file);
 }
 
+// ─── Edit name ────────────────────────────────────────────
+async function editName() {
+    const current = currentUserName || '';
+    const next = (prompt('Enter your full name:', current) || '').trim();
+    if (!next || next === current) return;
+
+    const { error } = await supabase
+        .from('profiles')
+        .update({ full_name: next })
+        .eq('id', currentUserId);
+
+    if (error) {
+        showToast('Could not save name');
+        console.error('Name update failed:', error);
+        return;
+    }
+    currentUserName = next;
+    document.getElementById('p-name').textContent = next;
+    showToast('Name updated ✓');
+}
+
+// ─── Stamp search ─────────────────────────────────────────
+function renderStampSearch(term) {
+    const box = document.getElementById('stamp-search-results');
+    const q = term.trim().toLowerCase();
+    if (!q) { box.style.display = 'none'; box.innerHTML = ''; return; }
+
+    const matches = allStamps
+        .filter(s => (s.activity.name || s.activity.badge_name || '').toLowerCase().includes(q))
+        .slice(0, 12);
+
+    if (matches.length === 0) {
+        box.innerHTML = '<div class="stamp-search-empty">No matching stamps</div>';
+        box.style.display = '';
+        return;
+    }
+
+    box.innerHTML = '';
+    matches.forEach(({ activity, isActive, scan }) => {
+        const row = document.createElement('button');
+        row.type = 'button';
+        row.className = 'stamp-search-item';
+        const icon = isActive ? '✅' : '🔒';
+        row.innerHTML = `<span class="ss-icon">${icon}</span><span class="ss-name"></span>`;
+        row.querySelector('.ss-name').textContent = activity.name || activity.badge_name || 'Activity';
+        row.addEventListener('click', () => {
+            document.getElementById('stamp-search').value = '';
+            box.style.display = 'none';
+            box.innerHTML = '';
+            if (isActive) openMemoryModal(activity, scan);
+            else openLockedModal(activity);
+        });
+        box.appendChild(row);
+    });
+    box.style.display = '';
+}
+
 // ─── Main init ────────────────────────────────────────────
 async function init() {
     document.getElementById('logout-btn').addEventListener('click', async (e) => {
@@ -539,6 +607,20 @@ async function init() {
         localStorage.setItem(key, document.getElementById('modal-memory-text').value);
         showToast('Memory saved ✓');
         closeModal();
+    });
+
+    // Edit name
+    document.getElementById('edit-name-btn').addEventListener('click', editName);
+
+    // Stamp search
+    document.getElementById('stamp-search').addEventListener('input', function () {
+        renderStampSearch(this.value);
+    });
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('.stamp-search-bar')) {
+            const box = document.getElementById('stamp-search-results');
+            box.style.display = 'none';
+        }
     });
 
     // Data backup (export / import)
