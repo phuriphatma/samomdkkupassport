@@ -539,10 +539,20 @@ async function generateStaticQR() {
 
 // --- CERTIFICATES ---
 let certActivityId = null;
+let editingCertId = null;     // null = adding; otherwise editing this cert
+let certListCache = [];       // last-loaded certs for the open activity
 
 function debounce(fn, ms) {
     let t;
     return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
+}
+
+// Toggle the form between "Add" and "Edit existing" presentation.
+function updateCertFormMode() {
+    const editing = !!editingCertId;
+    document.getElementById('cert-submit-btn').textContent = editing ? '💾 Save changes' : 'Add Certificate';
+    document.getElementById('cert-edit-cancel').style.display = editing ? '' : 'none';
+    document.getElementById('cert-form-heading').textContent = editing ? '✏️ Edit certificate' : 'Add a certificate';
 }
 
 window.manageCerts = (id) => {
@@ -554,7 +564,9 @@ window.manageCerts = (id) => {
     document.getElementById('manage-section').style.display = 'none';
     document.getElementById('cert-section').style.display = 'block';
 
+    editingCertId = null;
     document.getElementById('cert-form').reset();
+    updateCertFormMode();
     previewImg = null; previewImgUrl = '';
     renderCertPreview();
     loadCerts(id);
@@ -562,10 +574,36 @@ window.manageCerts = (id) => {
 
 window.closeCerts = () => {
     certActivityId = null;
+    editingCertId = null;
     discardPendingUpload('cert-bg-url'); // drop an uploaded-but-unsaved background
     document.getElementById('cert-section').style.display = 'none';
     document.getElementById('event-creation').style.display = 'block';
     document.getElementById('manage-section').style.display = 'block';
+};
+
+// Load an existing certificate's settings into the form for editing.
+window.editCert = (id) => {
+    const c = certListCache.find(x => x.id === id);
+    if (!c) return;
+    editingCertId = id;
+    document.getElementById('cert-label').value = c.label || '';
+    document.getElementById('cert-bg-url').value = c.background_url || '';
+    document.getElementById('cert-font').value = c.font_family || 'Sarabun';
+    document.getElementById('cert-font-color').value = c.font_color || '#1f2d3d';
+    setCertControl('cert-font-size', c.font_size ?? 6);
+    setCertControl('cert-name-x', c.name_x ?? 50);
+    setCertControl('cert-name-y', c.name_y ?? 52);
+    updateCertFormMode();
+    previewImg = null; previewImgUrl = '';
+    renderCertPreview();
+    document.getElementById('cert-form-heading').scrollIntoView({ behavior: 'smooth', block: 'start' });
+};
+
+window.cancelCertEdit = () => {
+    editingCertId = null;
+    document.getElementById('cert-form').reset();
+    updateCertFormMode();
+    renderCertPreview();
 };
 
 async function loadCerts(activityId) {
@@ -583,15 +621,20 @@ async function loadCerts(activityId) {
         return;
     }
 
+    certListCache = data || [];
+
     if (!data || data.length === 0) {
         list.innerHTML = '<p style="font-size:0.9rem;">No certificates yet for this activity.</p>';
         return;
     }
 
     list.innerHTML = data.map(c => `
-        <div class="cert-list-item">
-          <span class="cert-list-label">${c.label}</span>
-          <button onclick="deleteCert('${c.id}')" class="btn-action btn-delete">Delete</button>
+        <div class="cert-list-item${c.id === editingCertId ? ' cert-editing' : ''}">
+          <span class="cert-list-label">${escapeHtml(c.label)}</span>
+          <span class="cert-actions">
+            <button onclick="editCert('${c.id}')" class="btn-action btn-edit">Edit</button>
+            <button onclick="deleteCert('${c.id}')" class="btn-action btn-delete">Delete</button>
+          </span>
         </div>
     `).join('');
 }
@@ -621,7 +664,13 @@ function getCertFormValues() {
 function populateCertFonts() {
     const sel = document.getElementById('cert-font');
     if (!sel || sel.options.length) return;
-    sel.innerHTML = CERT_FONTS.map(f => `<option value="${f.value}">${f.label}</option>`).join('');
+    const groups = {};
+    CERT_FONTS.forEach(f => { (groups[f.group || 'Fonts'] ||= []).push(f); });
+    sel.innerHTML = Object.entries(groups).map(([g, fonts]) =>
+        `<optgroup label="${g}">` +
+        fonts.map(f => `<option value="${f.value}">${f.label}</option>`).join('') +
+        '</optgroup>'
+    ).join('');
 }
 
 // Cache the loaded background so dragging the name is instant (no re-fetch).
@@ -723,23 +772,27 @@ async function submitCertificate(e) {
     if (!certActivityId) return;
     const cert = getCertFormValues();
 
-    let { error } = await supabase
-        .from('certificates')
-        .insert([{ activity_id: certActivityId, ...cert }]);
+    // Update the existing cert when editing, otherwise insert a new one. Each
+    // path retries without font_family if that migration hasn't been run yet.
+    const run = (payload) => editingCertId
+        ? supabase.from('certificates').update(payload).eq('id', editingCertId)
+        : supabase.from('certificates').insert([{ activity_id: certActivityId, ...payload }]);
 
-    // Resilience: if the font_family migration hasn't been run yet, retry without it.
+    let { error } = await run(cert);
     if (error && /font_family/.test(error.message || '')) {
         const { font_family, ...rest } = cert;
-        ({ error } = await supabase.from('certificates').insert([{ activity_id: certActivityId, ...rest }]));
+        ({ error } = await run(rest));
     }
 
     if (error) {
-        alert('Failed to add certificate: ' + error.message);
+        alert((editingCertId ? 'Failed to save changes: ' : 'Failed to add certificate: ') + error.message);
         return;
     }
 
     commitUpload(cert.background_url); // background is now attached to a saved cert
+    editingCertId = null;
     document.getElementById('cert-form').reset();
+    updateCertFormMode();
     renderCertPreview();
     loadCerts(certActivityId);
 }
