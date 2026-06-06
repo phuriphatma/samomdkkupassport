@@ -452,7 +452,7 @@ async function init() {
     const pKm = document.getElementById('p-km');
     try {
         const [{ data: scans, error: scansError }, { data: allActivities, error: actError }] = await Promise.all([
-            supabase.from('scans').select('*').eq('user_id', user.id),
+            supabase.from('scans').select('*').eq('user_id', user.id).order('scanned_at', { ascending: false }),
             supabase.from('activities').select('*').order('created_at', { ascending: true }),
         ]);
 
@@ -475,9 +475,8 @@ async function init() {
         if (scans.length === 0) {
             logList.innerHTML = '<div style="opacity:0.5;font-size:0.85rem;text-align:center;padding-top:20px;">No activities yet — start scanning! ✈️</div>';
         } else {
-            // Show most recent first
-            const sorted = [...scans].reverse().slice(0, 20);
-            sorted.forEach(scan => {
+            // Most recent first (scans already ordered by scanned_at desc)
+            scans.forEach(scan => {
                 const act = allActivities.find(a => a.id === scan.activity_id) || {};
                 const pts = scan.points_awarded || act.base_points_km || 0;
                 const name = act.name || 'Unknown Activity';
