@@ -7,7 +7,7 @@
   <title>Admin Passport Terminal</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;500;600;700&family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Charmonman:wght@400;700&family=Kanit:wght@400;600;700&family=Mitr:wght@400;600;700&family=Noto+Sans+Thai:wght@300;400;500;600;700&family=Noto+Serif+Thai:wght@400;600;700&family=Prompt:wght@300;400;500;600;700&family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/css/main.css" />
   <link rel="stylesheet" href="/css/admin.css" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
@@ -177,15 +177,19 @@
           <input type="url" id="cert-bg-url" placeholder="Background image URL (public)" required /><br />
 
           <div class="cert-controls">
-            <label>Name X (%)<input type="number" id="cert-name-x" value="50" min="0" max="100" step="1" /></label>
-            <label>Name Y (%)<input type="number" id="cert-name-y" value="55" min="0" max="100" step="1" /></label>
+            <label>Font<select id="cert-font"></select></label>
             <label>Font size (%)<input type="number" id="cert-font-size" value="6" min="1" max="30" step="0.5" /></label>
             <label>Color<input type="color" id="cert-font-color" value="#1f2d3d" /></label>
+            <label>Name X (%)<input type="number" id="cert-name-x" value="50" min="0" max="100" step="1" /></label>
+            <label>Name Y (%)<input type="number" id="cert-name-y" value="52" min="0" max="100" step="1" /></label>
           </div>
 
           <div class="cert-preview-wrap">
-            <canvas id="cert-preview" class="cert-preview-canvas"></canvas>
+            <div class="cert-preview-stage" id="cert-preview-stage">
+              <canvas id="cert-preview" class="cert-preview-canvas"></canvas>
+            </div>
             <div id="cert-preview-hint" class="cert-preview-hint">Paste a background URL to preview.</div>
+            <small class="cert-preview-tip" id="cert-preview-tip" style="display:none;">Tip: click or drag on the preview to place the name.</small>
           </div>
 
           <button type="submit">Add Certificate</button>

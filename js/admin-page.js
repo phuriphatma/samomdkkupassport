@@ -2,7 +2,7 @@
 import { supabase } from './app.js';
 import { generateUUID } from './utils.js';
 import { ROUTES } from './routes.js';
-import { renderCertificate } from './certificate.js';
+import { renderCertificate, loadCertImage, CERT_FONTS } from './certificate.js';
 
 const CERT_SAMPLE_NAME = 'ชื่อ นามสกุล';
 
@@ -79,6 +79,8 @@ async function init() {
     document
         .getElementById('cert-form')
         .addEventListener('input', debounce(renderCertPreview, 350));
+    populateCertFonts();
+    setupCertPreviewDrag();
 
     const downloadBtn = document.getElementById('download-qr-btn');
     if (downloadBtn) {
@@ -457,6 +459,7 @@ window.manageCerts = (id) => {
     document.getElementById('cert-section').style.display = 'block';
 
     document.getElementById('cert-form').reset();
+    previewImg = null; previewImgUrl = '';
     renderCertPreview();
     loadCerts(id);
 };
@@ -511,33 +514,81 @@ function getCertFormValues() {
         label: document.getElementById('cert-label').value.trim(),
         background_url: document.getElementById('cert-bg-url').value.trim(),
         name_x: parseFloat(document.getElementById('cert-name-x').value) || 50,
-        name_y: parseFloat(document.getElementById('cert-name-y').value) || 55,
+        name_y: parseFloat(document.getElementById('cert-name-y').value) || 52,
         font_size: parseFloat(document.getElementById('cert-font-size').value) || 6,
         font_color: document.getElementById('cert-font-color').value || '#1f2d3d',
+        font_family: document.getElementById('cert-font').value || 'Prompt',
     };
 }
+
+function populateCertFonts() {
+    const sel = document.getElementById('cert-font');
+    if (!sel || sel.options.length) return;
+    sel.innerHTML = CERT_FONTS.map(f => `<option value="${f.value}">${f.label}</option>`).join('');
+}
+
+// Cache the loaded background so dragging the name is instant (no re-fetch).
+let previewImg = null;
+let previewImgUrl = '';
 
 async function renderCertPreview() {
     const canvas = document.getElementById('cert-preview');
     const hint = document.getElementById('cert-preview-hint');
+    const tip = document.getElementById('cert-preview-tip');
     const cert = getCertFormValues();
 
     if (!cert.background_url) {
         canvas.style.display = 'none';
         hint.style.display = '';
         hint.textContent = 'Paste a background URL to preview.';
+        tip.style.display = 'none';
+        previewImg = null; previewImgUrl = '';
         return;
     }
 
     try {
-        await renderCertificate(canvas, cert, CERT_SAMPLE_NAME);
+        if (cert.background_url !== previewImgUrl) {
+            previewImg = await loadCertImage(cert.background_url);
+            previewImgUrl = cert.background_url;
+        }
+        await renderCertificate(canvas, cert, CERT_SAMPLE_NAME, previewImg);
         canvas.style.display = '';
         hint.style.display = 'none';
+        tip.style.display = '';
     } catch (err) {
         canvas.style.display = 'none';
         hint.style.display = '';
         hint.textContent = err.message || 'Could not load preview.';
+        tip.style.display = 'none';
+        previewImg = null; previewImgUrl = '';
     }
+}
+
+// Click / drag on the preview to place the name (updates X/Y + re-renders).
+function setupCertPreviewDrag() {
+    const canvas = document.getElementById('cert-preview');
+    if (!canvas) return;
+    let dragging = false;
+
+    const apply = (e) => {
+        const rect = canvas.getBoundingClientRect();
+        if (!rect.width || !rect.height) return;
+        const pt = e.touches ? e.touches[0] : e;
+        const x = Math.min(100, Math.max(0, ((pt.clientX - rect.left) / rect.width) * 100));
+        const y = Math.min(100, Math.max(0, ((pt.clientY - rect.top) / rect.height) * 100));
+        document.getElementById('cert-name-x').value = Math.round(x);
+        document.getElementById('cert-name-y').value = Math.round(y);
+        renderCertPreview();
+    };
+
+    canvas.addEventListener('pointerdown', (e) => {
+        dragging = true;
+        canvas.setPointerCapture?.(e.pointerId);
+        apply(e);
+    });
+    canvas.addEventListener('pointermove', (e) => { if (dragging) apply(e); });
+    canvas.addEventListener('pointerup', () => { dragging = false; });
+    canvas.addEventListener('pointercancel', () => { dragging = false; });
 }
 
 async function submitCertificate(e) {

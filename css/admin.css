@@ -187,3 +187,20 @@
     border: 1px dashed var(--glass-border, rgba(0, 0, 0, 0.12));
     border-radius: 10px;
 }
+
+/* Certificate preview: draggable name positioning */
+.cert-preview-stage { display: inline-block; max-width: 100%; line-height: 0; }
+
+.cert-preview-canvas {
+    cursor: crosshair;
+    touch-action: none; /* let pointer drag set the name position without scrolling */
+}
+
+.cert-preview-tip {
+    display: block;
+    margin-top: 8px;
+    font-size: 0.78rem;
+    color: var(--text-muted);
+}
+
+#cert-font { min-width: 150px; }
