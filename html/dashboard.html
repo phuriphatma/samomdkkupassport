@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>My Passport | Life is a Journey</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -95,6 +95,15 @@
         </div>
       </div>
 
+      <div class="info-backup-row">
+        <span class="info-backup-label">📦 My data (this device)</span>
+        <div class="info-backup-actions">
+          <button id="export-data-btn" class="backup-btn" type="button">⬇️ Export</button>
+          <button id="import-data-btn" class="backup-btn" type="button">⬆️ Import</button>
+          <input type="file" id="import-data-input" accept="application/json" style="display:none;">
+        </div>
+      </div>
+
       <div class="inner-page-footer">
         <div class="barcode-lines"></div>
       </div>
@@ -129,6 +138,12 @@
           <h3 class="modal-title" id="modal-title">Activity Name</h3>
           <span class="modal-km-chip" id="modal-km">+0 km</span>
         </div>
+      </div>
+
+      <!-- Certificates (shown for earned stamps that have certificate templates) -->
+      <div class="modal-certs" id="modal-certs" style="display:none;">
+        <span class="modal-section-label">🎓 Your Certificates</span>
+        <div class="modal-certs-list" id="modal-certs-list"></div>
       </div>
 
       <!-- If inactive stamp -->

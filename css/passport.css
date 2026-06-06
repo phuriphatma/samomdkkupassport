@@ -346,6 +346,44 @@ body.passport-page-theme {
     margin-bottom: 10px;
 }
 
+/* Data backup row (export / import on-device user content) */
+.info-backup-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-top: 14px;
+    padding-top: 12px;
+    border-top: 1px dashed rgba(27, 63, 107, 0.15);
+}
+
+.info-backup-label {
+    font-size: 0.62rem;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    font-weight: 700;
+    color: rgba(27, 63, 107, 0.5);
+}
+
+.info-backup-actions { display: flex; gap: 8px; }
+
+.backup-btn {
+    font-family: var(--font-body);
+    font-size: 0.72rem;
+    font-weight: 600;
+    padding: 6px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--sky-top);
+    background: #fff;
+    color: var(--sky-top);
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s;
+    width: auto;
+}
+
+.backup-btn:hover { background: var(--sky-top); color: #fff; }
+
 .activity-log-list::-webkit-scrollbar { width: 4px; }
 .activity-log-list::-webkit-scrollbar-track { background: rgba(27,63,107,0.05); border-radius: 2px; }
 .activity-log-list::-webkit-scrollbar-thumb { background: rgba(27,63,107,0.2); border-radius: 2px; }
@@ -706,6 +744,37 @@ body.passport-page-theme {
     color: var(--text-light);
     margin-bottom: 8px;
 }
+
+/* Certificates inside the memory modal */
+.modal-certs {
+    margin: 4px 0 16px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid rgba(27, 63, 107, 0.1);
+}
+
+.modal-certs-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.cert-download-btn {
+    font-family: var(--font-body);
+    font-size: 0.8rem;
+    font-weight: 600;
+    padding: 8px 14px;
+    border-radius: 10px;
+    border: none;
+    background: linear-gradient(135deg, var(--accent-secondary), var(--sky-top));
+    color: #fff;
+    cursor: pointer;
+    width: auto;
+    transition: opacity 0.2s, transform 0.1s;
+}
+
+.cert-download-btn:hover { opacity: 0.92; }
+.cert-download-btn:active { transform: scale(0.97); }
+.cert-download-btn:disabled { opacity: 0.6; cursor: default; }
 
 .modal-textarea {
     width: 100%;

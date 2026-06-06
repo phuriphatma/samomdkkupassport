@@ -2,6 +2,9 @@
 import { supabase } from './app.js';
 import { generateUUID } from './utils.js';
 import { ROUTES } from './routes.js';
+import { renderCertificate } from './certificate.js';
+
+const CERT_SAMPLE_NAME = 'ชื่อ นามสกุล';
 
 // --- CONFIG ---
 const SUB_DEPT_OPTIONS = {
@@ -64,6 +67,18 @@ async function init() {
     document
         .getElementById('filter-sub-department')
         .addEventListener('change', renderActivityList);
+
+    document
+        .getElementById('search-activity')
+        .addEventListener('input', renderActivityList);
+
+    // Certificates: live preview + submit
+    document
+        .getElementById('cert-form')
+        .addEventListener('submit', submitCertificate);
+    document
+        .getElementById('cert-form')
+        .addEventListener('input', debounce(renderCertPreview, 350));
 
     const downloadBtn = document.getElementById('download-qr-btn');
     if (downloadBtn) {
@@ -176,6 +191,7 @@ function renderActivityList(){
     }
     const filterDept = document.getElementById('filter-department').value;
     const filterSubDept = document.getElementById('filter-sub-department').value;
+    const searchTerm = document.getElementById('search-activity').value.trim().toLowerCase();
 
     activitiesCache.forEach((act) => {
         // Apply filters
@@ -183,6 +199,9 @@ function renderActivityList(){
             return;
         }
         if (filterSubDept && act.sub_department_id !== parseInt(filterSubDept, 10)) {
+            return;
+        }
+        if (searchTerm && !(act.name || '').toLowerCase().includes(searchTerm)) {
             return;
         }
 
@@ -194,6 +213,7 @@ function renderActivityList(){
             </div>
             <div class="activity-card-actions">
               <button onclick="startScannerFor('${act.id}')" class="btn-action">Generate QR</button>
+              <button onclick="manageCerts('${act.id}')" class="btn-action">Certificates</button>
               <button onclick="editActivity('${act.id}')" class="btn-action btn-edit">Edit</button>
               <button onclick="deleteActivity('${act.id}')" class="btn-action btn-delete">Delete</button>
             </div>
@@ -417,6 +437,126 @@ async function generateStaticQR() {
 
     const scanUrlStatic = `${window.location.origin}${ROUTES.SCAN}?aid=${currentActivityId}&tk=${staticToken}`;
     qrStaticGenerator.makeCode(scanUrlStatic);
+}
+
+// --- CERTIFICATES ---
+let certActivityId = null;
+
+function debounce(fn, ms) {
+    let t;
+    return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
+}
+
+window.manageCerts = (id) => {
+    const act = activitiesCache.find(a => a.id === id);
+    certActivityId = id;
+    document.getElementById('cert-activity-name').textContent = act ? act.name : '';
+
+    document.getElementById('event-creation').style.display = 'none';
+    document.getElementById('manage-section').style.display = 'none';
+    document.getElementById('cert-section').style.display = 'block';
+
+    document.getElementById('cert-form').reset();
+    renderCertPreview();
+    loadCerts(id);
+};
+
+window.closeCerts = () => {
+    certActivityId = null;
+    document.getElementById('cert-section').style.display = 'none';
+    document.getElementById('event-creation').style.display = 'block';
+    document.getElementById('manage-section').style.display = 'block';
+};
+
+async function loadCerts(activityId) {
+    const list = document.getElementById('cert-list');
+    list.innerHTML = '<p style="font-size:0.9rem;">Loading…</p>';
+
+    const { data, error } = await supabase
+        .from('certificates')
+        .select('*')
+        .eq('activity_id', activityId)
+        .order('created_at', { ascending: true });
+
+    if (error) {
+        list.innerHTML = `<p style="font-size:0.9rem;color:var(--accent-danger);">Could not load certificates: ${error.message}</p>`;
+        return;
+    }
+
+    if (!data || data.length === 0) {
+        list.innerHTML = '<p style="font-size:0.9rem;">No certificates yet for this activity.</p>';
+        return;
+    }
+
+    list.innerHTML = data.map(c => `
+        <div class="cert-list-item">
+          <span class="cert-list-label">${c.label}</span>
+          <button onclick="deleteCert('${c.id}')" class="btn-action btn-delete">Delete</button>
+        </div>
+    `).join('');
+}
+
+window.deleteCert = async (id) => {
+    if (!confirm('Delete this certificate template?')) return;
+    const { error } = await supabase.from('certificates').delete().eq('id', id);
+    if (error) {
+        alert('Delete failed: ' + error.message);
+        return;
+    }
+    if (certActivityId) loadCerts(certActivityId);
+};
+
+function getCertFormValues() {
+    return {
+        label: document.getElementById('cert-label').value.trim(),
+        background_url: document.getElementById('cert-bg-url').value.trim(),
+        name_x: parseFloat(document.getElementById('cert-name-x').value) || 50,
+        name_y: parseFloat(document.getElementById('cert-name-y').value) || 55,
+        font_size: parseFloat(document.getElementById('cert-font-size').value) || 6,
+        font_color: document.getElementById('cert-font-color').value || '#1f2d3d',
+    };
+}
+
+async function renderCertPreview() {
+    const canvas = document.getElementById('cert-preview');
+    const hint = document.getElementById('cert-preview-hint');
+    const cert = getCertFormValues();
+
+    if (!cert.background_url) {
+        canvas.style.display = 'none';
+        hint.style.display = '';
+        hint.textContent = 'Paste a background URL to preview.';
+        return;
+    }
+
+    try {
+        await renderCertificate(canvas, cert, CERT_SAMPLE_NAME);
+        canvas.style.display = '';
+        hint.style.display = 'none';
+    } catch (err) {
+        canvas.style.display = 'none';
+        hint.style.display = '';
+        hint.textContent = err.message || 'Could not load preview.';
+    }
+}
+
+async function submitCertificate(e) {
+    e.preventDefault();
+    if (!certActivityId) return;
+    const cert = getCertFormValues();
+
+    const { error } = await supabase
+        .from('certificates')
+        .insert([{ activity_id: certActivityId, ...cert }]);
+
+    if (error) {
+        alert('Failed to add certificate: ' + error.message);
+        return;
+    }
+
+    document.getElementById('cert-form').reset();
+    renderCertPreview();
+    loadCerts(certActivityId);
 }
 
 init();

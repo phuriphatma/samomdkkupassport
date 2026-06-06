@@ -2,14 +2,17 @@
 import { supabase } from './app.js';
 import { checkSession, logout } from './auth.js';
 import { fixGoogleDriveUrl, getPendingScanUrl, clearPendingScanUrl } from './utils.js';
+import { renderCertificate, downloadCanvasPng } from './certificate.js';
 import { ROUTES } from './routes.js';
 
 // ─── State ───────────────────────────────────────────────
 let currentPageIndex = 0;
 let totalPages = 2; // cover + info (stamp pages added dynamically)
 let currentUserId = null;
+let currentUserName = '';
 let currentModalActivity = null;
 let currentModalScan = null;
+const certsByActivity = new Map(); // activity_id -> [certificate, ...]
 
 const STAMPS_PER_PAGE = 12; // 3-col × 4-row grid
 
@@ -213,6 +216,8 @@ function openMemoryModal(activity, scan) {
 
     document.getElementById('modal-locked').style.display = 'none';
 
+    populateCerts(activity.id);
+
     // If memory or photos exist → view card; otherwise → write form
     const savedText = localStorage.getItem(`mem_${currentUserId}_${activity.id}`) || '';
     const savedPhotos = JSON.parse(localStorage.getItem(`photos_${currentUserId}_${activity.id}`) || '[]');
@@ -243,8 +248,57 @@ function openLockedModal(activity) {
     document.getElementById('modal-locked').style.display = '';
     document.getElementById('modal-body').style.display = 'none';
     document.getElementById('modal-view').style.display = 'none';
+    document.getElementById('modal-certs').style.display = 'none';
 
     showModal();
+}
+
+// ─── Certificates ─────────────────────────────────────────
+function populateCerts(activityId) {
+    const section = document.getElementById('modal-certs');
+    const list = document.getElementById('modal-certs-list');
+    const certs = certsByActivity.get(activityId) || [];
+
+    if (certs.length === 0) {
+        section.style.display = 'none';
+        return;
+    }
+
+    list.innerHTML = '';
+    certs.forEach(cert => {
+        const btn = document.createElement('button');
+        btn.className = 'cert-download-btn';
+        btn.type = 'button';
+        btn.textContent = `⬇️ ${cert.label}`;
+        btn.addEventListener('click', () => generateAndDownloadCert(cert, btn));
+        list.appendChild(btn);
+    });
+    section.style.display = '';
+}
+
+async function generateAndDownloadCert(cert, btn) {
+    if (!currentUserName) { showToast('Your name is still loading — try again'); return; }
+    const original = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = '⏳ Generating…';
+    try {
+        const canvas = document.createElement('canvas');
+        await renderCertificate(canvas, cert, currentUserName);
+        const clean = s => (s || '').replace(/[^\p{L}\p{N} _-]/gu, '').trim();
+        const safeName = clean(currentUserName) || 'student';
+        const safeLabel = clean(cert.label) || 'certificate';
+        await downloadCanvasPng(canvas, `certificate-${safeLabel}-${safeName}.png`);
+        showToast('Certificate downloaded ✓');
+    } catch (err) {
+        if (err.message === 'tainted') {
+            showToast('Could not export — the background link must allow downloads (CORS)');
+        } else {
+            showToast(err.message || 'Could not generate certificate');
+        }
+    } finally {
+        btn.disabled = false;
+        btn.textContent = original;
+    }
 }
 
 function showMemoryView(text, photos) {
@@ -367,6 +421,84 @@ function showToast(msg, duration = 2400) {
     showToast._timer = setTimeout(() => { toast.style.display = 'none'; }, duration);
 }
 
+// ─── Data backup (export / import) ────────────────────────
+// User content (profile photo, memories, memory photos) lives only in this
+// browser's localStorage. These helpers let users back it up to a JSON file
+// and restore it on another device signed in to the same account.
+function collectUserData() {
+    const prefixes = [
+        `profile_photo_${currentUserId}`,
+        `mem_${currentUserId}_`,
+        `photos_${currentUserId}_`,
+    ];
+    const data = {};
+    for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (prefixes.some(p => key === p || key.startsWith(p))) {
+            data[key] = localStorage.getItem(key);
+        }
+    }
+    return data;
+}
+
+function exportUserData() {
+    const data = collectUserData();
+    if (Object.keys(data).length === 0) {
+        showToast('Nothing to export yet');
+        return;
+    }
+    const payload = {
+        app: 'samo-passport',
+        type: 'user-backup',
+        version: 1,
+        userId: currentUserId,
+        exportedAt: new Date().toISOString(),
+        data,
+    };
+    const blob = new Blob([JSON.stringify(payload)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `samo-passport-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    showToast('Backup downloaded ✓');
+}
+
+function importUserData(file) {
+    const reader = new FileReader();
+    reader.onload = e => {
+        let payload;
+        try {
+            payload = JSON.parse(e.target.result);
+        } catch {
+            showToast('Invalid backup file');
+            return;
+        }
+        if (payload?.app !== 'samo-passport' || !payload.data) {
+            showToast('Not a SAMO passport backup');
+            return;
+        }
+        if (payload.userId && payload.userId !== currentUserId &&
+            !confirm('This backup is from a different account. Restore anyway? Your memories may not match your current stamps.')) {
+            return;
+        }
+        try {
+            Object.entries(payload.data).forEach(([key, value]) => {
+                localStorage.setItem(key, value);
+            });
+        } catch {
+            showToast('Storage full — could not restore everything');
+            return;
+        }
+        showToast('Backup restored — reloading…');
+        setTimeout(() => window.location.reload(), 900);
+    };
+    reader.readAsText(file);
+}
+
 // ─── Main init ────────────────────────────────────────────
 async function init() {
     document.getElementById('logout-btn').addEventListener('click', async (e) => {
@@ -409,6 +541,16 @@ async function init() {
         closeModal();
     });
 
+    // Data backup (export / import)
+    document.getElementById('export-data-btn').addEventListener('click', exportUserData);
+    document.getElementById('import-data-btn').addEventListener('click', () => {
+        document.getElementById('import-data-input').click();
+    });
+    document.getElementById('import-data-input').addEventListener('change', function () {
+        if (this.files[0]) importUserData(this.files[0]);
+        this.value = '';
+    });
+
     // ── Auth check ──────────────────────────────────────────
     const user = await checkSession();
     if (!user) { window.location.href = ROUTES.HOME; return; }
@@ -428,6 +570,7 @@ async function init() {
     const pName = document.getElementById('p-name');
     pName.textContent = displayName;
     pName.classList.remove('skeleton');
+    currentUserName = displayName;
 
     // ── Profile / tier ──────────────────────────────────────
     const pTier = document.getElementById('p-tier');
@@ -438,7 +581,7 @@ async function init() {
         .single();
 
     if (!profileError && profileTier) {
-        if (profileTier.full_name) { pName.textContent = profileTier.full_name; }
+        if (profileTier.full_name) { pName.textContent = profileTier.full_name; currentUserName = profileTier.full_name; }
         pTier.textContent = profileTier.final_tier || 'Novice';
         if (profileTier.has_travel_visa) {
             document.getElementById('visa-visa').style.display = '';
@@ -451,13 +594,25 @@ async function init() {
     // ── Activities & scans ──────────────────────────────────
     const pKm = document.getElementById('p-km');
     try {
-        const [{ data: scans, error: scansError }, { data: allActivities, error: actError }] = await Promise.all([
+        const [
+            { data: scans, error: scansError },
+            { data: allActivities, error: actError },
+            { data: allCerts },
+        ] = await Promise.all([
             supabase.from('scans').select('*').eq('user_id', user.id).order('scanned_at', { ascending: false }),
             supabase.from('activities').select('*').order('created_at', { ascending: true }),
+            supabase.from('certificates').select('*').order('created_at', { ascending: true }),
         ]);
 
         if (scansError) throw scansError;
         if (actError) throw actError;
+
+        // Group certificate templates by activity (ignore errors — certs are optional)
+        certsByActivity.clear();
+        (allCerts || []).forEach(c => {
+            if (!certsByActivity.has(c.activity_id)) certsByActivity.set(c.activity_id, []);
+            certsByActivity.get(c.activity_id).push(c);
+        });
 
         // Total KM
         let totalKm = 0;
