@@ -48,6 +48,28 @@ export function driveFileId(url) {
     return m ? m[1] : null;
 }
 
+/**
+ * Fire-and-forget delete that survives the page unloading. Uses fetch with
+ * `keepalive` (NOT sendBeacon): Apps Script `/exec` URLs always 302-redirect to
+ * script.googleusercontent.com, and sendBeacon does not follow redirects, so the
+ * request would never arrive. keepalive lets the fetch outlive the page.
+ */
+export function deleteFromDriveBeacon(url) {
+    if (!GAS_URL) return;
+    const fileId = driveFileId(url);
+    if (!fileId) return;
+    try {
+        fetch(GAS_URL, {
+            method: 'POST',
+            keepalive: true,
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify({ action: 'delete', fileId }),
+        }).catch(() => {});
+    } catch {
+        /* best effort */
+    }
+}
+
 /** Best-effort delete of a previously uploaded Drive file (by its URL). */
 export async function deleteFromDrive(url) {
     if (!GAS_URL) return;

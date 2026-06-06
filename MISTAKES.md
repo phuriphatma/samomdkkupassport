@@ -14,6 +14,28 @@ otherwise it falls back to the configured **Site URL** (production).
 **Fix (Supabase dashboard, not code):** Authentication → URL Configuration → add
 `http://localhost:5173/**` to **Redirect URLs**. Keep the production URL too. No code change.
 
+## OAuth on a LAN IP (iPad testing) bounced to production even with the IP allow-listed
+**Symptom:** Open the dev server at `http://192.168.1.233:5173`, sign in, land on
+`https://samomdkkupassport.pages.dev/#` — even though `http://192.168.1.233:5173/**`
+is in the Redirect URLs. The `/auth/v1/callback` response `location:` points at the
+Site URL, i.e. Supabase rejected the `redirect_to` and fell back.
+**Cause:** We were redirecting OAuth straight to the **deep path**
+`/html/dashboard.html`, which only matches via the `/**` wildcard. That wildcard
+wasn't being honored for the LAN entry, so Supabase substituted the Site URL.
+**Fix (code):** `index.js` now redirects OAuth back to the **same page** it started
+on (`window.location.origin + window.location.pathname`) and forwards to the
+dashboard/pending-scan in JS (`forwardAfterLogin()`). A same-page redirect matches a
+simple Redirect-URL entry, so local/LAN dev works. (Mirrors the sibling SPA project.)
+Easiest alternative: test on the branch **preview URL** — it's covered by the existing
+`https://*.samomdkkupassport.pages.dev/**` entry, no per-IP config.
+
+## sendBeacon does NOT follow redirects — useless for GAS `/exec`
+**Symptom:** A fire-and-forget cleanup/notify to the Apps Script web app never arrives.
+**Cause:** GAS `/exec` URLs always 302-redirect to `script.googleusercontent.com`;
+`navigator.sendBeacon` doesn't follow redirects.
+**Fix:** Use `fetch(url, { keepalive: true, ... })` for GAS endpoints (see
+`deleteFromDriveBeacon` in `js/upload.js`). Don't switch it back to sendBeacon.
+
 ## Passport pages shift up/down when changing pages (desktop)
 **Symptom:** Clicking ‹ / › moves the whole book and the nav row vertically.
 **Cause:** `.passport-page` used `min-height: 480px; max-height: 90dvh`, so each page
@@ -51,6 +73,33 @@ trusting `base_points_km` in aggregates.
 the admin terminal uses the anon key with a hardcoded `admin/1234` localStorage flag —
 there is no real admin auth. Treat the admin surface as trusted-network only and tighten
 RLS if/when real auth is added.
+
+## iPad: modal clips / page "locks up" when the keyboard opens
+**Symptom:** Writing a memory on iPad, the keyboard pushes the modal so its top is
+clipped and the Save button hides behind the keyboard; sometimes the page feels stuck.
+**Cause:** iOS doesn't shrink the *layout* viewport for the keyboard, so a
+bottom-anchored `position:fixed` modal sits partly under it. A leftover
+`document.body.style.overflow='hidden'` could also strand the page.
+**Fix:** `dashboard.js` sizes open `.memory-modal`s to `window.visualViewport`
+(height + offsetTop) and re-syncs on its `resize`/`scroll`. Modal cards use
+`max-height: 88%` (of that container), not `vh`. Body overflow is no longer toggled
+in JS (the theme already sets `overflow:hidden`).
+
+## iPad: blue background shows under the book on overscroll
+**Cause:** The dashboard body was `height:100dvh; overflow:hidden` but the document
+could still rubber-band, exposing the fixed `.sky-bg`.
+**Fix:** `body.passport-page-theme` is `position:fixed; inset:0; overscroll-behavior:none`.
+
+## Info page: only the flight log scrolls (don't make the whole page scroll)
+**Note:** `#page-1` is `overflow:hidden`; `.info-flight-log`/`.activity-log-list`
+are `flex:1; min-height:0; overflow-y:auto`. The flight log markup is a **sibling**
+of `.info-section`, not inside it — keep it that way or the internal scroll breaks.
+
+## Admin uploads are deleted if the activity/cert isn't saved
+**Note:** `admin-page.js` tracks every Drive upload as uncommitted until a save uses
+it (`commitUpload`), and cleans up orphans on cancel/replace and via `sendBeacon` on
+`pagehide` (`deleteFromDriveBeacon`). Don't upload straight into a saved row without
+committing, or real images may get beacon-deleted on tab close.
 
 ## Vite is multi-page
 **Note:** Each HTML entry (`index.html`, `html/{dashboard,admin,scan}.html`) is a

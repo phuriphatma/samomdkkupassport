@@ -35,8 +35,7 @@
 
   <!-- Stamp search -->
   <div class="stamp-search-bar">
-    <input type="search" id="stamp-search" placeholder="🔍 Search your stamps…" autocomplete="off" />
-    <div class="stamp-search-results" id="stamp-search-results" style="display:none;"></div>
+    <input type="search" id="stamp-search" placeholder="🔍 Search stamps — press Enter to jump" autocomplete="off" enterkeyhint="search" />
   </div>
 
   <!-- Passport book wrapper -->
@@ -51,7 +50,7 @@
         <div class="cover-title">SAMO<br>PASSPORT</div>
         <div class="cover-subtitle">WELLNESS JOURNEY 2027</div>
         <div class="cover-bottom-bar"></div>
-        <div class="cover-open-hint">Open to view →</div>
+        <div class="cover-open-hint">Swipe to view →</div>
       </div>
     </div>
 
@@ -96,20 +95,22 @@
             <span class="field-value small-value" id="p-user-id">—</span>
           </div>
         </div>
+      </div>
 
-        <!-- Direct child of the grid — grid-column: 1/-1 makes it span full width -->
-        <div class="info-flight-log">
-          <div class="info-divider-label">✈️ FLIGHT LOG</div>
-          <div class="activity-log-list" id="activity-list">
-            <div class="skeleton" style="width:100%;height:16px;margin-bottom:8px;border-radius:4px;"></div>
-            <div class="skeleton" style="width:80%;height:16px;margin-bottom:8px;border-radius:4px;"></div>
-            <div class="skeleton" style="width:60%;height:16px;border-radius:4px;"></div>
-          </div>
+      <!-- Flight log: the only scrolling region on this page (fixed width) -->
+      <div class="info-flight-log">
+        <div class="info-divider-label">✈️ FLIGHT LOG</div>
+        <div class="activity-log-list" id="activity-list">
+          <div class="skeleton" style="width:100%;height:16px;margin-bottom:8px;border-radius:4px;"></div>
+          <div class="skeleton" style="width:80%;height:16px;margin-bottom:8px;border-radius:4px;"></div>
+          <div class="skeleton" style="width:60%;height:16px;border-radius:4px;"></div>
         </div>
       </div>
 
       <div class="info-backup-row">
-        <span class="info-backup-label">📦 My data (this device)</span>
+        <span class="info-backup-label">📦 My data (this device)
+          <button id="backup-info-btn" class="backup-info-btn" type="button" aria-label="What is this?" title="What this backs up">ⓘ</button>
+        </span>
         <div class="info-backup-actions">
           <button id="export-data-btn" class="backup-btn" type="button">⬇️ Export</button>
           <button id="import-data-btn" class="backup-btn" type="button">⬆️ Import</button>

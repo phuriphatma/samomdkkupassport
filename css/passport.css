@@ -4,14 +4,18 @@
    BODY / PAGE THEME
 ========================================= */
 body.passport-page-theme {
+    /* Pin to the viewport so the document itself never scrolls or rubber-bands —
+       that overscroll is what exposed the blue sky background under the book on
+       iPad. position:fixed + overscroll-behavior:none locks it flat. */
+    position: fixed;
+    inset: 0;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: flex-start;
-    height: 100svh;
-    height: 100dvh;        /* fit the viewport on every device — no page scroll */
     padding: 0;
     overflow: hidden;
+    overscroll-behavior: none;
     touch-action: manipulation; /* blocks double-tap zoom on the whole page */
 }
 
@@ -234,12 +238,15 @@ body.passport-page-theme {
 /* ──────────────────────────────
    INFO PAGE LAYOUT
 ────────────────────────────── */
+/* Info page is fixed (doesn't scroll as a whole) — only the flight log scrolls. */
+#page-1 { overflow: hidden; }
+
 .info-section {
     display: grid;
     grid-template-columns: auto 1fr;
     column-gap: 18px;
     align-content: start; /* rows pack at top, no stretch gap */
-    flex: 1;
+    flex: 0 0 auto;
 }
 
 .info-photo-col {
@@ -351,8 +358,11 @@ body.passport-page-theme {
    FLIGHT LOG (embedded in info page)
 ────────────────────────────── */
 .activity-log-list {
-    /* No independent scroll — the whole page (.page-inner) is the scroll container,
-       so the log can't overlap the page edges. */
+    /* The flight log is the only scroll region on the info page — it grows to
+       fill the leftover height and scrolls internally, so the page stays put. */
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
     padding-right: 4px;
 }
 
@@ -360,7 +370,10 @@ body.passport-page-theme {
    FLIGHT LOG IN INFO PAGE
 ────────────────────────────── */
 .info-flight-log {
-    grid-column: 1 / -1; /* spans photo col + fields col = full passport width */
+    flex: 1 1 auto;     /* takes the remaining vertical space on the info page */
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
     margin-top: 14px;
 }
 
@@ -502,7 +515,26 @@ body.passport-page-theme {
     text-transform: uppercase;
     font-weight: 700;
     color: rgba(27, 63, 107, 0.5);
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
 }
+
+.backup-info-btn {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    border: none;
+    padding: 0;
+    background: rgba(27, 63, 107, 0.12);
+    color: var(--passport-navy);
+    font-size: 0.62rem;
+    line-height: 16px;
+    text-align: center;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+.backup-info-btn:hover { background: rgba(27, 63, 107, 0.22); }
 
 .info-backup-actions { display: flex; gap: 8px; }
 
@@ -569,6 +601,13 @@ body.passport-page-theme {
 
 .stamp-slot:hover { transform: scale(1.06); background: rgba(41,171,226,0.08); }
 .stamp-slot:active { transform: scale(0.96); }
+
+/* Brief highlight when navigated to from search */
+.stamp-slot.flash { animation: stampFlash 1.6s ease; }
+@keyframes stampFlash {
+    0%, 100% { background: transparent; }
+    20%, 60% { background: rgba(249, 115, 22, 0.22); }
+}
 
 /* Inactive: grey dashed ring */
 .stamp-slot.inactive {
@@ -781,7 +820,7 @@ body.passport-page-theme {
     background: white;
     width: 100%;
     max-width: 480px;
-    max-height: 88vh;
+    max-height: 88%;
     border-radius: 24px 24px 0 0;
     padding: 24px 22px 32px;
     overflow-y: auto;
@@ -894,27 +933,95 @@ body.passport-page-theme {
 
 .modal-certs-list {
     display: flex;
-    flex-wrap: wrap;
+    flex-direction: column;
     gap: 8px;
 }
 
-.cert-download-btn {
-    font-family: var(--font-body);
-    font-size: 0.8rem;
+.cert-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.cert-row-label {
+    flex: 1 1 auto;
+    min-width: 80px;
+    font-size: 0.82rem;
     font-weight: 600;
-    padding: 8px 14px;
+    color: var(--text-dark);
+}
+
+.cert-action-btn {
+    font-family: var(--font-body);
+    font-size: 0.78rem;
+    font-weight: 600;
+    padding: 7px 12px;
     border-radius: 10px;
     border: none;
-    background: linear-gradient(135deg, var(--accent-secondary), var(--sky-top));
-    color: #fff;
     cursor: pointer;
     width: auto;
+    flex-shrink: 0;
     transition: opacity 0.2s, transform 0.1s;
 }
 
-.cert-download-btn:hover { opacity: 0.92; }
-.cert-download-btn:active { transform: scale(0.97); }
-.cert-download-btn:disabled { opacity: 0.6; cursor: default; }
+.cert-action-btn:hover { opacity: 0.92; }
+.cert-action-btn:active { transform: scale(0.97); }
+.cert-action-btn:disabled { opacity: 0.6; cursor: default; }
+
+.cert-view-btn {
+    background: #fff;
+    border: 1px solid var(--sky-top);
+    color: var(--sky-top);
+}
+
+.cert-download-btn {
+    background: linear-gradient(135deg, var(--accent-secondary), var(--sky-top));
+    color: #fff;
+}
+
+/* Inline certificate viewer (iPad-friendly preview) */
+.cert-viewer {
+    position: fixed;
+    inset: 0;
+    z-index: 300;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    padding: 24px;
+    background: rgba(10, 25, 50, 0.85);
+    -webkit-backdrop-filter: blur(4px);
+    backdrop-filter: blur(4px);
+}
+
+.cert-viewer-img {
+    max-width: 100%;
+    max-height: 80%;
+    object-fit: contain;
+    border-radius: 6px;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+}
+
+.cert-viewer-hint {
+    color: rgba(255, 255, 255, 0.85);
+    font-size: 0.82rem;
+}
+
+.cert-viewer-close {
+    position: absolute;
+    top: 18px;
+    right: 18px;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(255, 255, 255, 0.92);
+    color: var(--text-dark);
+    font-size: 1rem;
+    cursor: pointer;
+}
 
 .modal-textarea {
     width: 100%;
@@ -1093,7 +1200,9 @@ body.passport-page-theme {
     box-shadow: 0 8px 24px rgba(27, 63, 107, 0.35);
     z-index: 200;
     animation: toastIn 0.3s ease;
-    white-space: nowrap;
+    max-width: min(90vw, 420px);
+    text-align: center;
+    line-height: 1.4;
 }
 
 @keyframes toastIn {
@@ -1118,7 +1227,7 @@ body.passport-page-theme {
     .field-value { font-size: 0.88rem; }
     .km-value { font-size: 1.05rem; }
 
-    .modal-card { max-height: 92vh; border-radius: 20px 20px 0 0; }
+    .modal-card { max-height: 92%; border-radius: 20px 20px 0 0; }
 }
 
 /* Tablet / desktop: a touch wider for comfortable reading */

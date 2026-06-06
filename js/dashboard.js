@@ -60,15 +60,18 @@ function buildPageDots() {
 // ─── Stamp pages ──────────────────────────────────────────
 function buildStampPages(allActivities, userScans) {
     const scannedIds = new Set(userScans.map(s => s.activity_id));
-    const numStampPages = Math.ceil(allActivities.length / STAMPS_PER_PAGE);
+    // Only show stamps the student has actually earned (scanned). Locked/unearned
+    // activities are not displayed in the passport.
+    const earned = allActivities.filter(a => scannedIds.has(a.id));
+    const numStampPages = Math.ceil(earned.length / STAMPS_PER_PAGE);
     const book = document.getElementById('page-1').parentElement; // passport-container
 
-    // Flat registry so users can search across all stamp pages
+    // Flat registry so users can search across all (earned) stamp pages
     allStamps.length = 0;
-    allActivities.forEach((activity, i) => {
+    earned.forEach((activity, i) => {
         allStamps.push({
             activity,
-            isActive: scannedIds.has(activity.id),
+            isActive: true,
             scan: userScans.find(sc => sc.activity_id === activity.id),
             pageIndex: 2 + Math.floor(i / STAMPS_PER_PAGE), // page that holds this stamp
         });
@@ -76,7 +79,7 @@ function buildStampPages(allActivities, userScans) {
 
     // Activity stamp pages
     for (let p = 0; p < numStampPages; p++) {
-        const pageActivities = allActivities.slice(p * STAMPS_PER_PAGE, (p + 1) * STAMPS_PER_PAGE);
+        const pageActivities = earned.slice(p * STAMPS_PER_PAGE, (p + 1) * STAMPS_PER_PAGE);
         const globalPageIdx = 2 + p;
         const pageNumLabel = String(globalPageIdx).padStart(2, '0');
 
@@ -290,24 +293,51 @@ function populateCerts(activityId) {
 
     list.innerHTML = '';
     certs.forEach(cert => {
-        const btn = document.createElement('button');
-        btn.className = 'cert-download-btn';
-        btn.type = 'button';
-        btn.textContent = `⬇️ ${cert.label}`;
-        btn.addEventListener('click', () => generateAndDownloadCert(cert, btn));
-        list.appendChild(btn);
+        const row = document.createElement('div');
+        row.className = 'cert-row';
+
+        const label = document.createElement('span');
+        label.className = 'cert-row-label';
+        label.textContent = cert.label;
+
+        const viewBtn = document.createElement('button');
+        viewBtn.className = 'cert-action-btn cert-view-btn';
+        viewBtn.type = 'button';
+        viewBtn.textContent = '👁 View';
+        viewBtn.addEventListener('click', () => viewCert(cert, viewBtn));
+
+        const dlBtn = document.createElement('button');
+        dlBtn.className = 'cert-action-btn cert-download-btn';
+        dlBtn.type = 'button';
+        dlBtn.textContent = '⬇️ Download';
+        dlBtn.addEventListener('click', () => generateAndDownloadCert(cert, dlBtn));
+
+        row.appendChild(label);
+        row.appendChild(viewBtn);
+        row.appendChild(dlBtn);
+        list.appendChild(row);
     });
     section.style.display = '';
 }
 
-async function generateAndDownloadCert(cert, btn) {
-    if (!currentUserName) { showToast('Your name is still loading — try again'); return; }
+async function buildCertCanvas(cert, btn) {
     const original = btn.textContent;
     btn.disabled = true;
-    btn.textContent = '⏳ Generating…';
+    btn.textContent = '⏳ …';
     try {
         const canvas = document.createElement('canvas');
         await renderCertificate(canvas, cert, currentUserName);
+        return canvas;
+    } finally {
+        btn.disabled = false;
+        btn.textContent = original;
+    }
+}
+
+async function generateAndDownloadCert(cert, btn) {
+    if (!currentUserName) { showToast('Your name is still loading — try again'); return; }
+    try {
+        const canvas = await buildCertCanvas(cert, btn);
         const clean = s => (s || '').replace(/[^\p{L}\p{N} _-]/gu, '').trim();
         const safeName = clean(currentUserName) || 'student';
         const safeLabel = clean(cert.label) || 'certificate';
@@ -319,10 +349,41 @@ async function generateAndDownloadCert(cert, btn) {
         } else {
             showToast(err.message || 'Could not generate certificate');
         }
-    } finally {
-        btn.disabled = false;
-        btn.textContent = original;
     }
+}
+
+// View the certificate inline (works on iPad, where a `download` link won't open
+// a preview). The image can be long-pressed to save to Photos.
+async function viewCert(cert, btn) {
+    if (!currentUserName) { showToast('Your name is still loading — try again'); return; }
+    try {
+        const canvas = await buildCertCanvas(cert, btn);
+        let dataUrl;
+        try { dataUrl = canvas.toDataURL('image/png'); }
+        catch { showToast('Could not show — the background link must allow downloads (CORS)'); return; }
+        showCertViewer(dataUrl);
+    } catch (err) {
+        showToast(err.message || 'Could not generate certificate');
+    }
+}
+
+function showCertViewer(dataUrl) {
+    let overlay = document.getElementById('cert-viewer');
+    if (!overlay) {
+        overlay = document.createElement('div');
+        overlay.id = 'cert-viewer';
+        overlay.className = 'cert-viewer';
+        overlay.innerHTML = `
+            <button class="cert-viewer-close" aria-label="Close">✕</button>
+            <img class="cert-viewer-img" alt="Your certificate">
+            <div class="cert-viewer-hint">Long-press the image to save it</div>`;
+        document.body.appendChild(overlay);
+        const close = () => { overlay.style.display = 'none'; };
+        overlay.querySelector('.cert-viewer-close').addEventListener('click', close);
+        overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+    }
+    overlay.querySelector('.cert-viewer-img').src = dataUrl;
+    overlay.style.display = 'flex';
 }
 
 function showMemoryView(text, photos) {
@@ -354,17 +415,39 @@ function showMemoryWrite(activityId) {
     loadPhotoPreview(activityId);
 }
 
+// Keep any open modal sized to the *visible* viewport. When the on-screen
+// keyboard opens on iOS/iPad, the layout viewport doesn't shrink — so a
+// bottom-anchored modal gets pushed under the keyboard and its top clips.
+// Pinning the modal to visualViewport.height/offsetTop keeps it on-screen.
+function syncModalViewport() {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    document.querySelectorAll('.memory-modal').forEach(m => {
+        if (m.style.display === 'flex') {
+            m.style.height = vv.height + 'px';
+            m.style.top = vv.offsetTop + 'px';
+            m.style.bottom = 'auto';
+        }
+    });
+}
+
+function resetModalViewport(m) {
+    m.style.height = '';
+    m.style.top = '';
+    m.style.bottom = '';
+}
+
 function showModal() {
     const modal = document.getElementById('memory-modal');
     modal.style.display = 'flex';
-    document.body.style.overflow = 'hidden';
+    syncModalViewport();
 }
 
 function closeModal() {
     const modal = document.getElementById('memory-modal');
     modal.style.display = 'none';
     modal.classList.remove('view-mode');
-    document.body.style.overflow = '';
+    resetModalViewport(modal);
     currentModalActivity = null;
     currentModalScan = null;
 }
@@ -509,15 +592,20 @@ function importUserData(file) {
             !confirm('This backup is from a different account. Restore anyway? Your memories may not match your current stamps.')) {
             return;
         }
+        // Restore is a merge by key — entries not in the backup are left intact,
+        // so importing never deletes existing memories. Stop cleanly if storage
+        // fills up rather than leaving things half-written without notice.
+        let restored = 0;
         try {
-            Object.entries(payload.data).forEach(([key, value]) => {
+            for (const [key, value] of Object.entries(payload.data)) {
                 localStorage.setItem(key, value);
-            });
+                restored++;
+            }
         } catch {
-            showToast('Storage full — could not restore everything');
+            showToast(`Storage full — restored ${restored} of ${Object.keys(payload.data).length} items`);
             return;
         }
-        showToast('Backup restored — reloading…');
+        showToast(`Backup restored (${restored} items) — reloading…`);
         setTimeout(() => window.location.reload(), 900);
     };
     reader.readAsText(file);
@@ -564,7 +652,7 @@ function openHistory() {
     const modal = document.getElementById('history-modal');
     const body = document.getElementById('history-body');
     modal.style.display = 'flex';
-    document.body.style.overflow = 'hidden';
+    syncModalViewport();
 
     // Yearly วาระสโม totals (points + badges earned that year)
     const byYear = new Map(); // year -> { pts, badges:Set(activityId) }
@@ -622,8 +710,9 @@ function openHistory() {
 }
 
 function closeHistory() {
-    document.getElementById('history-modal').style.display = 'none';
-    document.body.style.overflow = '';
+    const modal = document.getElementById('history-modal');
+    modal.style.display = 'none';
+    resetModalViewport(modal);
 }
 
 function escapeHtmlText(s) {
@@ -635,7 +724,7 @@ async function openLeaderboard() {
     const modal = document.getElementById('leaderboard-modal');
     const list = document.getElementById('lb-list');
     modal.style.display = 'flex';
-    document.body.style.overflow = 'hidden';
+    syncModalViewport();
     list.innerHTML = '<p class="lb-loading">Loading…</p>';
 
     // Rank by points within the CURRENT วาระสโม (resets each year).
@@ -689,8 +778,9 @@ async function openLeaderboard() {
 }
 
 function closeLeaderboard() {
-    document.getElementById('leaderboard-modal').style.display = 'none';
-    document.body.style.overflow = '';
+    const modal = document.getElementById('leaderboard-modal');
+    modal.style.display = 'none';
+    resetModalViewport(modal);
 }
 
 // ─── Edit name ────────────────────────────────────────────
@@ -714,43 +804,37 @@ async function editName() {
     showToast('Name updated ✓');
 }
 
-// ─── Stamp search ─────────────────────────────────────────
-function renderStampSearch(term) {
-    const box = document.getElementById('stamp-search-results');
-    const q = term.trim().toLowerCase();
-    if (!q) { box.style.display = 'none'; box.innerHTML = ''; return; }
-
-    const matches = allStamps
-        .filter(s => (s.activity.name || s.activity.badge_name || '').toLowerCase().includes(q))
-        .slice(0, 12);
-
-    if (matches.length === 0) {
-        box.innerHTML = '<div class="stamp-search-empty">No matching stamps</div>';
-        box.style.display = '';
-        return;
-    }
-
-    box.innerHTML = '';
-    matches.forEach(({ activity, isActive, scan, pageIndex }) => {
-        const row = document.createElement('button');
-        row.type = 'button';
-        row.className = 'stamp-search-item';
-        const icon = isActive ? '✅' : '🔒';
-        row.innerHTML = `<span class="ss-icon">${icon}</span><span class="ss-name"></span>`;
-        row.querySelector('.ss-name').textContent = activity.name || activity.badge_name || 'Activity';
-        row.addEventListener('click', () => {
-            document.getElementById('stamp-search').value = '';
-            box.style.display = 'none';
-            box.innerHTML = '';
-            document.getElementById('stamp-search').blur();
-            // Flip the passport to the page that holds this stamp, then open it
-            if (typeof pageIndex === 'number' && pageIndex < totalPages) goToPage(pageIndex);
-            if (isActive) openMemoryModal(activity, scan);
-            else openLockedModal(activity);
-        });
-        box.appendChild(row);
+// Briefly highlight + scroll to a stamp on its page (used after search).
+function flashStamp(activityId) {
+    requestAnimationFrame(() => {
+        const slot = document.querySelector(`.stamp-slot[data-activity-id="${activityId}"]`);
+        if (!slot) return;
+        slot.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        slot.classList.remove('flash');
+        void slot.offsetWidth; // restart the animation
+        slot.classList.add('flash');
+        setTimeout(() => slot.classList.remove('flash'), 1700);
     });
-    box.style.display = '';
+}
+
+// ─── Stamp search ─────────────────────────────────────────
+// No dropdown — typing a name and pressing Enter (or the keyboard's Search key)
+// jumps straight to that stamp's page and highlights it.
+function jumpToSearch(term) {
+    const search = document.getElementById('stamp-search');
+    const q = (term || '').trim().toLowerCase();
+    if (!q) return;
+
+    const match = allStamps.find(
+        s => (s.activity.name || s.activity.badge_name || '').toLowerCase().includes(q),
+    );
+    if (!match) { showToast('No matching stamp'); return; }
+
+    search.blur();
+    if (typeof match.pageIndex === 'number' && match.pageIndex < totalPages) {
+        goToPage(match.pageIndex);
+        flashStamp(match.activity.id);
+    }
 }
 
 // ─── Main init ────────────────────────────────────────────
@@ -834,15 +918,30 @@ async function init() {
     // Edit name
     document.getElementById('edit-name-btn').addEventListener('click', editName);
 
-    // Stamp search
-    document.getElementById('stamp-search').addEventListener('input', function () {
-        renderStampSearch(this.value);
+    // Stamp search — press Enter / Search to jump to the matching stamp's page
+    const stampSearch = document.getElementById('stamp-search');
+    stampSearch.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); jumpToSearch(stampSearch.value); }
     });
-    document.addEventListener('click', (e) => {
-        if (!e.target.closest('.stamp-search-bar')) {
-            const box = document.getElementById('stamp-search-results');
-            box.style.display = 'none';
-        }
+    stampSearch.addEventListener('search', () => jumpToSearch(stampSearch.value));
+
+    // Keep modals glued to the visible viewport as the keyboard opens/closes.
+    if (window.visualViewport) {
+        window.visualViewport.addEventListener('resize', syncModalViewport);
+        window.visualViewport.addEventListener('scroll', syncModalViewport);
+    }
+    // When the memory textarea is focused, make sure it scrolls into view above
+    // the keyboard once the layout settles.
+    document.getElementById('modal-memory-text').addEventListener('focus', () => {
+        setTimeout(() => {
+            document.getElementById('modal-memory-text')
+                .scrollIntoView({ block: 'center', behavior: 'smooth' });
+        }, 300);
+    });
+
+    // "My data" info icon — explains what the backup covers
+    document.getElementById('backup-info-btn').addEventListener('click', () => {
+        showToast('Backup saves your profile photo, activity memories & notes (kept only on this device) to a file.', 4200);
     });
 
     // Data backup (export / import)

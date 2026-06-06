@@ -8,8 +8,9 @@ Last updated: 2026-06-06.
 - **Auth** — Google OAuth via Supabase; session handled in `auth.js` / `index.js`.
 - **Student dashboard** — passport "ebook": cover, personal info, stamp pages
   (earned + locked), future page, back cover; page navigation with dots.
-- **Stamps & flight log** — all activities shown; earned ones open a memory modal.
-  Flight log shows all scans, newest first (ordered by `scanned_at`).
+- **Stamps & flight log** — only **earned** stamps are shown (scanned activities);
+  tapping one opens its memory modal. Stamp search flips to the stamp's page and
+  highlights it (no popup). The info page is fixed; only the flight log scrolls.
 - **Memory modal** — per-activity note + photos, stored in `localStorage` (per device).
 - **Profile photo** — `localStorage`, per device.
 - **Data backup** — Export/Import all on-device user content as a JSON file.

@@ -8,6 +8,23 @@ const loginBtn = document.getElementById('google-login');
 const loggedInSection = document.getElementById('logged-in-section');
 const emailDisplay = document.getElementById('user-email-display');
 
+// Did we just come back from the Google OAuth redirect? Capture this before the
+// Supabase client strips the token from the URL hash. We land OAuth back on THIS
+// page (origin + pathname) instead of jumping straight to /html/dashboard.html —
+// a same-page redirect matches a simple Supabase Redirect-URL entry, so local /
+// LAN dev works without allow-listing every deep path. We then forward in JS.
+const RETURNING_FROM_OAUTH = window.location.hash.includes('access_token');
+
+function forwardAfterLogin() {
+    const pendingUrl = getPendingScanUrl();
+    if (pendingUrl) {
+        clearPendingScanUrl();
+        window.location.replace(pendingUrl);
+        return;
+    }
+    window.location.replace(ROUTES.DASHBOARD);
+}
+
 function updateUI(session) {
     loadingText.style.display = 'none';
 
@@ -29,13 +46,19 @@ async function initAuth() {
         ]);
         if (response.error) throw response.error;
         updateUI(response.data.session);
+        if (RETURNING_FROM_OAUTH && response.data.session) { forwardAfterLogin(); return; }
     } catch (err) {
         console.error("Session check error or timeout:", err);
         updateUI(null);
     }
 
-    supabase.auth.onAuthStateChange((_event, session) => {
+    supabase.auth.onAuthStateChange((event, session) => {
         updateUI(session);
+        // Right after OAuth returns to this page, forward to the dashboard /
+        // pending scan once the session is established.
+        if (RETURNING_FROM_OAUTH && session && (event === 'SIGNED_IN' || event === 'INITIAL_SESSION')) {
+            forwardAfterLogin();
+        }
     });
 }
 
@@ -50,7 +73,8 @@ loginBtn.addEventListener('click', async () => {
 await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {
-        redirectTo: window.location.origin + ROUTES.DASHBOARD, // Updated
+        // Land back on THIS page; forwardAfterLogin() then routes onward.
+        redirectTo: window.location.origin + window.location.pathname,
     }
 });
 });

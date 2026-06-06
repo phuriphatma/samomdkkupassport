@@ -3,7 +3,31 @@ import { supabase } from './app.js';
 import { generateUUID } from './utils.js';
 import { ROUTES } from './routes.js';
 import { renderCertificate, loadCertImage, CERT_FONTS } from './certificate.js';
-import { uploadToDrive, deleteFromDrive, isUploadConfigured } from './upload.js';
+import { uploadToDrive, deleteFromDrive, deleteFromDriveBeacon, isUploadConfigured } from './upload.js';
+
+// --- ORPHANED-UPLOAD TRACKING ---
+// Images upload to Drive immediately (so the preview/QR works), but if the admin
+// never saves the activity/certificate that image would silently burn storage.
+// We track every upload as "uncommitted" until a save uses it, and clean up the
+// rest on cancel, on replacement, and when the tab closes.
+const pendingUploads = new Map(); // inputId -> last uploaded (uncommitted) url
+const uncommittedUploads = new Set();
+
+function commitUpload(url) {
+    if (!url) return;
+    uncommittedUploads.delete(url);
+    for (const [k, v] of pendingUploads) if (v === url) pendingUploads.delete(k);
+}
+
+function discardPendingUpload(inputId) {
+    const url = pendingUploads.get(inputId);
+    if (!url) return;
+    uncommittedUploads.delete(url);
+    pendingUploads.delete(inputId);
+    deleteFromDrive(url);
+    const el = document.getElementById(inputId);
+    if (el && el.value === url) el.value = '';
+}
 
 const CERT_SAMPLE_NAME = 'ชื่อ นามสกุล';
 
@@ -74,6 +98,11 @@ async function init() {
     
     preventScrollChange('act-km');
     preventScrollChange('edit-km');
+
+    // Clean up any uploaded-but-unsaved images when the tab closes.
+    window.addEventListener('pagehide', () => {
+        uncommittedUploads.forEach(url => deleteFromDriveBeacon(url));
+    });
 
     if (
         localStorage.getItem('admin_logged_in') === 'true' ||
@@ -319,6 +348,7 @@ window.editActivity = async (id) => {
 
 window.cancelEdit = () => {
     editingActivityId = null;
+    discardPendingUpload('edit-badge-url'); // drop an uploaded-but-unsaved badge
     document.getElementById('edit-section').style.display = 'none';
     document.getElementById('event-creation').style.display = 'block';
     document.getElementById('manage-section').style.display = 'block';
@@ -406,6 +436,7 @@ async function submitEditActivity(e) {
         })
         .eq('activity_id', editingActivityId);
 
+    commitUpload(badge_url); // image is now attached to a saved activity
     alert('Activity updated successfully!');
     cancelEdit();
     loadActivities();
@@ -443,6 +474,7 @@ async function createActivity(e) {
     }
 
     currentActivityId = data[0].id;
+    commitUpload(badge_url); // image is now attached to a saved activity
     loadActivities(); // Refresh the list
     startStaticQR();
 }
@@ -530,6 +562,7 @@ window.manageCerts = (id) => {
 
 window.closeCerts = () => {
     certActivityId = null;
+    discardPendingUpload('cert-bg-url'); // drop an uploaded-but-unsaved background
     document.getElementById('cert-section').style.display = 'none';
     document.getElementById('event-creation').style.display = 'block';
     document.getElementById('manage-section').style.display = 'block';
@@ -675,6 +708,7 @@ async function submitCertificate(e) {
         return;
     }
 
+    commitUpload(cert.background_url); // background is now attached to a saved cert
     document.getElementById('cert-form').reset();
     renderCertPreview();
     loadCerts(certActivityId);
@@ -709,6 +743,11 @@ function wireUpload(inputId, folder) {
         btn.textContent = '⏳ Uploading…';
         try {
             const url = await uploadToDrive(file, folder);
+            // A previous uncommitted upload in this same field is now orphaned.
+            const prev = pendingUploads.get(inputId);
+            if (prev && prev !== url) { uncommittedUploads.delete(prev); deleteFromDrive(prev); }
+            pendingUploads.set(inputId, url);
+            uncommittedUploads.add(url);
             input.value = url;
             input.dispatchEvent(new Event('input', { bubbles: true }));
         } catch (err) {

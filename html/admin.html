@@ -180,7 +180,15 @@
 
           <div class="cert-controls">
             <label>Font<select id="cert-font"></select></label>
-            <label>Font size (%)<input type="number" id="cert-font-size" value="6" min="1" max="30" step="0.5" /></label>
+            <label>Font size (%)<input type="number" id="cert-font-size" value="6" min="1" max="40" step="0.5" list="cert-font-size-presets" />
+              <datalist id="cert-font-size-presets">
+                <option value="2"></option><option value="3"></option><option value="4"></option>
+                <option value="5"></option><option value="6"></option><option value="7"></option>
+                <option value="8"></option><option value="10"></option><option value="12"></option>
+                <option value="15"></option><option value="18"></option><option value="20"></option>
+                <option value="25"></option><option value="30"></option><option value="40"></option>
+              </datalist>
+            </label>
             <label>Color<input type="color" id="cert-font-color" value="#1f2d3d" /></label>
             <label>Name X (%)<input type="number" id="cert-name-x" value="50" min="0" max="100" step="1" /></label>
             <label>Name Y (%)<input type="number" id="cert-name-y" value="52" min="0" max="100" step="1" /></label>
