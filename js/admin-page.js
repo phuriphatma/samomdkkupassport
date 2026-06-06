@@ -769,13 +769,51 @@ function renderSeasonsList() {
         list.innerHTML = '<p style="font-size:0.9rem;">No seasons yet.</p>';
         return;
     }
-    list.innerHTML = seasonsCache.map(s => `
-        <div class="cert-list-item">
+    list.innerHTML = seasonsCache.map(s => {
+        const archived = !!s.archived_at;
+        return `
+        <div class="cert-list-item${archived ? ' season-archived' : ''}">
           <span><strong>${escapeHtml(s.name)}</strong> — ${escapeHtml(seasonScopeLabel(s))}<br>
-            <small>${s.start_date} → ${s.end_date} · ${s.year}</small></span>
-          <button onclick="deleteSeason('${s.id}')" class="btn-action btn-delete">Delete</button>
-        </div>`).join('');
+            <small>${s.start_date} → ${s.end_date} · ${s.year}${archived ? ' · 🔒 archived' : ''}</small></span>
+          <span class="season-actions">
+            ${archived ? '' : `<button onclick="archiveSeason('${s.id}')" class="btn-action">Archive</button>`}
+            <button onclick="deleteSeason('${s.id}')" class="btn-action btn-delete">Delete</button>
+          </span>
+        </div>`;
+    }).join('');
 }
+
+window.archiveSeason = async (id) => {
+    const s = seasonsCache.find(x => x.id === id);
+    if (!s) return;
+    if (!confirm(`Archive "${s.name}"?\n\nThis freezes every participant's points for this season. The standings are kept even if the activities are later deleted.`)) return;
+
+    const [{ data: scans }, { data: activities }, { data: profiles }] = await Promise.all([
+        supabase.from('scans').select('user_id, activity_id, points_awarded, scanned_at'),
+        supabase.from('activities').select('id, department_id, sub_department_id, base_points_km'),
+        supabase.from('profiles').select('id, full_name, email'),
+    ]);
+
+    const deptId = s.scope === 'department' ? s.scope_id : null;
+    const subId = s.scope === 'subdepartment' ? s.scope_id : null;
+    const rows = aggregateLeaderboard(scans || [], activities || [], profiles || [], deptId, subId, s.start_date, s.end_date);
+
+    // Re-archiving replaces any previous snapshot for this season.
+    await supabase.from('season_results').delete().eq('season_id', id);
+    if (rows.length) {
+        const payload = rows.map(r => ({ season_id: id, user_id: r.userId, full_name: r.name, email: r.email, points: r.points }));
+        const { error } = await supabase.from('season_results').insert(payload);
+        if (error) { alert('Archive failed: ' + error.message); return; }
+    }
+
+    const { error: e2 } = await supabase.from('seasons').update({ archived_at: new Date().toISOString() }).eq('id', id);
+    if (e2) { alert('Archive failed: ' + e2.message); return; }
+
+    alert(`Archived "${s.name}" — ${rows.length} participant(s) snapshotted.`);
+    seasonsCache = [];
+    await ensureSeasons();
+    renderSeasonsList();
+};
 
 window.deleteSeason = async (id) => {
     if (!confirm('Delete this season?')) return;
@@ -856,11 +894,57 @@ function populateLbSeasons() {
         seasonsCache.map(s => `<option value="${s.id}">${escapeHtml(s.name)}</option>`).join('');
 }
 
-function onLbSeasonChange() {
-    const hasSeason = !!document.getElementById('lb-season').value;
+async function onLbSeasonChange() {
+    const seasonId = document.getElementById('lb-season').value;
+    const hasSeason = !!seasonId;
     document.getElementById('lb-department').style.display = hasSeason ? 'none' : '';
     if (hasSeason) document.getElementById('lb-subdepartment').style.display = 'none';
-    renderLeaderboard();
+
+    const s = seasonsCache.find(x => x.id === seasonId);
+    if (s && s.archived_at) {
+        await renderArchivedLeaderboard(s);
+    } else {
+        renderLeaderboard();
+    }
+}
+
+async function renderArchivedLeaderboard(s) {
+    document.getElementById('lb-scope-label').textContent =
+        `${s.name} · ${s.start_date} → ${s.end_date} · 🔒 archived`;
+    const table = document.getElementById('leaderboard-table');
+    table.innerHTML = '<p style="font-size:0.9rem;">Loading…</p>';
+
+    const { data, error } = await supabase
+        .from('season_results')
+        .select('full_name, email, points')
+        .eq('season_id', s.id)
+        .order('points', { ascending: false });
+
+    if (error) {
+        table.innerHTML = `<p style="color:var(--accent-danger);">${error.message}</p>`;
+        return;
+    }
+    renderLbTable(table, (data || []).map(r => ({ name: r.full_name || '(unknown)', email: r.email || '—', points: r.points })));
+}
+
+function renderLbTable(table, rows) {
+    if (!rows.length) {
+        table.innerHTML = '<p style="font-size:0.9rem;">No points recorded for this scope yet.</p>';
+        return;
+    }
+    table.innerHTML = `
+      <table class="lb-table">
+        <thead><tr><th>#</th><th>Name</th><th>Email</th><th>Points</th></tr></thead>
+        <tbody>
+          ${rows.map((r, i) => `
+            <tr>
+              <td>${i + 1}</td>
+              <td>${escapeHtml(r.name)}</td>
+              <td class="lb-email">${escapeHtml(r.email)}</td>
+              <td class="lb-points">${r.points}</td>
+            </tr>`).join('')}
+        </tbody>
+      </table>`;
 }
 
 window.closeLeaderboard = () => {
@@ -931,26 +1015,7 @@ function renderLeaderboard() {
     document.getElementById('lb-scope-label').textContent = label;
 
     const rows = aggregateLeaderboard(lbData.scans, lbData.activities, lbData.profiles, deptId, subId, startDate, endDate);
-    const table = document.getElementById('leaderboard-table');
-
-    if (rows.length === 0) {
-        table.innerHTML = '<p style="font-size:0.9rem;">No points recorded for this scope yet.</p>';
-        return;
-    }
-
-    table.innerHTML = `
-      <table class="lb-table">
-        <thead><tr><th>#</th><th>Name</th><th>Email</th><th>Points</th></tr></thead>
-        <tbody>
-          ${rows.map((r, i) => `
-            <tr>
-              <td>${i + 1}</td>
-              <td>${escapeHtml(r.name)}</td>
-              <td class="lb-email">${escapeHtml(r.email)}</td>
-              <td class="lb-points">${r.points}</td>
-            </tr>`).join('')}
-        </tbody>
-      </table>`;
+    renderLbTable(document.getElementById('leaderboard-table'), rows);
 }
 
 init();

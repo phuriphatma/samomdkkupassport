@@ -35,6 +35,7 @@ Run these in the Supabase SQL editor (safe, idempotent):
 - [ ] `db/0002_certificates_font.sql` — adds `font_family` (cert font picker).
 - [ ] `db/0003_profiles_name_policy.sql` — lets a user update their own name.
 - [ ] `db/0004_seasons.sql` — seasons + history.
+- [ ] `db/0005_season_results.sql` — archived season standings (frozen snapshots).
 
 Other:
 - [ ] **Local OAuth:** add `http://localhost:5173/**` to Supabase Redirect URLs.

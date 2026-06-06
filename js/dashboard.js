@@ -17,6 +17,7 @@ const allStamps = []; // flat registry for search: { activity, isActive, scan }
 let userScansCache = [];
 const activityById = new Map();
 let seasonsList = [];
+const archivedResults = new Map(); // season_id -> this user's archived points
 
 const DEPARTMENTS = {
     1: 'อุปนายกฝ่ายบริหารองค์กร', 2: 'ดิจิทัลและสื่อสารองค์กร', 3: 'กิจการภายใน',
@@ -577,13 +578,18 @@ function openHistory() {
         html += '<p class="hist-empty">No seasons yet.</p>';
     } else {
         seasonsList.forEach(s => {
-            const pts = userPointsInWindow(s.start_date, s.end_date, s.scope, s.scope_id);
-            const ended = s.end_date < today;
+            // Archived seasons use the frozen snapshot (survives activity deletion);
+            // active seasons are computed live from the user's scans.
+            const archived = !!s.archived_at;
+            const pts = archived
+                ? (archivedResults.get(s.id) || 0)
+                : userPointsInWindow(s.start_date, s.end_date, s.scope, s.scope_id);
+            const status = archived ? '🔒 archived' : (s.end_date < today ? 'ended' : 'ongoing');
             html += `
               <div class="hist-row hist-season">
                 <span>
                   <strong>${escapeHtmlText(s.name)}</strong>
-                  <small>${seasonScopeLabel(s)} · ${s.start_date} → ${s.end_date}${ended ? ' · ended' : ' · ongoing'}</small>
+                  <small>${seasonScopeLabel(s)} · ${s.start_date} → ${s.end_date} · ${status}</small>
                 </span>
                 <span class="hist-pts">${pts} km</span>
               </div>`;
@@ -853,11 +859,13 @@ async function init() {
             { data: allActivities, error: actError },
             { data: allCerts },
             { data: allSeasons },
+            { data: myArchived },
         ] = await Promise.all([
             supabase.from('scans').select('*').eq('user_id', user.id).order('scanned_at', { ascending: false }),
             supabase.from('activities').select('*').order('created_at', { ascending: true }),
             supabase.from('certificates').select('*').order('created_at', { ascending: true }),
             supabase.from('seasons').select('*').order('start_date', { ascending: false }),
+            supabase.from('season_results').select('season_id, points').eq('user_id', user.id),
         ]);
 
         if (scansError) throw scansError;
@@ -868,6 +876,8 @@ async function init() {
         activityById.clear();
         allActivities.forEach(a => activityById.set(a.id, a));
         seasonsList = allSeasons || [];
+        archivedResults.clear();
+        (myArchived || []).forEach(r => archivedResults.set(r.season_id, r.points));
 
         // Group certificate templates by activity (ignore errors — certs are optional)
         certsByActivity.clear();

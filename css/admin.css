@@ -228,3 +228,6 @@ input.drag-over { outline: 2px dashed var(--accent-primary); outline-offset: 2px
 /* Seasons */
 .season-controls { display: flex; flex-wrap: wrap; gap: 12px; margin: 10px 0; }
 .season-controls label { display: flex; flex-direction: column; gap: 4px; font-size: 0.75rem; font-weight: 600; color: var(--text-muted); }
+
+.season-actions { display: flex; gap: 6px; flex-shrink: 0; }
+.season-archived { opacity: 0.72; background: rgba(0,0,0,0.03); }
