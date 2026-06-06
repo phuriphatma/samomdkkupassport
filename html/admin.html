@@ -45,7 +45,7 @@
         <h3>1. Create Activity Point</h3>
         <form id="activity-form">
           <input type="text" id="act-name" placeholder="HRD Project Name" required /><br />
-          <input type="number" id="act-km" placeholder="500" required /><br />
+          <input type="number" id="act-km" placeholder="500" min="0" required /><br />
           <input type="text" id="act-badge-name" placeholder="Badge Display Name (Optional)" /><br />
           <small style="color: var(--text-muted); display: block; margin-bottom: 5px;">Upload a square image (e.g.
             200x200) to Google Drive, make it public, and paste the direct link here.</small>
@@ -78,7 +78,7 @@
         <h3>Edit Activity</h3>
         <form id="edit-activity-form">
           <input type="text" id="edit-name" placeholder="HRD Project Name" required /><br />
-          <input type="number" id="edit-km" placeholder="500" required /><br />
+          <input type="number" id="edit-km" placeholder="500" min="0" required /><br />
           <input type="text" id="edit-badge-name" placeholder="Badge Display Name (Optional)" /><br />
           <input type="url" id="edit-badge-url" placeholder="Badge Image URL" /><br />
 
@@ -117,6 +117,7 @@
       <div id="manage-section">
         <div>
           <h3>Manage Existing Activities</h3>
+          <input type="search" id="search-activity" placeholder="🔍 Search activities by name…" /><br />
           <select id="filter-department">
             <option value="">Filter by Department</option>
             <option value="1">อุปนายกฝ่ายบริหารองค์กร</option>
@@ -158,6 +159,37 @@
         </div>
       
         <button onclick="window.location.reload()" class="qr-close-btn">Close Scanner</button>
+      </div>
+
+      <div id="cert-section" style="display: none;">
+        <button type="button" onclick="closeCerts()" class="btn-cancel-edit" style="margin-bottom: 15px;">← Back to
+          activities</button>
+        <h3>Certificates — <span id="cert-activity-name"></span></h3>
+        <small style="color: var(--text-muted); display: block; margin-bottom: 10px;">An activity can have several
+          certificates (e.g. ผู้เข้าร่วม / ผู้จัดทำ). The student's name is drawn onto the background automatically.
+          Upload backgrounds to SAMO Google Drive, make them public, and paste the link.</small>
+
+        <div id="cert-list" style="margin: 15px 0;"></div>
+
+        <h4>Add a certificate</h4>
+        <form id="cert-form">
+          <input type="text" id="cert-label" placeholder="Label (e.g. ผู้เข้าร่วม)" required /><br />
+          <input type="url" id="cert-bg-url" placeholder="Background image URL (public)" required /><br />
+
+          <div class="cert-controls">
+            <label>Name X (%)<input type="number" id="cert-name-x" value="50" min="0" max="100" step="1" /></label>
+            <label>Name Y (%)<input type="number" id="cert-name-y" value="55" min="0" max="100" step="1" /></label>
+            <label>Font size (%)<input type="number" id="cert-font-size" value="6" min="1" max="30" step="0.5" /></label>
+            <label>Color<input type="color" id="cert-font-color" value="#1f2d3d" /></label>
+          </div>
+
+          <div class="cert-preview-wrap">
+            <canvas id="cert-preview" class="cert-preview-canvas"></canvas>
+            <div id="cert-preview-hint" class="cert-preview-hint">Paste a background URL to preview.</div>
+          </div>
+
+          <button type="submit">Add Certificate</button>
+        </form>
       </div>
     </div>
   </div>
