@@ -1,0 +1,42 @@
+// js/upload.js — drag-drop file upload to the SAMO Google Drive via a GAS web app.
+// The GAS web app runs AS the SAMO account, so uploaded files are owned by SAMO
+// and use its 2TB quota. Configure the endpoint via VITE_GAS_UPLOAD_URL.
+// See gas/Upload.gs and CLAUDE.md for the one-time setup.
+
+const GAS_URL = import.meta.env?.VITE_GAS_UPLOAD_URL || '';
+
+export function isUploadConfigured() {
+    return !!GAS_URL;
+}
+
+function fileToBase64(file) {
+    return new Promise((resolve, reject) => {
+        const r = new FileReader();
+        r.onload = () => resolve(String(r.result).split(',')[1]); // strip "data:...;base64,"
+        r.onerror = () => reject(new Error('Could not read file'));
+        r.readAsDataURL(file);
+    });
+}
+
+/**
+ * Upload a file to the SAMO Drive. Returns a public /file/d/<id>/view link
+ * (which fixGoogleDriveUrl() normalises for display + canvas use).
+ */
+export async function uploadToDrive(file, folder = '') {
+    if (!GAS_URL) throw new Error('Upload endpoint not configured (VITE_GAS_UPLOAD_URL)');
+    if (file.size > 15 * 1024 * 1024) throw new Error('File too large (max 15 MB)');
+
+    const data = await fileToBase64(file);
+    const res = await fetch(GAS_URL, {
+        method: 'POST',
+        // text/plain keeps this a "simple" request (no CORS preflight); the GAS
+        // web app can still read the body and its JSON response is readable back.
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ filename: file.name, mimeType: file.type, folder, data }),
+    });
+    if (!res.ok) throw new Error(`Upload failed (HTTP ${res.status})`);
+
+    const json = await res.json();
+    if (!json.url) throw new Error(json.error || 'Upload failed');
+    return json.url;
+}

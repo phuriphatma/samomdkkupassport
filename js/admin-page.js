@@ -3,6 +3,7 @@ import { supabase } from './app.js';
 import { generateUUID } from './utils.js';
 import { ROUTES } from './routes.js';
 import { renderCertificate, loadCertImage, CERT_FONTS } from './certificate.js';
+import { uploadToDrive, isUploadConfigured } from './upload.js';
 
 const CERT_SAMPLE_NAME = 'ชื่อ นามสกุล';
 
@@ -114,6 +115,11 @@ async function init() {
         .addEventListener('input', debounce(renderCertPreview, 350));
     populateCertFonts();
     setupCertPreviewDrag();
+
+    // Drag-drop / click upload for image URL fields (if a GAS endpoint is set)
+    wireUpload('act-badge-url', 'badges');
+    wireUpload('edit-badge-url', 'badges');
+    wireUpload('cert-bg-url', 'certificates');
 
     // Leaderboard filters
     document.getElementById('lb-department').addEventListener('change', onLbDeptChange);
@@ -645,6 +651,58 @@ async function submitCertificate(e) {
     document.getElementById('cert-form').reset();
     renderCertPreview();
     loadCerts(certActivityId);
+}
+
+// --- IMAGE UPLOAD (drag-drop / click) ---
+function wireUpload(inputId, folder) {
+    const input = document.getElementById(inputId);
+    if (!input) return;
+    if (!isUploadConfigured()) {
+        console.info(`[upload] VITE_GAS_UPLOAD_URL not set — drag-drop disabled for #${inputId}; paste a link instead.`);
+        return;
+    }
+
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'btn-action upload-btn';
+    btn.textContent = '⬆️ Upload';
+
+    const picker = document.createElement('input');
+    picker.type = 'file';
+    picker.accept = 'image/*';
+    picker.style.display = 'none';
+
+    input.insertAdjacentElement('afterend', picker);
+    input.insertAdjacentElement('afterend', btn);
+
+    const doUpload = async (file) => {
+        if (!file) return;
+        const old = btn.textContent;
+        btn.disabled = true;
+        btn.textContent = '⏳ Uploading…';
+        try {
+            const url = await uploadToDrive(file, folder);
+            input.value = url;
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+        } catch (err) {
+            alert('Upload failed: ' + (err.message || err));
+        } finally {
+            btn.disabled = false;
+            btn.textContent = old;
+        }
+    };
+
+    btn.addEventListener('click', () => picker.click());
+    picker.addEventListener('change', function () { doUpload(this.files[0]); this.value = ''; });
+
+    ['dragover', 'dragenter'].forEach(ev =>
+        input.addEventListener(ev, (e) => { e.preventDefault(); input.classList.add('drag-over'); }));
+    ['dragleave', 'drop'].forEach(ev =>
+        input.addEventListener(ev, (e) => { e.preventDefault(); input.classList.remove('drag-over'); }));
+    input.addEventListener('drop', (e) => {
+        const f = e.dataTransfer?.files?.[0];
+        if (f) doUpload(f);
+    });
 }
 
 // --- LEADERBOARD ---
