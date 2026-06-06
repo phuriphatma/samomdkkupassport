@@ -1036,4 +1036,15 @@ body.passport-page-theme {
 @media (min-width: 481px) {
     .passport-container,
     .passport-page { width: 360px; }
+
+    /* All pages share one height so switching pages doesn't move the book or
+       the nav row (depends only on the viewport, never on page content). */
+    .passport-page {
+        height: min(620px, 82dvh);
+        min-height: 0;
+        max-height: none;
+    }
+
+    /* Inner pages scroll internally if their content is taller than the page. */
+    .page-inner { overflow-y: auto; }
 }
