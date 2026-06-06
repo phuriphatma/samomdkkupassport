@@ -129,7 +129,8 @@ async function init() {
     // Leaderboard filters
     document.getElementById('lb-season').addEventListener('change', onLbSeasonChange);
     document.getElementById('lb-department').addEventListener('change', onLbDeptChange);
-    document.getElementById('lb-subdepartment').addEventListener('change', renderLeaderboard);
+    document.getElementById('lb-subdepartment').addEventListener('change', onLbSeasonChange);
+    document.getElementById('lb-csv-btn').addEventListener('click', downloadLeaderboardCsv);
 
     // Seasons
     document.getElementById('season-form').addEventListener('submit', submitSeason);
@@ -896,19 +897,18 @@ function populateLbSeasons() {
 
 async function onLbSeasonChange() {
     const seasonId = document.getElementById('lb-season').value;
-    const hasSeason = !!seasonId;
-    document.getElementById('lb-department').style.display = hasSeason ? 'none' : '';
-    if (hasSeason) document.getElementById('lb-subdepartment').style.display = 'none';
-
     const s = seasonsCache.find(x => x.id === seasonId);
     if (s && s.archived_at) {
         await renderArchivedLeaderboard(s);
     } else {
+        // Live season (e.g. a trimester window) can still be sliced by the
+        // department dropdown — so each ฝ่ายอุป can pull its own ranking.
         renderLeaderboard();
     }
 }
 
 async function renderArchivedLeaderboard(s) {
+    lastLbLabel = `${s.name} · ${s.start_date} → ${s.end_date} · archived`;
     document.getElementById('lb-scope-label').textContent =
         `${s.name} · ${s.start_date} → ${s.end_date} · 🔒 archived`;
     const table = document.getElementById('leaderboard-table');
@@ -927,7 +927,11 @@ async function renderArchivedLeaderboard(s) {
     renderLbTable(table, (data || []).map(r => ({ name: r.full_name || '(unknown)', email: r.email || '—', points: r.points })));
 }
 
+let lastLbRows = [];
+let lastLbLabel = 'leaderboard';
+
 function renderLbTable(table, rows) {
+    lastLbRows = rows;
     if (!rows.length) {
         table.innerHTML = '<p style="font-size:0.9rem;">No points recorded for this scope yet.</p>';
         return;
@@ -965,7 +969,7 @@ function onLbDeptChange() {
         subSel.innerHTML = '';
         subSel.style.display = 'none';
     }
-    renderLeaderboard();
+    onLbSeasonChange(); // archived-aware refresh
 }
 
 async function loadLeaderboard() {
@@ -990,32 +994,51 @@ async function loadLeaderboard() {
 
 function renderLeaderboard() {
     if (!lbData) return;
-    let deptId = null, subId = null, startDate = null, endDate = null, label = '';
+    let startDate = null, endDate = null;
 
-    const seasonId = document.getElementById('lb-season').value;
-    if (seasonId) {
-        const s = seasonsCache.find(x => x.id === seasonId);
-        if (s) {
-            startDate = s.start_date;
-            endDate = s.end_date;
-            if (s.scope === 'department') deptId = s.scope_id;
-            else if (s.scope === 'subdepartment') subId = s.scope_id;
-            label = `${s.name} · ${s.start_date} → ${s.end_date}`;
-        }
+    // Department/sub-department come from the dropdowns…
+    const deptRaw = document.getElementById('lb-department').value;
+    const subRaw = document.getElementById('lb-subdepartment').value;
+    let deptId = deptRaw ? parseInt(deptRaw, 10) : null;
+    let subId = subRaw ? parseInt(subRaw, 10) : null;
+
+    // …and a selected season adds its date window (and locks the scope if it's
+    // a department/sub-department season).
+    const s = seasonsCache.find(x => x.id === document.getElementById('lb-season').value);
+    let label;
+    if (s) {
+        startDate = s.start_date;
+        endDate = s.end_date;
+        if (s.scope === 'department') deptId = s.scope_id;
+        else if (s.scope === 'subdepartment') subId = s.scope_id;
+        const deptPart = deptId ? ` · ${DEPARTMENTS[deptId] || ''}` : '';
+        label = `${s.name} · ${s.start_date} → ${s.end_date}${deptPart}`;
     } else {
-        const deptRaw = document.getElementById('lb-department').value;
-        const subRaw = document.getElementById('lb-subdepartment').value;
-        deptId = deptRaw ? parseInt(deptRaw, 10) : null;
-        subId = subRaw ? parseInt(subRaw, 10) : null;
         label = deptId
             ? `${DEPARTMENTS[deptId]}${subId ? ' — sub-department' : ''}`
             : 'All departments (overall total)';
     }
 
     document.getElementById('lb-scope-label').textContent = label;
+    lastLbLabel = label;
 
     const rows = aggregateLeaderboard(lbData.scans, lbData.activities, lbData.profiles, deptId, subId, startDate, endDate);
     renderLbTable(document.getElementById('leaderboard-table'), rows);
+}
+
+function downloadLeaderboardCsv() {
+    if (!lastLbRows.length) { alert('Nothing to export.'); return; }
+    const esc = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
+    const lines = [['Rank', 'Name', 'Email', 'Points'].map(esc).join(',')];
+    lastLbRows.forEach((r, i) => lines.push([i + 1, r.name, r.email, r.points].map(esc).join(',')));
+    // BOM so Excel reads UTF-8 (Thai names) correctly.
+    const blob = new Blob(['﻿' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `leaderboard-${(lastLbLabel || 'all').replace(/[^\p{L}\p{N}]+/gu, '_').slice(0, 40)}.csv`;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
 }
 
 init();

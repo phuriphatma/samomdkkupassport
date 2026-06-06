@@ -231,3 +231,5 @@ input.drag-over { outline: 2px dashed var(--accent-primary); outline-offset: 2px
 
 .season-actions { display: flex; gap: 6px; flex-shrink: 0; }
 .season-archived { opacity: 0.72; background: rgba(0,0,0,0.03); }
+
+.lb-scope-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }

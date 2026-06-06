@@ -65,11 +65,12 @@ function buildStampPages(allActivities, userScans) {
 
     // Flat registry so users can search across all stamp pages
     allStamps.length = 0;
-    allActivities.forEach(activity => {
+    allActivities.forEach((activity, i) => {
         allStamps.push({
             activity,
             isActive: scannedIds.has(activity.id),
             scan: userScans.find(sc => sc.activity_id === activity.id),
+            pageIndex: 2 + Math.floor(i / STAMPS_PER_PAGE), // page that holds this stamp
         });
     });
 
@@ -694,7 +695,7 @@ function renderStampSearch(term) {
     }
 
     box.innerHTML = '';
-    matches.forEach(({ activity, isActive, scan }) => {
+    matches.forEach(({ activity, isActive, scan, pageIndex }) => {
         const row = document.createElement('button');
         row.type = 'button';
         row.className = 'stamp-search-item';
@@ -705,6 +706,9 @@ function renderStampSearch(term) {
             document.getElementById('stamp-search').value = '';
             box.style.display = 'none';
             box.innerHTML = '';
+            document.getElementById('stamp-search').blur();
+            // Flip the passport to the page that holds this stamp, then open it
+            if (typeof pageIndex === 'number' && pageIndex < totalPages) goToPage(pageIndex);
             if (isActive) openMemoryModal(activity, scan);
             else openLockedModal(activity);
         });
@@ -727,6 +731,10 @@ async function init() {
     document.getElementById('next-page').addEventListener('click', () => {
         if (currentPageIndex < totalPages - 1) goToPage(currentPageIndex + 1);
     });
+
+    // Tap the cover to open the passport (it says "Open to view →")
+    const cover = document.getElementById('page-0');
+    if (cover) cover.addEventListener('click', () => { if (currentPageIndex === 0) goToPage(1); });
 
     // Swipe left/right to turn pages (horizontal gestures only — vertical scrolls)
     const book = document.querySelector('.passport-container');
