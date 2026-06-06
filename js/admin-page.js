@@ -3,7 +3,7 @@ import { supabase } from './app.js';
 import { generateUUID } from './utils.js';
 import { ROUTES } from './routes.js';
 import { renderCertificate, loadCertImage, CERT_FONTS } from './certificate.js';
-import { uploadToDrive, isUploadConfigured } from './upload.js';
+import { uploadToDrive, deleteFromDrive, isUploadConfigured } from './upload.js';
 
 const CERT_SAMPLE_NAME = 'ชื่อ นามสกุล';
 
@@ -331,6 +331,14 @@ window.deleteActivity = async (id) => {
     )
         return;
 
+    // 0. Collect the Drive images to clean up (badge + certificate backgrounds)
+    //    BEFORE the rows are gone (certificates cascade-delete with the activity).
+    const imageUrls = [];
+    const { data: actRow } = await supabase.from('activities').select('badge_url').eq('id', id).single();
+    if (actRow?.badge_url) imageUrls.push(actRow.badge_url);
+    const { data: certRows } = await supabase.from('certificates').select('background_url').eq('activity_id', id);
+    (certRows || []).forEach(c => { if (c.background_url) imageUrls.push(c.background_url); });
+
     // 1. Delete scans attached to this activity to keep customer dashboards accurate
     const { error: scanError } = await supabase.from('scans').delete().eq('activity_id', id);
 
@@ -353,6 +361,8 @@ window.deleteActivity = async (id) => {
     } else if (!data || data.length === 0) {
         alert('Delete failed: No matching activity found, or restricted by permissions (RLS). Please check database policies.');
     } else {
+        // 3. Best-effort: remove the uploaded images from the SAMO Drive.
+        await Promise.all(imageUrls.map(deleteFromDrive));
         loadActivities();
     }
 };

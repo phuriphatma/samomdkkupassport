@@ -40,3 +40,26 @@ export async function uploadToDrive(file, folder = '') {
     if (!json.url) throw new Error(json.error || 'Upload failed');
     return json.url;
 }
+
+/** Extract a Google Drive file id from any of the link forms we store/display. */
+export function driveFileId(url) {
+    if (!url) return null;
+    const m = String(url).match(/\/d\/([a-zA-Z0-9_-]+)/) || String(url).match(/[?&]id=([a-zA-Z0-9_-]+)/);
+    return m ? m[1] : null;
+}
+
+/** Best-effort delete of a previously uploaded Drive file (by its URL). */
+export async function deleteFromDrive(url) {
+    if (!GAS_URL) return;
+    const fileId = driveFileId(url);
+    if (!fileId) return;
+    try {
+        await fetch(GAS_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify({ action: 'delete', fileId }),
+        });
+    } catch {
+        /* non-fatal — the activity is still deleted */
+    }
+}
