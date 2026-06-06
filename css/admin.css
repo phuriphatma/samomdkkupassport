@@ -150,21 +150,41 @@
 .cert-controls {
     display: flex;
     flex-wrap: wrap;
-    gap: 12px;
-    margin: 12px 0;
+    gap: 14px;
+    margin: 12px 0 16px;
+    padding: 14px 16px;
+    background: rgba(255, 255, 255, 0.55);
+    border: 1px solid var(--glass-border, rgba(0, 0, 0, 0.08));
+    border-radius: 12px;
 }
 
 .cert-controls label {
     display: flex;
     flex-direction: column;
-    font-size: 0.75rem;
-    font-weight: 600;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
     color: var(--text-muted);
-    gap: 4px;
+    gap: 5px;
+}
+
+.cert-controls input,
+.cert-controls select {
+    margin-bottom: 0;
+    padding: 9px 11px;
+    font-size: 0.92rem;
 }
 
 .cert-controls input[type="number"] {
-    width: 90px;
+    width: 96px;
+}
+
+.cert-controls input[type="color"] {
+    width: 48px;
+    height: 38px;
+    padding: 3px;
+    cursor: pointer;
 }
 
 .cert-preview-wrap {
@@ -221,13 +241,33 @@
 .lb-points { font-weight: 700; text-align: right; color: var(--accent-primary); }
 .lb-table th:last-child { text-align: right; }
 
-/* Image upload (drag-drop) */
-.upload-btn { width: auto; margin: 0 0 10px; padding: 6px 12px; }
+/* Image upload (drag-drop) — URL field + Upload button as one neat row */
+.upload-row {
+    display: flex;
+    gap: 8px;
+    align-items: stretch;
+    margin-bottom: 20px;
+}
+.upload-row input {
+    flex: 1;
+    min-width: 0;        /* let the input shrink instead of overflowing the row */
+    margin-bottom: 0;
+}
+.upload-btn {
+    width: auto;
+    flex-shrink: 0;
+    margin: 0;
+    padding: 0 16px;
+    white-space: nowrap;
+    align-self: stretch;   /* match the input height */
+    flex-grow: 0;
+}
 input.drag-over { outline: 2px dashed var(--accent-primary); outline-offset: 2px; }
 
 /* Seasons */
 .season-controls { display: flex; flex-wrap: wrap; gap: 12px; margin: 10px 0; }
 .season-controls label { display: flex; flex-direction: column; gap: 4px; font-size: 0.75rem; font-weight: 600; color: var(--text-muted); }
+.season-controls input, .season-controls select { margin-bottom: 0; }
 
 .season-actions { display: flex; gap: 6px; flex-shrink: 0; }
 .season-archived { opacity: 0.72; background: rgba(0,0,0,0.03); }

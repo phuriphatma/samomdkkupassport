@@ -818,23 +818,82 @@ function flashStamp(activityId) {
 }
 
 // ─── Stamp search ─────────────────────────────────────────
-// No dropdown — typing a name and pressing Enter (or the keyboard's Search key)
-// jumps straight to that stamp's page and highlights it.
-function jumpToSearch(term) {
-    const search = document.getElementById('stamp-search');
+function searchMatches(term) {
     const q = (term || '').trim().toLowerCase();
-    if (!q) return;
+    if (!q) return [];
+    return allStamps
+        .filter(s => (s.activity.name || s.activity.badge_name || '').toLowerCase().includes(q))
+        .slice(0, 12);
+}
 
-    const match = allStamps.find(
-        s => (s.activity.name || s.activity.badge_name || '').toLowerCase().includes(q),
-    );
-    if (!match) { showToast('No matching stamp'); return; }
+function hideSearchResults() {
+    const box = document.getElementById('stamp-search-results');
+    box.style.display = 'none';
+    box.innerHTML = '';
+}
 
+// Navigate to a stamp's page and highlight it — no popup.
+function goToStamp(activity, pageIndex) {
+    const search = document.getElementById('stamp-search');
+    search.value = '';
     search.blur();
-    if (typeof match.pageIndex === 'number' && match.pageIndex < totalPages) {
-        goToPage(match.pageIndex);
-        flashStamp(match.activity.id);
+    hideSearchResults();
+    if (typeof pageIndex === 'number' && pageIndex < totalPages) {
+        goToPage(pageIndex);
+        flashStamp(activity.id);
     }
+}
+
+// Live dropdown of matching stamps as the user types.
+function renderStampSearch(term) {
+    const box = document.getElementById('stamp-search-results');
+    const matches = searchMatches(term);
+
+    if (!term.trim()) { hideSearchResults(); return; }
+
+    if (matches.length === 0) {
+        box.innerHTML = '<div class="stamp-search-empty">No matching stamps yet 🔍</div>';
+        box.style.display = '';
+        return;
+    }
+
+    box.innerHTML = '';
+    matches.forEach(({ activity, pageIndex }) => {
+        const row = document.createElement('button');
+        row.type = 'button';
+        row.className = 'stamp-search-item';
+
+        const thumb = document.createElement('span');
+        thumb.className = 'ss-thumb';
+        if (activity.badge_url) {
+            const img = document.createElement('img');
+            img.src = fixGoogleDriveUrl(activity.badge_url);
+            img.alt = '';
+            thumb.appendChild(img);
+        } else {
+            thumb.textContent = '🏅';
+        }
+
+        const name = document.createElement('span');
+        name.className = 'ss-name';
+        name.textContent = activity.name || activity.badge_name || 'Activity';
+
+        const go = document.createElement('span');
+        go.className = 'ss-go';
+        go.textContent = `Page ${pageIndex + 1} ›`;
+
+        row.append(thumb, name, go);
+        row.addEventListener('click', () => goToStamp(activity, pageIndex));
+        box.appendChild(row);
+    });
+    box.style.display = '';
+}
+
+// Enter / the keyboard Search key jumps straight to the first match.
+function jumpToSearch(term) {
+    const matches = searchMatches(term);
+    if (matches.length === 0) { showToast('No matching stamp'); return; }
+    goToStamp(matches[0].activity, matches[0].pageIndex);
 }
 
 // ─── Main init ────────────────────────────────────────────
@@ -918,12 +977,18 @@ async function init() {
     // Edit name
     document.getElementById('edit-name-btn').addEventListener('click', editName);
 
-    // Stamp search — press Enter / Search to jump to the matching stamp's page
+    // Stamp search — live dropdown; click an item (or press Enter) to jump to
+    // that stamp's page and highlight it (no popup).
     const stampSearch = document.getElementById('stamp-search');
+    stampSearch.addEventListener('input', function () { renderStampSearch(this.value); });
     stampSearch.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') { e.preventDefault(); jumpToSearch(stampSearch.value); }
+        else if (e.key === 'Escape') { hideSearchResults(); stampSearch.blur(); }
     });
     stampSearch.addEventListener('search', () => jumpToSearch(stampSearch.value));
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('.stamp-search-bar')) hideSearchResults();
+    });
 
     // Keep modals glued to the visible viewport as the keyboard opens/closes.
     if (window.visualViewport) {

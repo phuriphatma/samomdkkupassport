@@ -733,8 +733,18 @@ function wireUpload(inputId, folder) {
     picker.accept = 'image/*';
     picker.style.display = 'none';
 
-    input.insertAdjacentElement('afterend', picker);
-    input.insertAdjacentElement('afterend', btn);
+    // Wrap the URL field + upload button in a single flex row. (The button used
+    // to be injected as a bare sibling after a full-width input, so it floated
+    // off to the side and looked detached.) Drop the now-redundant trailing <br>.
+    const trailingBr = input.nextElementSibling && input.nextElementSibling.tagName === 'BR'
+        ? input.nextElementSibling : null;
+    const row = document.createElement('div');
+    row.className = 'upload-row';
+    input.parentNode.insertBefore(row, input);
+    row.appendChild(input);
+    row.appendChild(btn);
+    row.appendChild(picker);
+    if (trailingBr) trailingBr.remove();
 
     const doUpload = async (file) => {
         if (!file) return;
