@@ -20,13 +20,27 @@ Last updated: 2026-06-06.
   name placement) with live preview; students generate + download a PNG with their
   name drawn on the background. **Needs DB migration (below).**
 
+## Recently added (2026-06)
+
+- User: change name (`profiles.full_name`), search stamps, leaderboard, history.
+- Admin: leaderboard (total + per dept/sub-dept, + per season), season management,
+  drag-drop image upload to the SAMO Drive (via GAS), certificate font + drag-to-place.
+- Seasons/history: named dated windows per scope; user history shows points per
+  season + yearly วาระสโม totals (computed from scans — no snapshots).
+
 ## Pending / required config
 
-- [ ] **Run `db/certificates.sql`** in the Supabase SQL editor to enable certificates.
-- [ ] **Add `http://localhost:5173/**` to Supabase Redirect URLs** for local OAuth
-      login (see MISTAKES.md). Production URL stays.
-- [ ] Certificate backgrounds: upload to SAMO Google Drive (organized folders),
-      make public, paste the link into the admin certificate form.
+Run these in the Supabase SQL editor (safe, idempotent):
+- [ ] `db/certificates.sql` — certificates table (if not already run).
+- [ ] `db/certificates-font.sql` — adds `font_family` (cert font picker).
+- [ ] `db/profiles-name-policy.sql` — lets a user update their own name.
+- [ ] `db/seasons.sql` — seasons + history.
+
+Other:
+- [ ] **Local OAuth:** add `http://localhost:5173/**` to Supabase Redirect URLs.
+- [ ] **Drive uploads (optional):** deploy `gas/Upload.gs` as a web app, set
+      `VITE_GAS_UPLOAD_URL` in `.env` + Cloudflare. Until then, paste image links.
+- [ ] Cert backgrounds: upload to SAMO Drive (or drag-drop once GAS is set), public link.
 
 ## Known limitations / decisions
 

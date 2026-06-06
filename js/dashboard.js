@@ -14,6 +14,17 @@ let currentModalActivity = null;
 let currentModalScan = null;
 const certsByActivity = new Map(); // activity_id -> [certificate, ...]
 const allStamps = []; // flat registry for search: { activity, isActive, scan }
+let userScansCache = [];
+const activityById = new Map();
+let seasonsList = [];
+
+const DEPARTMENTS = {
+    1: 'อุปนายกฝ่ายบริหารองค์กร', 2: 'ดิจิทัลและสื่อสารองค์กร', 3: 'กิจการภายใน',
+    4: 'กิจการภายนอก', 5: 'กิจการมหาวิทยาลัย', 6: 'วิชาการ',
+    7: 'ยุทธศาสตร์และพัฒนาองค์กร', 8: 'คุณภาพชีวิตและสิ่งแวดล้อม',
+    9: 'เวชนิทัศน์', 10: 'รังสีเทคนิค',
+};
+const SUBDEPARTMENTS = { 1: 'โครงการ', 2: 'ชุมนุม', 3: 'จิตอาสา', 4: '7 คณะ' };
 
 const STAMPS_PER_PAGE = 12; // 3-col × 4-row grid
 
@@ -510,6 +521,88 @@ function importUserData(file) {
     reader.readAsText(file);
 }
 
+// ─── History (seasons + yearly วาระสโม totals) ────────────
+function pointsOfScan(s) {
+    return s.points_awarded || activityById.get(s.activity_id)?.base_points_km || 0;
+}
+
+function userPointsInWindow(startDate, endDate, scope, scopeId) {
+    let total = 0;
+    userScansCache.forEach(s => {
+        const d = (s.scanned_at || '').slice(0, 10);
+        if (startDate && d < startDate) return;
+        if (endDate && d > endDate) return;
+        const act = activityById.get(s.activity_id);
+        if (scope === 'department' && (!act || act.department_id !== scopeId)) return;
+        if (scope === 'subdepartment' && (!act || act.sub_department_id !== scopeId)) return;
+        total += pointsOfScan(s);
+    });
+    return total;
+}
+
+function seasonScopeLabel(s) {
+    if (s.scope === 'department') return DEPARTMENTS[s.scope_id] || 'Department';
+    if (s.scope === 'subdepartment') return SUBDEPARTMENTS[s.scope_id] || 'Sub-department';
+    return 'วาระสโม (overall)';
+}
+
+function openHistory() {
+    const modal = document.getElementById('history-modal');
+    const body = document.getElementById('history-body');
+    modal.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+
+    // Yearly วาระสโม totals (overall, per calendar year)
+    const byYear = new Map();
+    userScansCache.forEach(s => {
+        const y = (s.scanned_at || '').slice(0, 4);
+        if (y) byYear.set(y, (byYear.get(y) || 0) + pointsOfScan(s));
+    });
+    const years = [...byYear.entries()].sort((a, b) => b[0].localeCompare(a[0]));
+
+    const today = new Date().toISOString().slice(0, 10);
+
+    let html = '<div class="hist-section"><div class="hist-h">วาระสโม — yearly totals</div>';
+    if (years.length === 0) {
+        html += '<p class="hist-empty">No activity yet.</p>';
+    } else {
+        years.forEach(([y, pts]) => {
+            html += `<div class="hist-row"><span>วาระสโม ${y}</span><span class="hist-pts">${pts} km</span></div>`;
+        });
+    }
+    html += '</div>';
+
+    html += '<div class="hist-section"><div class="hist-h">Seasons</div>';
+    if (seasonsList.length === 0) {
+        html += '<p class="hist-empty">No seasons yet.</p>';
+    } else {
+        seasonsList.forEach(s => {
+            const pts = userPointsInWindow(s.start_date, s.end_date, s.scope, s.scope_id);
+            const ended = s.end_date < today;
+            html += `
+              <div class="hist-row hist-season">
+                <span>
+                  <strong>${escapeHtmlText(s.name)}</strong>
+                  <small>${seasonScopeLabel(s)} · ${s.start_date} → ${s.end_date}${ended ? ' · ended' : ' · ongoing'}</small>
+                </span>
+                <span class="hist-pts">${pts} km</span>
+              </div>`;
+        });
+    }
+    html += '</div>';
+
+    body.innerHTML = html;
+}
+
+function closeHistory() {
+    document.getElementById('history-modal').style.display = 'none';
+    document.body.style.overflow = '';
+}
+
+function escapeHtmlText(s) {
+    return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+}
+
 // ─── Leaderboard ──────────────────────────────────────────
 async function openLeaderboard() {
     const modal = document.getElementById('leaderboard-modal');
@@ -664,6 +757,14 @@ async function init() {
     document.getElementById('lb-close').addEventListener('click', closeLeaderboard);
     document.getElementById('lb-backdrop').addEventListener('click', closeLeaderboard);
 
+    // History
+    document.getElementById('history-btn').addEventListener('click', (e) => {
+        e.preventDefault();
+        openHistory();
+    });
+    document.getElementById('history-close').addEventListener('click', closeHistory);
+    document.getElementById('history-backdrop').addEventListener('click', closeHistory);
+
     // Edit name
     document.getElementById('edit-name-btn').addEventListener('click', editName);
 
@@ -735,14 +836,22 @@ async function init() {
             { data: scans, error: scansError },
             { data: allActivities, error: actError },
             { data: allCerts },
+            { data: allSeasons },
         ] = await Promise.all([
             supabase.from('scans').select('*').eq('user_id', user.id).order('scanned_at', { ascending: false }),
             supabase.from('activities').select('*').order('created_at', { ascending: true }),
             supabase.from('certificates').select('*').order('created_at', { ascending: true }),
+            supabase.from('seasons').select('*').order('start_date', { ascending: false }),
         ]);
 
         if (scansError) throw scansError;
         if (actError) throw actError;
+
+        // Caches for the history view (seasons are optional — ignore errors)
+        userScansCache = scans;
+        activityById.clear();
+        allActivities.forEach(a => activityById.set(a.id, a));
+        seasonsList = allSeasons || [];
 
         // Group certificate templates by activity (ignore errors — certs are optional)
         certsByActivity.clear();

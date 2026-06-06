@@ -117,7 +117,8 @@
       <div id="manage-section">
         <div>
           <h3>Manage Existing Activities</h3>
-          <button type="button" onclick="openLeaderboard()" class="btn-action" style="width:auto;margin-bottom:12px;">🏆 View Leaderboard</button><br />
+          <button type="button" onclick="openLeaderboard()" class="btn-action" style="width:auto;margin-bottom:12px;">🏆 View Leaderboard</button>
+          <button type="button" onclick="openSeasons()" class="btn-action" style="width:auto;margin-bottom:12px;">📅 Manage Seasons</button><br />
           <input type="search" id="search-activity" placeholder="🔍 Search activities by name…" /><br />
           <select id="filter-department">
             <option value="">Filter by Department</option>
@@ -202,11 +203,46 @@
           activities</button>
         <h3>🏆 Leaderboard</h3>
         <div class="lb-controls">
+          <select id="lb-season"></select>
           <select id="lb-department"></select>
           <select id="lb-subdepartment" style="display: none;"></select>
         </div>
         <p id="lb-scope-label" class="lb-scope-label"></p>
         <div id="leaderboard-table"></div>
+      </div>
+
+      <div id="seasons-section" style="display: none;">
+        <button type="button" onclick="closeSeasons()" class="btn-cancel-edit" style="margin-bottom: 15px;">← Back to
+          activities</button>
+        <h3>📅 Leaderboard Seasons</h3>
+        <small style="color: var(--text-muted); display: block; margin-bottom: 10px;">A season is a named, dated window
+          (e.g. “Quarter 2 / 2026”). Standings are counted from scans within its dates, for its scope (overall, a
+          department, or a sub-department). Past seasons stay viewable in history.</small>
+
+        <div id="seasons-list" style="margin: 12px 0;"></div>
+
+        <h4>Add a season</h4>
+        <form id="season-form">
+          <input type="text" id="season-name" placeholder="Name (e.g. Quarter 2 / 2026)" required /><br />
+          <div class="season-controls">
+            <label>Scope
+              <select id="season-scope">
+                <option value="overall">Overall (วาระสโม)</option>
+                <option value="department">Department</option>
+                <option value="subdepartment">Sub-department</option>
+              </select>
+            </label>
+            <label id="season-scope-id-wrap" style="display:none;">Which
+              <select id="season-scope-id"></select>
+            </label>
+            <label>Year<input type="number" id="season-year" min="2020" max="2100" step="1" /></label>
+          </div>
+          <div class="season-controls">
+            <label>Start<input type="date" id="season-start" required /></label>
+            <label>End<input type="date" id="season-end" required /></label>
+          </div>
+          <button type="submit">Add Season</button>
+        </form>
       </div>
     </div>
   </div>

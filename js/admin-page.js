@@ -19,12 +19,17 @@ const DEPARTMENTS = {
  * department / sub-department via the activity each scan belongs to.
  * Returns rows sorted by points desc: { userId, name, email, points }.
  */
-function aggregateLeaderboard(scans, activities, profiles, deptId, subId) {
+function aggregateLeaderboard(scans, activities, profiles, deptId, subId, startDate, endDate) {
     const actMap = new Map(activities.map(a => [a.id, a]));
     const profMap = new Map(profiles.map(p => [p.id, p]));
     const totals = new Map();
 
     scans.forEach(s => {
+        if (startDate || endDate) {
+            const d = (s.scanned_at || '').slice(0, 10); // ISO date portion
+            if (startDate && d < startDate) return;
+            if (endDate && d > endDate) return;
+        }
         const act = actMap.get(s.activity_id);
         if (deptId && (!act || act.department_id !== deptId)) return;
         if (subId && (!act || act.sub_department_id !== subId)) return;
@@ -122,8 +127,13 @@ async function init() {
     wireUpload('cert-bg-url', 'certificates');
 
     // Leaderboard filters
+    document.getElementById('lb-season').addEventListener('change', onLbSeasonChange);
     document.getElementById('lb-department').addEventListener('change', onLbDeptChange);
     document.getElementById('lb-subdepartment').addEventListener('change', renderLeaderboard);
+
+    // Seasons
+    document.getElementById('season-form').addEventListener('submit', submitSeason);
+    document.getElementById('season-scope').addEventListener('change', onSeasonScopeChange);
 
     const downloadBtn = document.getElementById('download-qr-btn');
     if (downloadBtn) {
@@ -639,9 +649,15 @@ async function submitCertificate(e) {
     if (!certActivityId) return;
     const cert = getCertFormValues();
 
-    const { error } = await supabase
+    let { error } = await supabase
         .from('certificates')
         .insert([{ activity_id: certActivityId, ...cert }]);
+
+    // Resilience: if the font_family migration hasn't been run yet, retry without it.
+    if (error && /font_family/.test(error.message || '')) {
+        const { font_family, ...rest } = cert;
+        ({ error } = await supabase.from('certificates').insert([{ activity_id: certActivityId, ...rest }]));
+    }
 
     if (error) {
         alert('Failed to add certificate: ' + error.message);
@@ -705,6 +721,101 @@ function wireUpload(inputId, folder) {
     });
 }
 
+// --- SEASONS ---
+const SUBDEPARTMENTS = { 1: 'โครงการ', 2: 'ชุมนุม', 3: 'จิตอาสา', 4: '7 คณะ' };
+let seasonsCache = [];
+
+async function ensureSeasons() {
+    if (seasonsCache.length) return;
+    const { data } = await supabase.from('seasons').select('*').order('start_date', { ascending: false });
+    seasonsCache = data || [];
+}
+
+function seasonScopeLabel(s) {
+    if (s.scope === 'department') return DEPARTMENTS[s.scope_id] || 'Department';
+    if (s.scope === 'subdepartment') return SUBDEPARTMENTS[s.scope_id] || 'Sub-department';
+    return 'Overall (วาระสโม)';
+}
+
+window.openSeasons = async () => {
+    document.getElementById('event-creation').style.display = 'none';
+    document.getElementById('manage-section').style.display = 'none';
+    document.getElementById('seasons-section').style.display = 'block';
+    document.getElementById('season-year').value = new Date().getFullYear();
+    seasonsCache = [];
+    await ensureSeasons();
+    renderSeasonsList();
+};
+
+window.closeSeasons = () => {
+    document.getElementById('seasons-section').style.display = 'none';
+    document.getElementById('event-creation').style.display = 'block';
+    document.getElementById('manage-section').style.display = 'block';
+};
+
+function renderSeasonsList() {
+    const list = document.getElementById('seasons-list');
+    if (!seasonsCache.length) {
+        list.innerHTML = '<p style="font-size:0.9rem;">No seasons yet.</p>';
+        return;
+    }
+    list.innerHTML = seasonsCache.map(s => `
+        <div class="cert-list-item">
+          <span><strong>${escapeHtml(s.name)}</strong> — ${escapeHtml(seasonScopeLabel(s))}<br>
+            <small>${s.start_date} → ${s.end_date} · ${s.year}</small></span>
+          <button onclick="deleteSeason('${s.id}')" class="btn-action btn-delete">Delete</button>
+        </div>`).join('');
+}
+
+window.deleteSeason = async (id) => {
+    if (!confirm('Delete this season?')) return;
+    const { error } = await supabase.from('seasons').delete().eq('id', id);
+    if (error) { alert('Delete failed: ' + error.message); return; }
+    seasonsCache = [];
+    await ensureSeasons();
+    renderSeasonsList();
+};
+
+function onSeasonScopeChange() {
+    const scope = document.getElementById('season-scope').value;
+    const wrap = document.getElementById('season-scope-id-wrap');
+    const sel = document.getElementById('season-scope-id');
+    const map = scope === 'department' ? DEPARTMENTS : scope === 'subdepartment' ? SUBDEPARTMENTS : null;
+    if (map) {
+        sel.innerHTML = Object.entries(map).map(([id, n]) => `<option value="${id}">${n}</option>`).join('');
+        wrap.style.display = '';
+    } else {
+        sel.innerHTML = '';
+        wrap.style.display = 'none';
+    }
+}
+
+async function submitSeason(e) {
+    e.preventDefault();
+    const scope = document.getElementById('season-scope').value;
+    const scopeIdRaw = document.getElementById('season-scope-id').value;
+    const row = {
+        name: document.getElementById('season-name').value.trim(),
+        scope,
+        scope_id: scope === 'overall' ? null : (scopeIdRaw ? parseInt(scopeIdRaw, 10) : null),
+        start_date: document.getElementById('season-start').value,
+        end_date: document.getElementById('season-end').value,
+        year: parseInt(document.getElementById('season-year').value, 10) || new Date().getFullYear(),
+    };
+    if (!row.start_date || !row.end_date) { alert('Pick start and end dates'); return; }
+    if (row.end_date < row.start_date) { alert('End date must be after start date'); return; }
+
+    const { error } = await supabase.from('seasons').insert([row]);
+    if (error) { alert('Failed to add season: ' + error.message); return; }
+
+    document.getElementById('season-form').reset();
+    document.getElementById('season-year').value = new Date().getFullYear();
+    onSeasonScopeChange();
+    seasonsCache = [];
+    await ensureSeasons();
+    renderSeasonsList();
+}
+
 // --- LEADERBOARD ---
 let lbData = null; // { scans, activities, profiles }
 
@@ -724,8 +835,23 @@ window.openLeaderboard = async () => {
     document.getElementById('manage-section').style.display = 'none';
     document.getElementById('leaderboard-section').style.display = 'block';
     populateLbDepartments();
+    await ensureSeasons();
+    populateLbSeasons();
     await loadLeaderboard();
 };
+
+function populateLbSeasons() {
+    const sel = document.getElementById('lb-season');
+    sel.innerHTML = '<option value="">All time</option>' +
+        seasonsCache.map(s => `<option value="${s.id}">${escapeHtml(s.name)}</option>`).join('');
+}
+
+function onLbSeasonChange() {
+    const hasSeason = !!document.getElementById('lb-season').value;
+    document.getElementById('lb-department').style.display = hasSeason ? 'none' : '';
+    if (hasSeason) document.getElementById('lb-subdepartment').style.display = 'none';
+    renderLeaderboard();
+}
 
 window.closeLeaderboard = () => {
     document.getElementById('leaderboard-section').style.display = 'none';
@@ -754,7 +880,7 @@ async function loadLeaderboard() {
 
     const [{ data: scans, error: e1 }, { data: activities, error: e2 }, { data: profiles, error: e3 }] =
         await Promise.all([
-            supabase.from('scans').select('user_id, activity_id, points_awarded'),
+            supabase.from('scans').select('user_id, activity_id, points_awarded, scanned_at'),
             supabase.from('activities').select('id, department_id, sub_department_id, base_points_km'),
             supabase.from('profiles').select('id, full_name, email'),
         ]);
@@ -770,16 +896,31 @@ async function loadLeaderboard() {
 
 function renderLeaderboard() {
     if (!lbData) return;
-    const deptRaw = document.getElementById('lb-department').value;
-    const subRaw = document.getElementById('lb-subdepartment').value;
-    const deptId = deptRaw ? parseInt(deptRaw, 10) : null;
-    const subId = subRaw ? parseInt(subRaw, 10) : null;
+    let deptId = null, subId = null, startDate = null, endDate = null, label = '';
 
-    document.getElementById('lb-scope-label').textContent = deptId
-        ? `${DEPARTMENTS[deptId]}${subId ? ' — sub-department' : ''}`
-        : 'All departments (overall total)';
+    const seasonId = document.getElementById('lb-season').value;
+    if (seasonId) {
+        const s = seasonsCache.find(x => x.id === seasonId);
+        if (s) {
+            startDate = s.start_date;
+            endDate = s.end_date;
+            if (s.scope === 'department') deptId = s.scope_id;
+            else if (s.scope === 'subdepartment') subId = s.scope_id;
+            label = `${s.name} · ${s.start_date} → ${s.end_date}`;
+        }
+    } else {
+        const deptRaw = document.getElementById('lb-department').value;
+        const subRaw = document.getElementById('lb-subdepartment').value;
+        deptId = deptRaw ? parseInt(deptRaw, 10) : null;
+        subId = subRaw ? parseInt(subRaw, 10) : null;
+        label = deptId
+            ? `${DEPARTMENTS[deptId]}${subId ? ' — sub-department' : ''}`
+            : 'All departments (overall total)';
+    }
 
-    const rows = aggregateLeaderboard(lbData.scans, lbData.activities, lbData.profiles, deptId, subId);
+    document.getElementById('lb-scope-label').textContent = label;
+
+    const rows = aggregateLeaderboard(lbData.scans, lbData.activities, lbData.profiles, deptId, subId, startDate, endDate);
     const table = document.getElementById('leaderboard-table');
 
     if (rows.length === 0) {

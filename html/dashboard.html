@@ -27,6 +27,7 @@
     <a href="/" class="text-link topbar-back">← Home</a>
     <div class="topbar-title">My Passport</div>
     <div class="topbar-right">
+      <a href="#" id="history-btn" class="text-link topbar-trophy" title="History">📜</a>
       <a href="#" id="leaderboard-btn" class="text-link topbar-trophy" title="Leaderboard">🏆</a>
       <a href="#" id="logout-btn" class="text-link topbar-logout">Sign Out</a>
     </div>
@@ -203,6 +204,16 @@
       <button class="modal-close-btn" id="lb-close" aria-label="Close">✕</button>
       <h3 class="lb-modal-title">🏆 Leaderboard</h3>
       <div class="lb-list" id="lb-list"></div>
+    </div>
+  </div>
+
+  <!-- History modal -->
+  <div class="memory-modal" id="history-modal" style="display:none;" aria-modal="true" role="dialog">
+    <div class="modal-backdrop" id="history-backdrop"></div>
+    <div class="modal-card lb-card">
+      <button class="modal-close-btn" id="history-close" aria-label="Close">✕</button>
+      <h3 class="lb-modal-title">📜 My History</h3>
+      <div id="history-body"></div>
     </div>
   </div>
 

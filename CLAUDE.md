@@ -64,8 +64,17 @@ npm run preview  # serve the production build locally
   `is_marketing_bonus`, `active_token`, `token_expires_at` exist but are **unused**.)
 - `scans` — `user_id`, `activity_id`, `scanned_at`, `points_awarded`.
 - `user_tiers` — `full_name`, `total_km`, `final_tier`, `has_travel_visa`.
-- `certificates` — multiple per activity (`label`, `background_url`, name placement).
-  **Requires `db/certificates.sql` to be run.** See STATE.md.
+- `certificates` — multiple per activity (`label`, `background_url`, name placement,
+  `font_family`). Run `db/certificates.sql` + `db/certificates-font.sql`.
+- `profiles` — `full_name`, `email`, `total_km`. Source of truth for the name;
+  leaderboards read from here. `db/profiles-name-policy.sql` allows own-name edits.
+- `seasons` — named, scoped (overall/department/subdepartment), dated windows for
+  leaderboards/history. Run `db/seasons.sql`. Standings are computed by filtering
+  scans to the window (no snapshots), so a finished season is naturally frozen.
+
+Image uploads: admin drag-drop posts to a Google Apps Script web app (`gas/Upload.gs`)
+that saves to the SAMO Drive *as the SAMO account* (uses its 2TB). Set the endpoint in
+`VITE_GAS_UPLOAD_URL`; without it, paste public links.
 
 To apply a migration: open the Supabase SQL editor and run the file in `db/`.
 DDL cannot be run from the app (anon key has no schema privileges).
