@@ -4,6 +4,7 @@ import { checkSession, logout } from './auth.js';
 import { fixGoogleDriveUrl, getPendingScanUrl, clearPendingScanUrl } from './utils.js';
 import { renderCertificate, downloadCanvasPng } from './certificate.js';
 import { ROUTES } from './routes.js';
+import { getCurrentContext } from './samo.js';
 
 // ─── State ───────────────────────────────────────────────
 let currentPageIndex = 0;
@@ -18,6 +19,16 @@ let userScansCache = [];
 const activityById = new Map();
 let seasonsList = [];
 const archivedResults = new Map(); // season_id -> this user's archived points
+
+// ── SamoYear / Season (new immutable model) ──
+let currentYear = null;          // open samo_year
+let currentSeason = null;        // open samo_season
+const seasonNameById = new Map(); // season_id -> name (for labels)
+let flightLogPageIndex = -1;
+let leaderboardPageIndex = -1;
+let flFilter = { type: 'all', id: null };  // all | dept | sub
+let lbpView = 'season';                     // 'season' | 'year'
+let lbpFilter = { type: 'all', id: null };  // all | dept | sub
 
 const DEPARTMENTS = {
     1: 'อุปนายกฝ่ายบริหารองค์กร', 2: 'ดิจิทัลและสื่อสารองค์กร', 3: 'กิจการภายใน',
@@ -151,8 +162,38 @@ function buildStampPages(allActivities, userScans) {
         }
     }
 
+    // ── Flight Log page (current วาระสโม + season, with dept/sub-dept filters) ──
+    flightLogPageIndex = 2 + numStampPages;
+    const flPage = document.createElement('div');
+    flPage.className = 'passport-page page-inner';
+    flPage.id = 'page-flightlog';
+    flPage.style.display = 'none';
+    flPage.innerHTML = `
+        <div class="inner-page-header">
+            <span class="inner-page-label">FLIGHT LOG</span>
+            <span class="inner-page-num" id="fl-window">—</span>
+        </div>
+        <div id="flightlog-content" class="fl-content"></div>
+        <div class="inner-page-footer"><div class="barcode-lines"></div></div>`;
+    book.appendChild(flPage);
+
+    // ── Leaderboard page (current วาระสโม ↔ season, dept/sub-dept filters) ──
+    leaderboardPageIndex = 2 + numStampPages + 1;
+    const lbPage = document.createElement('div');
+    lbPage.className = 'passport-page page-inner';
+    lbPage.id = 'page-leaderboard';
+    lbPage.style.display = 'none';
+    lbPage.innerHTML = `
+        <div class="inner-page-header">
+            <span class="inner-page-label">LEADERBOARD</span>
+            <span class="inner-page-num" id="lbp-window">—</span>
+        </div>
+        <div id="leaderboard-content" class="lbp-content"></div>
+        <div class="inner-page-footer"><div class="barcode-lines"></div></div>`;
+    book.appendChild(lbPage);
+
     // Future stamps page — always present
-    const futureIdx = 2 + numStampPages;
+    const futureIdx = 2 + numStampPages + 2;
     const futurePage = document.createElement('div');
     futurePage.className = 'passport-page page-inner';
     futurePage.id = `page-${futureIdx}`;
@@ -172,7 +213,7 @@ function buildStampPages(allActivities, userScans) {
     book.appendChild(futurePage);
 
     // Back cover — always last
-    const backIdx = 2 + numStampPages + 1;
+    const backIdx = 2 + numStampPages + 3;
     const backCover = document.createElement('div');
     backCover.className = 'passport-page page-back-cover';
     backCover.id = `page-${backIdx}`;
@@ -187,9 +228,13 @@ function buildStampPages(allActivities, userScans) {
     `;
     book.appendChild(backCover);
 
-    totalPages = 2 + numStampPages + 2; // +future +back cover
+    totalPages = 2 + numStampPages + 4; // +flightlog +leaderboard +future +back cover
     buildPageDots();
     document.getElementById('next-page').disabled = totalPages <= 1;
+
+    // Fill the two new pages now that they exist in the DOM.
+    renderFlightLogPage();
+    renderLeaderboardPage();
 }
 
 // ─── Profile photo ─────────────────────────────────────────
@@ -1003,6 +1048,164 @@ function jumpToSearch(term) {
     goToStamp(matches[0].activity, matches[0].pageIndex);
 }
 
+// ─── Flight Log + Leaderboard pages (SamoYear / Season model) ─────────────
+function scanDisplayName(s) { return s.activity_name || activityById.get(s.activity_id)?.name || 'Activity'; }
+function scanDept(s) { return s.department_id ?? activityById.get(s.activity_id)?.department_id ?? null; }
+function scanSubDept(s) { return s.sub_department_id ?? activityById.get(s.activity_id)?.sub_department_id ?? null; }
+
+// The user's scans in the current วาระสโม (or all, if none is declared yet).
+function yearScans() {
+    return userScansCache.filter(s => !currentYear || s.samo_year_id === currentYear.id);
+}
+
+function filterChipsHtml(scans, filter) {
+    const depts = [...new Set(scans.map(scanDept).filter(x => x != null))];
+    const subs = [...new Set(scans.map(scanSubDept).filter(x => x != null))];
+    let html = `<button class="seg-chip${filter.type === 'all' ? ' on' : ''}" data-f="all">All</button>`;
+    depts.forEach(d => html += `<button class="seg-chip${filter.type === 'dept' && filter.id === d ? ' on' : ''}" data-f="dept:${d}">${escapeHtmlText(DEPARTMENTS[d] || ('ฝ่าย ' + d))}</button>`);
+    subs.forEach(d => html += `<button class="seg-chip${filter.type === 'sub' && filter.id === d ? ' on' : ''}" data-f="sub:${d}">${escapeHtmlText(SUBDEPARTMENTS[d] || ('ย่อย ' + d))}</button>`);
+    return html;
+}
+
+function applyFilter(scans, filter) {
+    if (filter.type === 'dept') return scans.filter(s => scanDept(s) === filter.id);
+    if (filter.type === 'sub') return scans.filter(s => scanSubDept(s) === filter.id);
+    return scans;
+}
+
+function parseChip(el) {
+    const f = el.getAttribute('data-f');
+    if (f === 'all') return { type: 'all', id: null };
+    const [t, id] = f.split(':');
+    return { type: t, id: parseInt(id, 10) };
+}
+
+function renderFlightLogPage() {
+    const box = document.getElementById('flightlog-content');
+    if (!box) return;
+    const winEl = document.getElementById('fl-window');
+    if (winEl) winEl.textContent = currentYear ? currentYear.name : '—';
+
+    const scans = yearScans();
+    const yearTotal = scans.reduce((t, s) => t + pointsOfScan(s), 0);
+    const seasonTotal = currentSeason
+        ? scans.filter(s => s.season_id === currentSeason.id).reduce((t, s) => t + pointsOfScan(s), 0)
+        : 0;
+
+    const list = applyFilter(scans, flFilter)
+        .slice().sort((a, b) => (b.scanned_at || '').localeCompare(a.scanned_at || ''));
+
+    let html = `
+      <div class="seg-totals">
+        <div class="seg-total"><span>${currentYear ? escapeHtmlText(currentYear.name) : 'Total'}</span><strong>${yearTotal}<small>km</small></strong></div>
+        <div class="seg-total alt"><span>${currentSeason ? escapeHtmlText(currentSeason.name) : 'Season'}</span><strong>${seasonTotal}<small>km</small></strong></div>
+      </div>
+      <div class="seg-filter">${filterChipsHtml(scans, flFilter)}</div>
+      <div class="fl-list">`;
+    if (list.length === 0) {
+        html += '<div class="fl-empty">No flights logged here yet ✈️</div>';
+    } else {
+        list.forEach(s => {
+            const sName = s.season_id ? (seasonNameById.get(s.season_id) || '') : '';
+            html += `<div class="fl-item">
+                <span class="fl-item-name">✈️ ${escapeHtmlText(scanDisplayName(s))}${sName ? ` <small class="fl-season">${escapeHtmlText(sName)}</small>` : ''}</span>
+                <span class="fl-item-km">+${pointsOfScan(s)} km</span>
+              </div>`;
+        });
+    }
+    html += '</div>';
+    box.innerHTML = html;
+
+    box.querySelectorAll('.seg-chip').forEach(btn => btn.addEventListener('click', () => {
+        flFilter = parseChip(btn);
+        renderFlightLogPage();
+    }));
+}
+
+// All-users leaderboard data (snapshot dept/season), fetched once.
+let lbPageScans = null;
+let lbPageNames = null;
+
+async function ensureLbPageData() {
+    if (lbPageScans) return true;
+    const [{ data: scans, error: e1 }, { data: profiles, error: e2 }] = await Promise.all([
+        supabase.from('scans').select('user_id, activity_id, points_awarded, samo_year_id, season_id, department_id, sub_department_id'),
+        supabase.from('profiles').select('id, full_name'),
+    ]);
+    if (e1 || e2) return false;
+    lbPageScans = scans || [];
+    lbPageNames = new Map((profiles || []).map(p => [p.id, p.full_name]));
+    return true;
+}
+
+function lbPageRanking() {
+    const totals = new Map();
+    (lbPageScans || []).forEach(s => {
+        if (currentYear && s.samo_year_id !== currentYear.id) return;
+        if (lbpView === 'season' && (!currentSeason || s.season_id !== currentSeason.id)) return;
+        if (lbpFilter.type === 'dept' && (s.department_id ?? null) !== lbpFilter.id) return;
+        if (lbpFilter.type === 'sub' && (s.sub_department_id ?? null) !== lbpFilter.id) return;
+        totals.set(s.user_id, (totals.get(s.user_id) || 0) + (s.points_awarded || 0));
+    });
+    return [...totals.entries()]
+        .map(([uid, pts]) => ({ uid, pts, name: lbPageNames.get(uid) || 'Traveler' }))
+        .sort((a, b) => b.pts - a.pts);
+}
+
+async function renderLeaderboardPage() {
+    const box = document.getElementById('leaderboard-content');
+    if (!box) return;
+    const winEl = document.getElementById('lbp-window');
+    if (winEl) winEl.textContent = currentYear ? currentYear.name : '—';
+
+    box.innerHTML = '<p class="lb-loading">Loading…</p>';
+    if (!(await ensureLbPageData())) { box.innerHTML = '<p class="lb-loading">Could not load leaderboard.</p>'; return; }
+
+    const chipScans = (lbPageScans || []).filter(s => !currentYear || s.samo_year_id === currentYear.id);
+    const rows = lbPageRanking();
+    const medals = ['🥇', '🥈', '🥉'];
+    const order = [1, 0, 2];
+
+    let html = `
+      <div class="seg-toggle">
+        <button class="seg-tg${lbpView === 'season' ? ' on' : ''}" data-v="season">${currentSeason ? escapeHtmlText(currentSeason.name) : 'Season'}</button>
+        <button class="seg-tg${lbpView === 'year' ? ' on' : ''}" data-v="year">${currentYear ? escapeHtmlText(currentYear.name) : 'วาระ'}</button>
+      </div>
+      <div class="seg-filter">${filterChipsHtml(chipScans, lbpFilter)}</div>`;
+
+    if (rows.length === 0) {
+        html += '<p class="lb-loading">No rankings yet.</p>';
+    } else {
+        html += '<div class="lb-podium-row">' + order.filter(i => rows[i]).map(i => {
+            const r = rows[i];
+            return `<div class="lb-podium-spot lb-podium-${i + 1}${r.uid === currentUserId ? ' lb-me' : ''}">
+                <div class="lb-podium-medal">${medals[i]}</div>
+                <div class="lb-podium-name">${escapeHtmlText(r.name)}</div>
+                <div class="lb-podium-pts">${r.pts}<small>km</small></div>
+              </div>`;
+        }).join('') + '</div>';
+        html += '<div class="lbp-list">';
+        rows.slice(3, 100).forEach((r, i) => {
+            html += `<div class="lb-row${r.uid === currentUserId ? ' lb-me' : ''}">
+                <span class="lb-rank">${i + 4}</span>
+                <span class="lb-row-name">${escapeHtmlText(r.name)}</span>
+                <span class="lb-row-pts">${r.pts} km</span>
+              </div>`;
+        });
+        html += '</div>';
+    }
+    box.innerHTML = html;
+
+    box.querySelectorAll('.seg-tg').forEach(btn => btn.addEventListener('click', () => {
+        lbpView = btn.getAttribute('data-v');
+        renderLeaderboardPage();
+    }));
+    box.querySelectorAll('.seg-chip').forEach(btn => btn.addEventListener('click', () => {
+        lbpFilter = parseChip(btn);
+        renderLeaderboardPage();
+    }));
+}
+
 // ─── Main init ────────────────────────────────────────────
 async function init() {
     document.getElementById('logout-btn').addEventListener('click', async (e) => {
@@ -1065,23 +1268,15 @@ async function init() {
         closeModal();
     });
 
-    // Leaderboard
+    // Topbar 🏆 → Leaderboard page; 📜 → Flight Log page (the new swipeable pages)
     document.getElementById('leaderboard-btn').addEventListener('click', (e) => {
         e.preventDefault();
-        openLeaderboard();
+        if (leaderboardPageIndex >= 0) { goToPage(leaderboardPageIndex); renderLeaderboardPage(); }
     });
-    document.getElementById('lb-close').addEventListener('click', closeLeaderboard);
-    document.getElementById('lb-backdrop').addEventListener('click', closeLeaderboard);
-    document.getElementById('lb-view').addEventListener('change', renderLeaderboardView);
-    document.getElementById('lb-dept').addEventListener('change', renderLeaderboardView);
-
-    // History
     document.getElementById('history-btn').addEventListener('click', (e) => {
         e.preventDefault();
-        openHistory();
+        if (flightLogPageIndex >= 0) { goToPage(flightLogPageIndex); renderFlightLogPage(); }
     });
-    document.getElementById('history-close').addEventListener('click', closeHistory);
-    document.getElementById('history-backdrop').addEventListener('click', closeHistory);
 
     // Edit name
     document.getElementById('edit-name-btn').addEventListener('click', editName);
@@ -1177,12 +1372,16 @@ async function init() {
             { data: allCerts },
             { data: allSeasons },
             { data: myArchived },
+            samoCtx,
+            { data: samoSeasonRows },
         ] = await Promise.all([
             supabase.from('scans').select('*').eq('user_id', user.id).order('scanned_at', { ascending: false }),
             supabase.from('activities').select('*').order('created_at', { ascending: true }),
             supabase.from('certificates').select('*').order('created_at', { ascending: true }),
             supabase.from('seasons').select('*').order('start_date', { ascending: false }),
             supabase.from('season_results').select('season_id, points').eq('user_id', user.id),
+            getCurrentContext().catch(() => ({ year: null, season: null })),
+            supabase.from('samo_seasons').select('id, name'),
         ]);
 
         if (scansError) throw scansError;
@@ -1196,6 +1395,12 @@ async function init() {
         archivedResults.clear();
         (myArchived || []).forEach(r => archivedResults.set(r.season_id, r.points));
 
+        // Current SamoYear / Season (new immutable model) + season-name map.
+        currentYear = samoCtx?.year || null;
+        currentSeason = samoCtx?.season || null;
+        seasonNameById.clear();
+        (samoSeasonRows || []).forEach(s => seasonNameById.set(s.id, s.name));
+
         // Group certificate templates by activity (ignore errors — certs are optional)
         certsByActivity.clear();
         (allCerts || []).forEach(c => {
@@ -1203,18 +1408,28 @@ async function init() {
             certsByActivity.get(c.activity_id).push(c);
         });
 
-        // Headline KM = points in the CURRENT วาระสโม only (resets each year);
-        // past years live in the history view.
-        const win = currentVaraWindow();
+        // Headline KM = SamoYear total; the label shows the current season's points.
+        // Falls back to the legacy calendar-วาระ window if no year is declared yet.
+        const wlabel = document.getElementById('km-window-label');
         let yearKm = 0;
-        scans.forEach(s => {
-            const d = (s.scanned_at || '').slice(0, 10);
-            if (d >= win.start && d <= win.end) yearKm += pointsOfScan(s);
-        });
+        if (currentYear) {
+            yearKm = scans.filter(s => s.samo_year_id === currentYear.id).reduce((t, s) => t + pointsOfScan(s), 0);
+            const seasonKm = currentSeason
+                ? scans.filter(s => s.season_id === currentSeason.id).reduce((t, s) => t + pointsOfScan(s), 0)
+                : 0;
+            if (wlabel) wlabel.textContent = currentSeason
+                ? `${currentYear.name} · ${currentSeason.name}: ${seasonKm} km`
+                : currentYear.name;
+        } else {
+            const win = currentVaraWindow();
+            scans.forEach(s => {
+                const d = (s.scanned_at || '').slice(0, 10);
+                if (d >= win.start && d <= win.end) yearKm += pointsOfScan(s);
+            });
+            if (wlabel) wlabel.textContent = win.name;
+        }
         pKm.textContent = yearKm;
         pKm.classList.remove('skeleton');
-        const wlabel = document.getElementById('km-window-label');
-        if (wlabel) wlabel.textContent = win.name;
 
         // ── Activity log (page 2) ────────────────────────────
         const logList = document.getElementById('activity-list');

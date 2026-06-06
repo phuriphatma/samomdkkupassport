@@ -832,6 +832,52 @@ body.passport-page-theme {
 }
 
 /* =========================================
+   FLIGHT LOG / LEADERBOARD PAGES
+========================================= */
+.fl-content, .lbp-content { display: flex; flex-direction: column; gap: 12px; flex: 1; min-height: 0; }
+
+.seg-totals { display: flex; gap: 10px; }
+.seg-total {
+    flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px;
+    padding: 12px 8px; border-radius: 14px;
+    background: linear-gradient(135deg, #EFF9FF, #DBEAFE);
+    border: 1px solid rgba(27, 63, 107, 0.1);
+}
+.seg-total.alt { background: linear-gradient(135deg, #FFF7ED, #FFEDD5); }
+.seg-total span { font-size: 0.6rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; color: var(--text-muted); text-align: center; }
+.seg-total strong { font-family: var(--font-heading); font-size: 1.4rem; color: var(--passport-navy); }
+.seg-total.alt strong { color: var(--accent-primary); }
+.seg-total strong small { font-size: 0.6rem; font-weight: 600; color: var(--text-muted); margin-left: 2px; }
+
+.seg-filter { display: flex; flex-wrap: wrap; gap: 6px; }
+.seg-chip {
+    font-family: var(--font-body); font-size: 0.72rem; font-weight: 600;
+    padding: 5px 11px; border-radius: 999px; cursor: pointer; width: auto;
+    border: 1px solid rgba(27, 63, 107, 0.18); background: #fff; color: var(--text-muted);
+}
+.seg-chip.on { background: var(--passport-navy); color: #fff; border-color: var(--passport-navy); }
+
+.seg-toggle { display: flex; gap: 6px; background: rgba(27, 63, 107, 0.08); border-radius: 12px; padding: 4px; }
+.seg-tg {
+    flex: 1; font-family: var(--font-heading); font-size: 0.8rem; font-weight: 700;
+    padding: 8px; border-radius: 9px; border: none; cursor: pointer; width: auto;
+    background: transparent; color: var(--text-muted);
+}
+.seg-tg.on { background: #fff; color: var(--passport-navy); box-shadow: 0 2px 6px rgba(27, 63, 107, 0.15); }
+
+.fl-list, .lbp-list { display: flex; flex-direction: column; gap: 8px; }
+.fl-item {
+    display: flex; justify-content: space-between; align-items: center; gap: 10px;
+    padding: 9px 11px; border-radius: 0 8px 8px 0;
+    background: linear-gradient(90deg, #EFF9FF, #F0F9FF);
+    border-left: 3px solid var(--sky-top); font-size: 0.82rem;
+}
+.fl-item-name { color: var(--text-dark); font-weight: 500; }
+.fl-season { color: var(--text-muted); font-weight: 600; font-size: 0.64rem; background: rgba(27, 63, 107, 0.08); border-radius: 999px; padding: 1px 6px; }
+.fl-item-km { color: var(--accent-primary); font-weight: 700; white-space: nowrap; }
+.fl-empty { text-align: center; color: var(--text-muted); font-size: 0.85rem; padding: 20px; }
+
+/* =========================================
    PAGE NAVIGATION
 ========================================= */
 .passport-nav-row {

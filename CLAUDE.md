@@ -62,10 +62,17 @@ npm run preview  # serve the production build locally
 - `activities` — name, `base_points_km`, `badge_url`/`badge_name`, `department_id`,
   `sub_department_id`, `static_token`, `created_at`. (`continent_id`,
   `is_marketing_bonus`, `active_token`, `token_expires_at` exist but are **unused**.)
-- `scans` — `user_id`, `activity_id`, `scanned_at`, `points_awarded`.
+- `scans` — `user_id`, `activity_id`, `scanned_at`, `points_awarded`. **Immutable
+  snapshot (db/0006):** also stores `activity_name`, `department_id`, `sub_department_id`,
+  `samo_year_id`, `season_id` stamped at scan time. Aggregations read these, not a live
+  activities join, so history survives activity edits/deletes.
+- `samo_years` / `samo_seasons` (db/0006) — admin-declared วาระสโม + seasons; "current"
+  = the open row (`ended_at IS NULL`). See `js/samo.js` for the helpers.
 - `user_tiers` — `full_name`, `total_km`, `final_tier`, `has_travel_visa`.
 - `certificates` — multiple per activity (`label`, `background_url`, name placement,
-  `font_family`). Run `db/0001_certificates.sql` + `db/0002_certificates_font.sql`.
+  `font_family`). **Season-scoped (db/0006):** `season_id` ties a template to a season;
+  `NULL` = seasonless default/fallback. Run `db/0001_certificates.sql` +
+  `db/0002_certificates_font.sql` (+ `db/0006`).
 - `profiles` — `full_name`, `email`, `total_km`. Source of truth for the name;
   leaderboards read from here. `db/0003_profiles_name_policy.sql` allows own-name edits.
 - `seasons` — named, scoped (overall/department/subdepartment), dated windows for

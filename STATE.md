@@ -11,6 +11,15 @@ Last updated: 2026-06-06.
 - **Stamps & flight log** — only **earned** stamps are shown (scanned activities);
   tapping one opens its memory modal. Stamp search flips to the stamp's page and
   highlights it (no popup). The info page is fixed; only the flight log scrolls.
+- **SamoYear/Season model (db/0006)** — admin declares the current วาระสโม + Season
+  (`samo_years`/`samo_seasons`, "current" = `ended_at IS NULL`). Scans are **immutable
+  snapshots** stamped with year/season + activity name/dept/sub-dept/points. Editing an
+  activity touches only **current-season** scans; deleting an activity keeps all scans
+  + certificates (FKs dropped). **Certificates are season-scoped** (`certificates.season_id`)
+  — students get the cert for the season they earned in; past-season certs are frozen
+  with "Duplicate to current season". Admin: วาระสโม/Season control + period leaderboard
+  (year→season + dept/sub-dept, CSV). Customer: swipeable **Flight Log** + **Leaderboard**
+  pages (topbar 📜 / 🏆). The old date-window seasons + archive UI are retired.
 - **Memory modal** — per-activity note + photos, stored in `localStorage` (per device).
 - **Profile photo** — `localStorage`, per device.
 - **Data backup** — Export/Import all on-device user content as a JSON file.
@@ -37,6 +46,13 @@ Run these in the Supabase SQL editor (safe, idempotent):
 - [ ] `db/0003_profiles_name_policy.sql` — lets a user update their own name.
 - [ ] `db/0004_seasons.sql` — seasons + history.
 - [ ] `db/0005_season_results.sql` — archived season standings (frozen snapshots).
+- [ ] **`db/0006_samo_years.sql` — REQUIRED for the new SamoYear/Season model.**
+      Adds `samo_years` + `samo_seasons`, scan snapshot columns (`samo_year_id`,
+      `season_id`, `activity_name`, `department_id`, `sub_department_id`),
+      `certificates.season_id`, and **drops the activity FKs on scans/certificates**
+      so history survives activity deletion. Until it's run, the admin วาระสโม/season
+      control and customer Flight Log/Leaderboard pages have no data (they degrade
+      gracefully; scans fall back to the old columns).
 
 Other:
 - [ ] **Local OAuth:** add `http://localhost:5173/**` to Supabase Redirect URLs.

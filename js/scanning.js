@@ -3,6 +3,7 @@ import { supabase } from './app.js';
 import { checkSession } from './auth.js';
 import { fixGoogleDriveUrl, savePendingScanUrl, clearPendingScanUrl } from './utils.js';
 import { ROUTES } from './routes.js';
+import { getCurrentContext } from './samo.js';
 
 export async function processScan() {
     const titleEl = document.getElementById('scan-title');
@@ -95,14 +96,31 @@ if (!user) {
         spinner.style.display = 'block';
         document.querySelector('#loading-spinner h2').innerText = 'Stamping Passport...';
 
-        // Perform the actual insert
-        const { error: scanError } = await supabase
-            .from('scans')
-            .insert([{
-                user_id: user.id,
-                activity_id: activity.id,
-                points_awarded: activity.base_points_km
-            }]);
+        // Stamp the scan with the current SamoYear + Season and a snapshot of the
+        // activity, so the record is immutable history (survives activity edits/
+        // deletes and past-season freezes).
+        const { year, season } = await getCurrentContext().catch(() => ({ year: null, season: null }));
+        const baseRow = {
+            user_id: user.id,
+            activity_id: activity.id,
+            points_awarded: activity.base_points_km,
+        };
+        const snapshotRow = {
+            ...baseRow,
+            activity_name: activity.name,
+            department_id: activity.department_id ?? null,
+            sub_department_id: activity.sub_department_id ?? null,
+            samo_year_id: year?.id ?? null,
+            season_id: season?.id ?? null,
+        };
+
+        let { error: scanError } = await supabase.from('scans').insert([snapshotRow]);
+        // If the snapshot columns don't exist yet (migration 0006 not run), retry
+        // with just the original columns so scanning still works.
+        if (scanError && scanError.code !== '23505' &&
+            /column|does not exist|schema cache/i.test(scanError.message || '')) {
+            ({ error: scanError } = await supabase.from('scans').insert([baseRow]));
+        }
 
         if (scanError) {
             if (scanError.code === '23505') {

@@ -4,6 +4,7 @@ import { generateUUID } from './utils.js';
 import { ROUTES } from './routes.js';
 import { renderCertificate, loadCertImage, CERT_FONTS } from './certificate.js';
 import { uploadToDrive, deleteFromDrive, deleteFromDriveBeacon, isUploadConfigured } from './upload.js';
+import { getCurrentContext } from './samo.js';
 
 // --- ORPHANED-UPLOAD TRACKING ---
 // Images upload to Drive immediately (so the preview/QR works), but if the admin
@@ -37,37 +38,6 @@ const DEPARTMENTS = {
     7: 'ยุทธศาสตร์และพัฒนาองค์กร', 8: 'คุณภาพชีวิตและสิ่งแวดล้อม',
     9: 'เวชนิทัศน์', 10: 'รังสีเทคนิค',
 };
-
-/**
- * Aggregate total points per user from scans, optionally filtered to a
- * department / sub-department via the activity each scan belongs to.
- * Returns rows sorted by points desc: { userId, name, email, points }.
- */
-function aggregateLeaderboard(scans, activities, profiles, deptId, subId, startDate, endDate) {
-    const actMap = new Map(activities.map(a => [a.id, a]));
-    const profMap = new Map(profiles.map(p => [p.id, p]));
-    const totals = new Map();
-
-    scans.forEach(s => {
-        if (startDate || endDate) {
-            const d = (s.scanned_at || '').slice(0, 10); // ISO date portion
-            if (startDate && d < startDate) return;
-            if (endDate && d > endDate) return;
-        }
-        const act = actMap.get(s.activity_id);
-        if (deptId && (!act || act.department_id !== deptId)) return;
-        if (subId && (!act || act.sub_department_id !== subId)) return;
-        const pts = s.points_awarded || act?.base_points_km || 0;
-        totals.set(s.user_id, (totals.get(s.user_id) || 0) + pts);
-    });
-
-    return [...totals.entries()]
-        .map(([userId, points]) => {
-            const p = profMap.get(userId);
-            return { userId, points, name: p?.full_name || '(unknown)', email: p?.email || '—' };
-        })
-        .sort((a, b) => b.points - a.points);
-}
 
 // --- CONFIG ---
 const SUB_DEPT_OPTIONS = {
@@ -156,14 +126,12 @@ async function init() {
     wireUpload('edit-badge-url', 'badges');
     wireUpload('cert-bg-url', 'certificates');
 
-    // Leaderboard filters
-    document.getElementById('lb-season').addEventListener('change', onLbSeasonChange);
+    // Leaderboard filters (period = SamoYear → Season, + department/sub-dept)
+    document.getElementById('lb-year').addEventListener('change', () => { populateLbSeasonsForYear(); renderAdminLeaderboard(); });
+    document.getElementById('lb-season').addEventListener('change', renderAdminLeaderboard);
     document.getElementById('lb-department').addEventListener('change', onLbDeptChange);
-    document.getElementById('lb-subdepartment').addEventListener('change', onLbSeasonChange);
+    document.getElementById('lb-subdepartment').addEventListener('change', renderAdminLeaderboard);
     document.getElementById('lb-csv-btn').addEventListener('click', downloadLeaderboardCsv);
-
-    // Seasons
-    document.getElementById('season-form').addEventListener('submit', submitSeason);
 
     const downloadBtn = document.getElementById('download-qr-btn');
     if (downloadBtn) {
@@ -357,29 +325,17 @@ window.cancelEdit = () => {
 window.deleteActivity = async (id) => {
     if (
         !confirm(
-            'Are you sure? This will permanently delete the activity AND remove these points from all users who attended!',
+            'Delete this activity?\n\nIt disappears from the admin list and can no longer be scanned, but everyone who already earned it KEEPS their points, flight-log entry, and certificate (history is immutable).',
         )
     )
         return;
 
-    // 0. Collect the Drive images to clean up (badge + certificate backgrounds)
-    //    BEFORE the rows are gone (certificates cascade-delete with the activity).
-    const imageUrls = [];
+    // Only the badge image is removed from Drive — certificate backgrounds stay,
+    // because past earners can still download those certificates. Scans + cert
+    // templates are intentionally NOT deleted (they're frozen history; the DB FKs
+    // were dropped in migration 0006 so the activity row can go without them).
     const { data: actRow } = await supabase.from('activities').select('badge_url').eq('id', id).single();
-    if (actRow?.badge_url) imageUrls.push(actRow.badge_url);
-    const { data: certRows } = await supabase.from('certificates').select('background_url').eq('activity_id', id);
-    (certRows || []).forEach(c => { if (c.background_url) imageUrls.push(c.background_url); });
 
-    // 1. Delete scans attached to this activity to keep customer dashboards accurate
-    const { error: scanError } = await supabase.from('scans').delete().eq('activity_id', id);
-
-    if (scanError) {
-        console.error(scanError);
-        alert('Could not delete associated scans: ' + scanError.message);
-        return;
-    }
-
-    // 2. Delete the activity itself
     const { data, error } = await supabase
         .from('activities')
         .delete()
@@ -392,8 +348,7 @@ window.deleteActivity = async (id) => {
     } else if (!data || data.length === 0) {
         alert('Delete failed: No matching activity found, or restricted by permissions (RLS). Please check database policies.');
     } else {
-        // 3. Best-effort: remove the uploaded images from the SAMO Drive.
-        await Promise.all(imageUrls.map(deleteFromDrive));
+        if (actRow?.badge_url) deleteFromDrive(actRow.badge_url); // best-effort
         loadActivities();
     }
 };
@@ -428,16 +383,22 @@ async function submitEditActivity(e) {
         return;
     }
 
-    // 2. IMPORTANT: Update past scans so the users see the new points updated retroactively!
-    await supabase
-        .from('scans')
-        .update({
-            points_awarded: km,
-        })
-        .eq('activity_id', editingActivityId);
+    // 2. Update earned scans for the CURRENT season only — past seasons/years are
+    //    frozen and must never change. Re-sync the snapshot (points + name + dept)
+    //    so the current วาระ reflects the edit; older scans keep their old values.
+    const { season } = await getCurrentContext().catch(() => ({ season: null }));
+    if (season) {
+        await supabase
+            .from('scans')
+            .update({ points_awarded: km, activity_name: name, department_id: dept, sub_department_id: subDept })
+            .eq('activity_id', editingActivityId)
+            .eq('season_id', season.id);
+    }
 
     commitUpload(badge_url); // image is now attached to a saved activity
-    alert('Activity updated successfully!');
+    alert(season
+        ? 'Activity updated. Current-season points were re-synced; past seasons stay frozen.'
+        : 'Activity updated. (No current season is active, so no earned scans changed.)');
     cancelEdit();
     loadActivities();
 }
@@ -539,8 +500,19 @@ async function generateStaticQR() {
 
 // --- CERTIFICATES ---
 let certActivityId = null;
-let editingCertId = null;     // null = adding; otherwise editing this cert
-let certListCache = [];       // last-loaded certs for the open activity
+let editingCertId = null;       // null = adding; otherwise editing this cert
+let certListCache = [];         // last-loaded certs for the open activity
+let certCurrentSeason = null;   // the open season while managing certs
+let certSeasonNames = new Map();// season_id -> name (for frozen-cert labels)
+
+// New certs/edits attach to the current season; past-season certs are frozen.
+async function loadCertSeasonContext() {
+    const { season } = await getCurrentContext().catch(() => ({ season: null }));
+    certCurrentSeason = season;
+    const { data } = await supabase.from('samo_seasons').select('id, name');
+    certSeasonNames = new Map((data || []).map(s => [s.id, s.name]));
+}
+const certEditable = (c) => !c.season_id || c.season_id === (certCurrentSeason?.id || null);
 
 function debounce(fn, ms) {
     let t;
@@ -555,7 +527,7 @@ function updateCertFormMode() {
     document.getElementById('cert-form-heading').textContent = editing ? '✏️ Edit certificate' : 'Add a certificate';
 }
 
-window.manageCerts = (id) => {
+window.manageCerts = async (id) => {
     const act = activitiesCache.find(a => a.id === id);
     certActivityId = id;
     document.getElementById('cert-activity-name').textContent = act ? act.name : '';
@@ -569,6 +541,7 @@ window.manageCerts = (id) => {
     updateCertFormMode();
     previewImg = null; previewImgUrl = '';
     renderCertPreview();
+    await loadCertSeasonContext();
     loadCerts(id);
 };
 
@@ -585,6 +558,10 @@ window.closeCerts = () => {
 window.editCert = (id) => {
     const c = certListCache.find(x => x.id === id);
     if (!c) return;
+    if (!certEditable(c)) {
+        alert('This certificate belongs to a past season and is frozen (so past earners keep it). Use "Duplicate to current season" to make an editable copy.');
+        return;
+    }
     editingCertId = id;
     document.getElementById('cert-label').value = c.label || '';
     document.getElementById('cert-bg-url').value = c.background_url || '';
@@ -628,15 +605,26 @@ async function loadCerts(activityId) {
         return;
     }
 
-    list.innerHTML = data.map(c => `
-        <div class="cert-list-item${c.id === editingCertId ? ' cert-editing' : ''}">
-          <span class="cert-list-label">${escapeHtml(c.label)}</span>
-          <span class="cert-actions">
-            <button onclick="editCert('${c.id}')" class="btn-action btn-edit">Edit</button>
-            <button onclick="deleteCert('${c.id}')" class="btn-action btn-delete">Delete</button>
-          </span>
-        </div>
-    `).join('');
+    const curId = certCurrentSeason?.id || null;
+    const seasonLabel = (sid) => sid ? (certSeasonNames.get(sid) || 'season') : 'Default (any season)';
+
+    list.innerHTML = certListCache.map(c => {
+        const editable = certEditable(c);
+        let tag;
+        if (!c.season_id) tag = '<span class="cert-season-tag">Default</span>';
+        else if (c.season_id === curId) tag = `<span class="cert-season-tag cur">${escapeHtml(seasonLabel(c.season_id))} · current</span>`;
+        else tag = `<span class="cert-season-tag frozen">🔒 ${escapeHtml(seasonLabel(c.season_id))}</span>`;
+
+        const actions = editable
+            ? `<button onclick="editCert('${c.id}')" class="btn-action btn-edit">Edit</button>
+               <button onclick="deleteCert('${c.id}')" class="btn-action btn-delete">Delete</button>`
+            : `<button onclick="duplicateCertToCurrent('${c.id}')" class="btn-action">Duplicate to current season</button>`;
+
+        return `<div class="cert-list-item${c.id === editingCertId ? ' cert-editing' : ''}">
+            <span class="cert-list-label">${escapeHtml(c.label)} ${tag}</span>
+            <span class="cert-actions">${actions}</span>
+          </div>`;
+    }).join('');
 }
 
 window.deleteCert = async (id) => {
@@ -647,6 +635,27 @@ window.deleteCert = async (id) => {
         return;
     }
     if (certActivityId) loadCerts(certActivityId);
+};
+
+// Clone a (frozen, other-season) cert into the current season as an editable copy.
+window.duplicateCertToCurrent = async (id) => {
+    const c = certListCache.find(x => x.id === id);
+    if (!c) return;
+    const payload = {
+        activity_id: c.activity_id,
+        label: c.label,
+        background_url: c.background_url,
+        name_x: c.name_x, name_y: c.name_y,
+        font_size: c.font_size, font_color: c.font_color, font_family: c.font_family,
+        season_id: certCurrentSeason?.id || null,
+    };
+    let { error } = await supabase.from('certificates').insert([payload]);
+    if (error && /font_family/.test(error.message || '')) {
+        const { font_family, ...rest } = payload;
+        ({ error } = await supabase.from('certificates').insert([rest]));
+    }
+    if (error) { alert('Duplicate failed: ' + error.message); return; }
+    loadCerts(certActivityId);
 };
 
 function getCertFormValues() {
@@ -772,15 +781,18 @@ async function submitCertificate(e) {
     if (!certActivityId) return;
     const cert = getCertFormValues();
 
-    // Update the existing cert when editing, otherwise insert a new one. Each
-    // path retries without font_family if that migration hasn't been run yet.
+    // Update the existing cert when editing, otherwise insert a new one stamped
+    // with the CURRENT season (so it only applies to this season's earners).
+    const insertExtras = { activity_id: certActivityId, season_id: certCurrentSeason?.id ?? null };
     const run = (payload) => editingCertId
         ? supabase.from('certificates').update(payload).eq('id', editingCertId)
-        : supabase.from('certificates').insert([{ activity_id: certActivityId, ...payload }]);
+        : supabase.from('certificates').insert([{ ...insertExtras, ...payload }]);
 
     let { error } = await run(cert);
-    if (error && /font_family/.test(error.message || '')) {
+    // Drop optional columns the DB may not have yet (migration not run), then retry.
+    if (error && /season_id|font_family|column|schema cache/i.test(error.message || '')) {
         const { font_family, ...rest } = cert;
+        delete insertExtras.season_id;
         ({ error } = await run(rest));
     }
 
@@ -864,30 +876,39 @@ function wireUpload(inputId, folder) {
     });
 }
 
-// --- SEASONS ---
+// --- วาระสโม (SamoYear) & SEASON CONTROL ---
 const SUBDEPARTMENTS = { 1: 'โครงการ', 2: 'ชุมนุม', 3: 'จิตอาสา', 4: '7 คณะ' };
-let seasonsCache = [];
 
-async function ensureSeasons() {
-    if (seasonsCache.length) return;
-    const { data } = await supabase.from('seasons').select('*').order('start_date', { ascending: false });
-    seasonsCache = data || [];
+let samoYears = [];
+let samoSeasons = [];
+
+function escapeHtml(s) {
+    return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 }
 
-function seasonScopeLabel(s) {
-    if (s.scope === 'department') return DEPARTMENTS[s.scope_id] || 'Department';
-    if (s.scope === 'subdepartment') return SUBDEPARTMENTS[s.scope_id] || 'Sub-department';
-    return 'Overall (วาระสโม)';
+async function loadSamoData() {
+    const [{ data: ys }, { data: ss }] = await Promise.all([
+        supabase.from('samo_years').select('*').order('started_at', { ascending: false }),
+        supabase.from('samo_seasons').select('*').order('started_at', { ascending: false }),
+    ]);
+    samoYears = ys || [];
+    samoSeasons = ss || [];
 }
+
+const currentYearRow = () => samoYears.find(y => !y.ended_at) || null;
+const currentSeasonRow = () => {
+    const y = currentYearRow();
+    return y ? (samoSeasons.find(s => !s.ended_at && s.samo_year_id === y.id) || null) : null;
+};
+const seasonsOfYear = (yId) => samoSeasons.filter(s => s.samo_year_id === yId);
+const fmtDate = (ts) => ts ? new Date(ts).toLocaleDateString() : '';
 
 window.openSeasons = async () => {
     document.getElementById('event-creation').style.display = 'none';
     document.getElementById('manage-section').style.display = 'none';
     document.getElementById('seasons-section').style.display = 'block';
-    document.getElementById('season-year').value = new Date().getFullYear();
-    seasonsCache = [];
-    await ensureSeasons();
-    renderSeasonsList();
+    await loadSamoData();
+    renderSamoControl();
 };
 
 window.closeSeasons = () => {
@@ -896,98 +917,85 @@ window.closeSeasons = () => {
     document.getElementById('manage-section').style.display = 'block';
 };
 
-function renderSeasonsList() {
-    const list = document.getElementById('seasons-list');
-    if (!seasonsCache.length) {
-        list.innerHTML = '<p style="font-size:0.9rem;">No seasons yet.</p>';
+function renderSamoControl() {
+    const y = currentYearRow();
+    const s = currentSeasonRow();
+    document.getElementById('samo-current').innerHTML = `
+      <div class="samo-card">
+        <div class="samo-row">
+          <div class="samo-row-info">
+            <span class="samo-label">Current วาระสโม</span>
+            <strong class="samo-value">${y ? escapeHtml(y.name) : '— none yet —'}</strong>
+            ${y ? `<small>since ${fmtDate(y.started_at)}</small>` : ''}
+          </div>
+          <button class="btn-action" onclick="startNewYear()">＋ New วาระสโม</button>
+        </div>
+        <div class="samo-row">
+          <div class="samo-row-info">
+            <span class="samo-label">Current Season</span>
+            <strong class="samo-value">${s ? escapeHtml(s.name) : '— none yet —'}</strong>
+            ${s ? `<small>since ${fmtDate(s.started_at)}</small>` : ''}
+          </div>
+          <button class="btn-action" onclick="startNewSeason()" ${y ? '' : 'disabled'}>＋ New Season</button>
+        </div>
+      </div>`;
+    renderSamoHistory();
+}
+
+function renderSamoHistory() {
+    const box = document.getElementById('samo-history');
+    if (!samoYears.length) {
+        box.innerHTML = '<p style="font-size:0.9rem;">No วาระสโม yet — start one above.</p>';
         return;
     }
-    list.innerHTML = seasonsCache.map(s => {
-        const archived = !!s.archived_at;
-        return `
-        <div class="cert-list-item${archived ? ' season-archived' : ''}">
-          <span><strong>${escapeHtml(s.name)}</strong> — ${escapeHtml(seasonScopeLabel(s))}<br>
-            <small>${s.start_date} → ${s.end_date} · ${s.year}${archived ? ' · 🔒 archived' : ''}</small></span>
-          <span class="season-actions">
-            ${archived ? '' : `<button onclick="archiveSeason('${s.id}')" class="btn-action">Archive</button>`}
-            <button onclick="deleteSeason('${s.id}')" class="btn-action btn-delete">Delete</button>
-          </span>
-        </div>`;
+    box.innerHTML = samoYears.map(y => {
+        const seasons = seasonsOfYear(y.id);
+        const cur = !y.ended_at;
+        const seasonHtml = seasons.length
+            ? seasons.map(s => `<div class="samo-hist-season">${escapeHtml(s.name)} ${!s.ended_at
+                ? '<span class="samo-badge">current</span>'
+                : `<small>${fmtDate(s.started_at)} → ${fmtDate(s.ended_at)}</small>`}</div>`).join('')
+            : '<div class="samo-hist-season" style="opacity:.55;">(no seasons)</div>';
+        return `<div class="samo-hist-year">
+            <div class="samo-hist-head"><strong>${escapeHtml(y.name)}</strong> ${cur
+                ? '<span class="samo-badge">current</span>'
+                : `<small>ended ${fmtDate(y.ended_at)}</small>`}</div>
+            ${seasonHtml}
+          </div>`;
     }).join('');
 }
 
-window.archiveSeason = async (id) => {
-    const s = seasonsCache.find(x => x.id === id);
-    if (!s) return;
-    if (!confirm(`Archive "${s.name}"?\n\nThis freezes every participant's points for this season. The standings are kept even if the activities are later deleted.`)) return;
-
-    const [{ data: scans }, { data: activities }, { data: profiles }] = await Promise.all([
-        supabase.from('scans').select('user_id, activity_id, points_awarded, scanned_at'),
-        supabase.from('activities').select('id, department_id, sub_department_id, base_points_km'),
-        supabase.from('profiles').select('id, full_name, email'),
-    ]);
-
-    const deptId = s.scope === 'department' ? s.scope_id : null;
-    const subId = s.scope === 'subdepartment' ? s.scope_id : null;
-    const rows = aggregateLeaderboard(scans || [], activities || [], profiles || [], deptId, subId, s.start_date, s.end_date);
-
-    // Re-archiving replaces any previous snapshot for this season.
-    await supabase.from('season_results').delete().eq('season_id', id);
-    if (rows.length) {
-        const payload = rows.map(r => ({ season_id: id, user_id: r.userId, full_name: r.name, email: r.email, points: r.points }));
-        const { error } = await supabase.from('season_results').insert(payload);
-        if (error) { alert('Archive failed: ' + error.message); return; }
-    }
-
-    const { error: e2 } = await supabase.from('seasons').update({ archived_at: new Date().toISOString() }).eq('id', id);
-    if (e2) { alert('Archive failed: ' + e2.message); return; }
-
-    alert(`Archived "${s.name}" — ${rows.length} participant(s) snapshotted.`);
-    seasonsCache = [];
-    await ensureSeasons();
-    renderSeasonsList();
+window.startNewYear = async () => {
+    const name = (prompt("Name the new วาระสโม (e.g. วาระสโม'69):") || '').trim();
+    if (!name) return;
+    if (!confirm(`Start "${name}"?\n\nThis ENDS the current วาระสโม + season and resets the live leaderboard and current-year totals. All past logs and standings are kept.`)) return;
+    const now = new Date().toISOString();
+    await supabase.from('samo_seasons').update({ ended_at: now }).is('ended_at', null);
+    await supabase.from('samo_years').update({ ended_at: now }).is('ended_at', null);
+    const { error } = await supabase.from('samo_years').insert([{ name }]);
+    if (error) { alert('Failed: ' + error.message); return; }
+    await loadSamoData();
+    renderSamoControl();
+    alert(`Started "${name}". Now start its first season (e.g. Q1).`);
 };
 
-window.deleteSeason = async (id) => {
-    if (!confirm('Delete this season?')) return;
-    const { error } = await supabase.from('seasons').delete().eq('id', id);
-    if (error) { alert('Delete failed: ' + error.message); return; }
-    seasonsCache = [];
-    await ensureSeasons();
-    renderSeasonsList();
+window.startNewSeason = async () => {
+    const y = currentYearRow();
+    if (!y) { alert('Start a วาระสโม first.'); return; }
+    const name = (prompt('Name the new Season (e.g. Q1):') || '').trim();
+    if (!name) return;
+    if (!confirm(`Start season "${name}" under ${y.name}?\n\nThis ENDS the current season and resets the live leaderboard. The previous season's standings stay viewable.`)) return;
+    const now = new Date().toISOString();
+    await supabase.from('samo_seasons').update({ ended_at: now }).is('ended_at', null).eq('samo_year_id', y.id);
+    const { error } = await supabase.from('samo_seasons').insert([{ samo_year_id: y.id, name }]);
+    if (error) { alert('Failed: ' + error.message); return; }
+    await loadSamoData();
+    renderSamoControl();
 };
 
-async function submitSeason(e) {
-    e.preventDefault();
-    // Seasons are always overall วาระ windows now. The leaderboard slices by
-    // department via its own dropdown, so a per-season scope isn't needed.
-    const row = {
-        name: document.getElementById('season-name').value.trim(),
-        scope: 'overall',
-        scope_id: null,
-        start_date: document.getElementById('season-start').value,
-        end_date: document.getElementById('season-end').value,
-        year: parseInt(document.getElementById('season-year').value, 10) || new Date().getFullYear(),
-    };
-    if (!row.start_date || !row.end_date) { alert('Pick start and end dates'); return; }
-    if (row.end_date < row.start_date) { alert('End date must be after start date'); return; }
-
-    const { error } = await supabase.from('seasons').insert([row]);
-    if (error) { alert('Failed to add season: ' + error.message); return; }
-
-    document.getElementById('season-form').reset();
-    document.getElementById('season-year').value = new Date().getFullYear();
-    seasonsCache = [];
-    await ensureSeasons();
-    renderSeasonsList();
-}
-
-// --- LEADERBOARD ---
-let lbData = null; // { scans, activities, profiles }
-
-function escapeHtml(s) {
-    return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-}
+// --- LEADERBOARD (period view over immutable, stamped scans) ---
+let lbScans = null;
+let lbProfiles = null;
 
 function populateLbDepartments() {
     const sel = document.getElementById('lb-department');
@@ -1001,51 +1009,101 @@ window.openLeaderboard = async () => {
     document.getElementById('manage-section').style.display = 'none';
     document.getElementById('leaderboard-section').style.display = 'block';
     populateLbDepartments();
-    await ensureSeasons();
-    populateLbSeasons();
-    await loadLeaderboard();
+    await loadSamoData();
+    const ok = await ensureLbScans();
+    populateLbYears();
+    if (ok) renderAdminLeaderboard();
 };
 
-function populateLbSeasons() {
-    const sel = document.getElementById('lb-season');
-    sel.innerHTML = '<option value="">All time</option>' +
-        seasonsCache.map(s => `<option value="${s.id}">${escapeHtml(s.name)}</option>`).join('');
-}
+window.closeLeaderboard = () => {
+    document.getElementById('leaderboard-section').style.display = 'none';
+    document.getElementById('event-creation').style.display = 'block';
+    document.getElementById('manage-section').style.display = 'block';
+};
 
-async function onLbSeasonChange() {
-    const seasonId = document.getElementById('lb-season').value;
-    const s = seasonsCache.find(x => x.id === seasonId);
-    if (s && s.archived_at) {
-        await renderArchivedLeaderboard(s);
-    } else {
-        // Live season (e.g. a trimester window) can still be sliced by the
-        // department dropdown — so each ฝ่ายอุป can pull its own ranking.
-        renderLeaderboard();
-    }
-}
-
-async function renderArchivedLeaderboard(s) {
-    lastLbLabel = `${s.name} · ${s.start_date} → ${s.end_date} · archived`;
-    document.getElementById('lb-scope-label').textContent =
-        `${s.name} · ${s.start_date} → ${s.end_date} · 🔒 archived`;
+async function ensureLbScans() {
+    if (lbScans) return true;
     const table = document.getElementById('leaderboard-table');
     table.innerHTML = '<p style="font-size:0.9rem;">Loading…</p>';
-
-    const { data, error } = await supabase
-        .from('season_results')
-        .select('full_name, email, points')
-        .eq('season_id', s.id)
-        .order('points', { ascending: false });
-
-    if (error) {
-        table.innerHTML = `<p style="color:var(--accent-danger);">${error.message}</p>`;
-        return;
+    const [{ data: scans, error: e1 }, { data: profiles, error: e2 }] = await Promise.all([
+        supabase.from('scans').select('user_id, points_awarded, samo_year_id, season_id, department_id, sub_department_id'),
+        supabase.from('profiles').select('id, full_name, email'),
+    ]);
+    if (e1 || e2) {
+        table.innerHTML = `<p style="color:var(--accent-danger);">Could not load leaderboard: ${(e1 || e2).message}</p>`;
+        return false;
     }
-    renderLbTable(table, (data || []).map(r => ({ name: r.full_name || '(unknown)', email: r.email || '—', points: r.points })));
+    lbScans = scans || [];
+    lbProfiles = new Map((profiles || []).map(p => [p.id, p]));
+    return true;
+}
+
+function populateLbYears() {
+    const sel = document.getElementById('lb-year');
+    sel.innerHTML = samoYears.length
+        ? samoYears.map(y => `<option value="${y.id}">${escapeHtml(y.name)}${!y.ended_at ? ' (current)' : ''}</option>`).join('')
+        : '<option value="">(no วาระสโม yet)</option>';
+    populateLbSeasonsForYear();
+}
+
+function populateLbSeasonsForYear() {
+    const yId = document.getElementById('lb-year').value;
+    const sel = document.getElementById('lb-season');
+    sel.innerHTML = '<option value="">Whole วาระสโม (total)</option>' +
+        seasonsOfYear(yId).map(s => `<option value="${s.id}">${escapeHtml(s.name)}${!s.ended_at ? ' (current)' : ''}</option>`).join('');
+}
+
+function onLbDeptChange() {
+    const dept = document.getElementById('lb-department').value;
+    const subSel = document.getElementById('lb-subdepartment');
+    const options = SUB_DEPT_OPTIONS[dept];
+    if (options) {
+        subSel.innerHTML = '<option value="">All sub-departments</option>' +
+            options.map(o => `<option value="${o.value}">${o.label}</option>`).join('');
+        subSel.style.display = '';
+    } else {
+        subSel.innerHTML = '';
+        subSel.style.display = 'none';
+    }
+    renderAdminLeaderboard();
+}
+
+// Aggregate over stamped scans (immutable snapshots — survives activity deletion).
+function adminAggregate(yearId, seasonId, deptId, subId) {
+    const totals = new Map();
+    (lbScans || []).forEach(s => {
+        if (yearId && s.samo_year_id !== yearId) return;
+        if (seasonId && s.season_id !== seasonId) return;
+        if (deptId && s.department_id !== deptId) return;
+        if (subId && s.sub_department_id !== subId) return;
+        totals.set(s.user_id, (totals.get(s.user_id) || 0) + (s.points_awarded || 0));
+    });
+    return [...totals.entries()].map(([userId, points]) => {
+        const p = lbProfiles.get(userId);
+        return { userId, points, name: p?.full_name || '(unknown)', email: p?.email || '—' };
+    }).sort((a, b) => b.points - a.points);
 }
 
 let lastLbRows = [];
 let lastLbLabel = 'leaderboard';
+
+function renderAdminLeaderboard() {
+    if (!lbScans) return;
+    const yId = document.getElementById('lb-year').value || null;
+    const sId = document.getElementById('lb-season').value || null;
+    const deptRaw = document.getElementById('lb-department').value;
+    const subRaw = document.getElementById('lb-subdepartment').value;
+    const deptId = deptRaw ? parseInt(deptRaw, 10) : null;
+    const subId = subRaw ? parseInt(subRaw, 10) : null;
+
+    const y = samoYears.find(x => x.id === yId);
+    const s = samoSeasons.find(x => x.id === sId);
+    const label = `${y ? y.name : '—'} · ${s ? s.name : 'whole วาระ'}${deptId ? ' · ' + DEPARTMENTS[deptId] : ''}${subId ? ' · ' + SUBDEPARTMENTS[subId] : ''}`;
+    document.getElementById('lb-scope-label').textContent = label;
+    lastLbLabel = label;
+
+    renderLbTable(document.getElementById('leaderboard-table'), adminAggregate(yId, sId, deptId, subId));
+}
 
 function renderLbTable(table, rows) {
     lastLbRows = rows;
@@ -1066,81 +1124,6 @@ function renderLbTable(table, rows) {
             </tr>`).join('')}
         </tbody>
       </table>`;
-}
-
-window.closeLeaderboard = () => {
-    document.getElementById('leaderboard-section').style.display = 'none';
-    document.getElementById('event-creation').style.display = 'block';
-    document.getElementById('manage-section').style.display = 'block';
-};
-
-function onLbDeptChange() {
-    const dept = document.getElementById('lb-department').value;
-    const subSel = document.getElementById('lb-subdepartment');
-    const options = SUB_DEPT_OPTIONS[dept];
-    if (options) {
-        subSel.innerHTML = '<option value="">All sub-departments</option>' +
-            options.map(o => `<option value="${o.value}">${o.label}</option>`).join('');
-        subSel.style.display = '';
-    } else {
-        subSel.innerHTML = '';
-        subSel.style.display = 'none';
-    }
-    onLbSeasonChange(); // archived-aware refresh
-}
-
-async function loadLeaderboard() {
-    const table = document.getElementById('leaderboard-table');
-    table.innerHTML = '<p style="font-size:0.9rem;">Loading…</p>';
-
-    const [{ data: scans, error: e1 }, { data: activities, error: e2 }, { data: profiles, error: e3 }] =
-        await Promise.all([
-            supabase.from('scans').select('user_id, activity_id, points_awarded, scanned_at'),
-            supabase.from('activities').select('id, department_id, sub_department_id, base_points_km'),
-            supabase.from('profiles').select('id, full_name, email'),
-        ]);
-
-    if (e1 || e2 || e3) {
-        table.innerHTML = `<p style="color:var(--accent-danger);">Could not load leaderboard: ${(e1 || e2 || e3).message}</p>`;
-        return;
-    }
-
-    lbData = { scans: scans || [], activities: activities || [], profiles: profiles || [] };
-    renderLeaderboard();
-}
-
-function renderLeaderboard() {
-    if (!lbData) return;
-    let startDate = null, endDate = null;
-
-    // Department/sub-department come from the dropdowns…
-    const deptRaw = document.getElementById('lb-department').value;
-    const subRaw = document.getElementById('lb-subdepartment').value;
-    let deptId = deptRaw ? parseInt(deptRaw, 10) : null;
-    let subId = subRaw ? parseInt(subRaw, 10) : null;
-
-    // …and a selected season adds its date window (and locks the scope if it's
-    // a department/sub-department season).
-    const s = seasonsCache.find(x => x.id === document.getElementById('lb-season').value);
-    let label;
-    if (s) {
-        startDate = s.start_date;
-        endDate = s.end_date;
-        if (s.scope === 'department') deptId = s.scope_id;
-        else if (s.scope === 'subdepartment') subId = s.scope_id;
-        const deptPart = deptId ? ` · ${DEPARTMENTS[deptId] || ''}` : '';
-        label = `${s.name} · ${s.start_date} → ${s.end_date}${deptPart}`;
-    } else {
-        label = deptId
-            ? `${DEPARTMENTS[deptId]}${subId ? ' — sub-department' : ''}`
-            : 'All departments (overall total)';
-    }
-
-    document.getElementById('lb-scope-label').textContent = label;
-    lastLbLabel = label;
-
-    const rows = aggregateLeaderboard(lbData.scans, lbData.activities, lbData.profiles, deptId, subId, startDate, endDate);
-    renderLbTable(document.getElementById('leaderboard-table'), rows);
 }
 
 function downloadLeaderboardCsv() {

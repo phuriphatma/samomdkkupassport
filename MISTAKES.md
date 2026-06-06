@@ -101,6 +101,32 @@ it (`commitUpload`), and cleans up orphans on cancel/replace and via `sendBeacon
 `pagehide` (`deleteFromDriveBeacon`). Don't upload straight into a saved row without
 committing, or real images may get beacon-deleted on tab close.
 
+## Scans are immutable snapshots — don't rewrite/delete past history
+**Note (db/0006):** A scan stores its own `activity_name`, `department_id`,
+`sub_department_id`, `points_awarded`, `samo_year_id`, `season_id` at scan time.
+Aggregations (flight log, leaderboards) read those snapshot fields, **not** a live
+join to `activities`. So:
+- Editing an activity's km updates scans **only for the current season**
+  (`submitEditActivity` filters `eq('season_id', currentSeason)`); past seasons/years
+  must stay frozen.
+- Deleting an activity must **not** delete its scans or certificates — migration 0006
+  drops the `activity_id` FKs on both so the activity row can go while the snapshot
+  rows remain (matched by the still-present `activity_id`).
+- `scanning.js` stamps the snapshot on insert with a "retry minimal on missing column"
+  fallback, so it works before 0006 is run. Don't remove that fallback.
+
+## Certificates are season-scoped — current = editable, past = frozen
+**Note (db/0006):** `certificates.season_id` ties a template to the season it was made
+in. The student gets the cert whose `season_id` matches **their scan's** season (else
+the seasonless `NULL` default). Admin can only Edit/Delete current-season (or default)
+certs; older-season certs show 🔒 + "Duplicate to current season". Don't make cert
+editing rewrite a past-season template — that would change what past earners download.
+
+## "Current" SamoYear/Season = the open row (ended_at IS NULL)
+**Note:** There's no `is_current` flag. `samo.js` finds the open year/season by
+`ended_at IS NULL`. Starting a new one sets the previous open row's `ended_at=now()`
+first. Keep that ordering or you'll briefly have two "current" rows.
+
 ## Vite is multi-page
 **Note:** Each HTML entry (`index.html`, `html/{dashboard,admin,scan}.html`) is a
 separate Rollup input in `vite.config.js`. Add new pages there or they won't build.

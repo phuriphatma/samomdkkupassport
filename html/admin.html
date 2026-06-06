@@ -226,7 +226,8 @@
           activities</button>
         <h3>🏆 Leaderboard</h3>
         <div class="lb-controls">
-          <select id="lb-season"></select>
+          <select id="lb-year" aria-label="วาระสโม"></select>
+          <select id="lb-season" aria-label="Season"></select>
           <select id="lb-department"></select>
           <select id="lb-subdepartment" style="display: none;"></select>
         </div>
@@ -240,23 +241,15 @@
       <div id="seasons-section" style="display: none;">
         <button type="button" onclick="closeSeasons()" class="btn-cancel-edit" style="margin-bottom: 15px;">← Back to
           activities</button>
-        <h3>📅 Leaderboard Seasons</h3>
-        <small style="color: var(--text-muted); display: block; margin-bottom: 10px;">A season is a named, dated window
-          (e.g. “Quarter 2 / 2026”). Standings are counted from scans within its dates; slice them by department on the
-          leaderboard. Past seasons stay viewable in history.</small>
+        <h3>📅 วาระสโม &amp; Season Control</h3>
+        <small style="color: var(--text-muted); display: block; margin-bottom: 14px;">Declare the current
+          วาระสโม (SamoYear) and the current Season. Every scan from then on is collected into them and frozen —
+          starting a new season or year resets the live leaderboard but keeps all past logs and standings.</small>
 
-        <div id="seasons-list" style="margin: 12px 0;"></div>
+        <div id="samo-current"></div>
 
-        <h4>Add a season</h4>
-        <form id="season-form">
-          <input type="text" id="season-name" placeholder="Name (e.g. Quarter 2 / 2026)" required />
-          <div class="season-grid">
-            <label>Start<input type="date" id="season-start" required /></label>
-            <label>End<input type="date" id="season-end" required /></label>
-            <label>Year<input type="number" id="season-year" min="2020" max="2100" step="1" /></label>
-          </div>
-          <button type="submit">Add Season</button>
-        </form>
+        <h4 style="margin-top: 18px;">History</h4>
+        <div id="samo-history"></div>
       </div>
     </div>
   </div>
