@@ -528,6 +528,18 @@ function pointsOfScan(s) {
     return s.points_awarded || activityById.get(s.activity_id)?.base_points_km || 0;
 }
 
+// The current วาระสโม window = the active 'overall' season covering today;
+// otherwise the current calendar year. Points reset each วาระสโม.
+function currentVaraWindow() {
+    const today = new Date().toISOString().slice(0, 10);
+    const overall = seasonsList
+        .filter(s => s.scope === 'overall' && s.start_date <= today && today <= s.end_date)
+        .sort((a, b) => b.start_date.localeCompare(a.start_date))[0];
+    if (overall) return { start: overall.start_date, end: overall.end_date, name: overall.name };
+    const y = new Date().getFullYear();
+    return { start: `${y}-01-01`, end: `${y}-12-31`, name: 'This year' };
+}
+
 function userPointsInWindow(startDate, endDate, scope, scopeId) {
     let total = 0;
     userScansCache.forEach(s => {
@@ -554,24 +566,32 @@ function openHistory() {
     modal.style.display = 'flex';
     document.body.style.overflow = 'hidden';
 
-    // Yearly วาระสโม totals (overall, per calendar year)
-    const byYear = new Map();
+    // Yearly วาระสโม totals (points + badges earned that year)
+    const byYear = new Map(); // year -> { pts, badges:Set(activityId) }
     userScansCache.forEach(s => {
         const y = (s.scanned_at || '').slice(0, 4);
-        if (y) byYear.set(y, (byYear.get(y) || 0) + pointsOfScan(s));
+        if (!y) return;
+        if (!byYear.has(y)) byYear.set(y, { pts: 0, badges: new Set() });
+        const e = byYear.get(y);
+        e.pts += pointsOfScan(s);
+        if (activityById.get(s.activity_id)?.badge_url) e.badges.add(s.activity_id);
     });
     const years = [...byYear.entries()].sort((a, b) => b[0].localeCompare(a[0]));
 
     const today = new Date().toISOString().slice(0, 10);
+    const currentName = currentVaraWindow().name;
 
     let html = '<div class="hist-section"><div class="hist-h">วาระสโม — yearly totals</div>';
     if (years.length === 0) {
         html += '<p class="hist-empty">No activity yet.</p>';
     } else {
-        years.forEach(([y, pts]) => {
-            html += `<div class="hist-row"><span>วาระสโม ${y}</span><span class="hist-pts">${pts} km</span></div>`;
+        years.forEach(([y, e]) => {
+            html += `<div class="hist-row">
+                <span><strong>วาระสโม ${y}</strong><small>${e.badges.size} badge${e.badges.size === 1 ? '' : 's'}</small></span>
+                <span class="hist-pts">${e.pts} km</span></div>`;
         });
     }
+    html += `<p class="hist-empty" style="margin-top:6px;">Current: ${escapeHtmlText(currentName)} — your score resets each วาระสโม.</p>`;
     html += '</div>';
 
     html += '<div class="hist-section"><div class="hist-h">Seasons</div>';
@@ -618,35 +638,51 @@ async function openLeaderboard() {
     document.body.style.overflow = 'hidden';
     list.innerHTML = '<p class="lb-loading">Loading…</p>';
 
-    const { data, error } = await supabase
-        .from('profiles')
-        .select('id, full_name, total_km')
-        .order('total_km', { ascending: false })
-        .limit(100);
+    // Rank by points within the CURRENT วาระสโม (resets each year).
+    const win = currentVaraWindow();
+    const [{ data: scans, error: e1 }, { data: profiles, error: e2 }] = await Promise.all([
+        supabase.from('scans').select('user_id, activity_id, points_awarded, scanned_at'),
+        supabase.from('profiles').select('id, full_name'),
+    ]);
 
-    if (error) {
+    if (e1 || e2) {
         list.innerHTML = '<p class="lb-loading">Could not load leaderboard.</p>';
         return;
     }
 
-    if (!data || data.length === 0) {
-        list.innerHTML = '<p class="lb-loading">No rankings yet.</p>';
+    const nameById = new Map((profiles || []).map(p => [p.id, p.full_name]));
+    const totals = new Map();
+    (scans || []).forEach(s => {
+        const d = (s.scanned_at || '').slice(0, 10);
+        if (d < win.start || d > win.end) return;
+        totals.set(s.user_id, (totals.get(s.user_id) || 0) + (s.points_awarded || 0));
+    });
+
+    const rows = [...totals.entries()]
+        .map(([uid, pts]) => ({ uid, pts, name: nameById.get(uid) || 'Traveler' }))
+        .sort((a, b) => b.pts - a.pts)
+        .slice(0, 100);
+
+    document.querySelector('.lb-modal-title').textContent = `🏆 Leaderboard · ${win.name}`;
+
+    if (rows.length === 0) {
+        list.innerHTML = '<p class="lb-loading">No rankings yet for this วาระสโม.</p>';
         return;
     }
 
     list.innerHTML = '';
-    data.forEach((p, i) => {
+    rows.forEach((r, i) => {
         const row = document.createElement('div');
-        row.className = 'lb-row' + (p.id === currentUserId ? ' lb-me' : '');
+        row.className = 'lb-row' + (r.uid === currentUserId ? ' lb-me' : '');
         const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}`;
         const nameEl = document.createElement('span');
         nameEl.className = 'lb-row-name';
-        nameEl.textContent = p.full_name || 'Traveler';
+        nameEl.textContent = r.name;
         row.innerHTML = `<span class="lb-rank">${medal}</span>`;
         row.appendChild(nameEl);
         const pts = document.createElement('span');
         pts.className = 'lb-row-pts';
-        pts.textContent = `${p.total_km || 0} km`;
+        pts.textContent = `${r.pts} km`;
         row.appendChild(pts);
         list.appendChild(row);
     });
@@ -894,15 +930,18 @@ async function init() {
             certsByActivity.get(c.activity_id).push(c);
         });
 
-        // Total KM
-        let totalKm = 0;
+        // Headline KM = points in the CURRENT วาระสโม only (resets each year);
+        // past years live in the history view.
+        const win = currentVaraWindow();
+        let yearKm = 0;
         scans.forEach(s => {
-            const act = allActivities.find(a => a.id === s.activity_id);
-            totalKm += s.points_awarded || act?.base_points_km || 0;
+            const d = (s.scanned_at || '').slice(0, 10);
+            if (d >= win.start && d <= win.end) yearKm += pointsOfScan(s);
         });
-        const dbTotal = profileTier?.total_km || 0;
-        pKm.textContent = Math.max(dbTotal, totalKm);
+        pKm.textContent = yearKm;
         pKm.classList.remove('skeleton');
+        const wlabel = document.getElementById('km-window-label');
+        if (wlabel) wlabel.textContent = win.name;
 
         // ── Activity log (page 2) ────────────────────────────
         const logList = document.getElementById('activity-list');
