@@ -993,6 +993,30 @@ window.startNewSeason = async () => {
     renderSamoControl();
 };
 
+// Danger zone: wipe all app content (keeps user accounts). Double-gated.
+window.cleanAllData = async () => {
+    if (!confirm('⚠️ This permanently deletes ALL activities, certificates, scans, and every วาระสโม/season.\n\nUser accounts (profiles) are kept. This CANNOT be undone.\n\nContinue?')) return;
+    const typed = prompt('Type DELETE to confirm wiping all data:');
+    if ((typed || '').trim() !== 'DELETE') { alert('Cancelled — you did not type DELETE.'); return; }
+
+    const ALL = '00000000-0000-0000-0000-000000000000';
+    const wipe = (table) => supabase.from(table).delete().neq('id', ALL);
+    try {
+        // Dependents first (FKs to activities were dropped in 0006; samo_seasons +
+        // season_results cascade from their parents, but delete explicitly to be safe).
+        for (const t of ['scans', 'certificates', 'season_results', 'samo_seasons', 'samo_years', 'seasons', 'activities']) {
+            const { error } = await wipe(t);
+            if (error && !/does not exist|schema cache/i.test(error.message || '')) {
+                throw new Error(`${t}: ${error.message}`);
+            }
+        }
+        alert('✅ All data cleared. Reloading.');
+        window.location.reload();
+    } catch (e) {
+        alert('Clean failed: ' + (e.message || e));
+    }
+};
+
 // --- LEADERBOARD (period view over immutable, stamped scans) ---
 let lbScans = null;
 let lbProfiles = null;

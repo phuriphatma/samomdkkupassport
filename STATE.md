@@ -46,13 +46,11 @@ Run these in the Supabase SQL editor (safe, idempotent):
 - [ ] `db/0003_profiles_name_policy.sql` — lets a user update their own name.
 - [ ] `db/0004_seasons.sql` — seasons + history.
 - [ ] `db/0005_season_results.sql` — archived season standings (frozen snapshots).
-- [ ] **`db/0006_samo_years.sql` — REQUIRED for the new SamoYear/Season model.**
-      Adds `samo_years` + `samo_seasons`, scan snapshot columns (`samo_year_id`,
-      `season_id`, `activity_name`, `department_id`, `sub_department_id`),
-      `certificates.season_id`, and **drops the activity FKs on scans/certificates**
-      so history survives activity deletion. Until it's run, the admin วาระสโม/season
-      control and customer Flight Log/Leaderboard pages have no data (they degrade
-      gracefully; scans fall back to the old columns).
+- [x] **`db/0006_samo_years.sql` — RUN (2026-06-07).** SamoYear/Season model:
+      `samo_years` + `samo_seasons`, scan snapshot columns, `certificates.season_id`,
+      and dropped activity FKs on scans/certificates (history survives deletion).
+      Verified live: control page, scan stamping, leaderboard period filter, season-scoped
+      certs. Admin season-control has a guarded **🧹 Clean ALL data** button (danger zone).
 
 Other:
 - [ ] **Local OAuth:** add `http://localhost:5173/**` to Supabase Redirect URLs.

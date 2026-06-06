@@ -828,13 +828,15 @@ function renderFlightLogPage() {
     if (winEl) winEl.textContent = currentYear ? currentYear.name : '—';
 
     const scans = yearScans();
-    const yearTotal = scans.reduce((t, s) => t + pointsOfScan(s), 0);
+    // Totals reflect the active department/sub-department filter, so the student
+    // can read their points "filtered by each department" (per the requirement).
+    const filtered = applyFilter(scans, flFilter);
+    const yearTotal = filtered.reduce((t, s) => t + pointsOfScan(s), 0);
     const seasonTotal = currentSeason
-        ? scans.filter(s => s.season_id === currentSeason.id).reduce((t, s) => t + pointsOfScan(s), 0)
+        ? filtered.filter(s => s.season_id === currentSeason.id).reduce((t, s) => t + pointsOfScan(s), 0)
         : 0;
 
-    const list = applyFilter(scans, flFilter)
-        .slice().sort((a, b) => (b.scanned_at || '').localeCompare(a.scanned_at || ''));
+    const list = filtered.slice().sort((a, b) => (b.scanned_at || '').localeCompare(a.scanned_at || ''));
 
     let html = `
       <div class="seg-totals">
@@ -898,6 +900,9 @@ async function renderLeaderboardPage() {
     if (!box) return;
     const winEl = document.getElementById('lbp-window');
     if (winEl) winEl.textContent = currentYear ? currentYear.name : '—';
+
+    // With no open season, the season view is always empty — default to the year.
+    if (!currentSeason) lbpView = 'year';
 
     box.innerHTML = '<p class="lb-loading">Loading…</p>';
     if (!(await ensureLbPageData())) { box.innerHTML = '<p class="lb-loading">Could not load leaderboard.</p>'; return; }

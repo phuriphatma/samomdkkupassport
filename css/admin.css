@@ -287,6 +287,18 @@
 .samo-value { font-size: 1.05rem; color: var(--accent-primary); }
 .samo-row-info small { color: var(--text-muted); font-size: 0.72rem; }
 .samo-row .btn-action { width: auto; flex-grow: 0; }
+.btn-action:disabled { opacity: 0.45; cursor: default; }
+
+.danger-zone {
+    margin-top: 26px;
+    padding: 14px 16px;
+    border: 1px solid rgba(239, 68, 68, 0.35);
+    border-radius: 12px;
+    background: rgba(239, 68, 68, 0.05);
+}
+.danger-zone h4 { color: var(--accent-danger); margin-bottom: 6px; }
+.danger-note { font-size: 0.82rem; color: var(--text-muted); margin-bottom: 10px; }
+.danger-zone .btn-action { width: auto; flex-grow: 0; }
 
 .samo-hist-year {
     border: 1px solid var(--glass-border, rgba(0, 0, 0, 0.08));
