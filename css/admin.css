@@ -136,12 +136,14 @@
     justify-content: space-between;
     align-items: center;
     gap: 10px;
+    flex-wrap: wrap;            /* let actions drop below the text on narrow screens */
     padding: 10px 14px;
     background: var(--glass-bg, rgba(255, 255, 255, 0.9));
     border: 1px solid var(--glass-border, rgba(0, 0, 0, 0.08));
     border-radius: 10px;
     margin-bottom: 8px;
 }
+.cert-list-item > span:first-child { flex: 1 1 60%; min-width: 0; }
 
 .cert-list-label {
     font-weight: 600;
@@ -185,6 +187,49 @@
     height: 38px;
     padding: 3px;
     cursor: pointer;
+}
+
+/* Touch-friendly name placement (sliders) */
+.cert-sliders {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    margin: 14px 0 16px;
+}
+.cert-slider-field { display: flex; flex-direction: column; gap: 6px; }
+.csf-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    color: var(--text-muted);
+}
+.csf-head b { color: var(--accent-primary); font-size: 0.85rem; }
+.slider-combo { display: flex; align-items: center; gap: 12px; }
+.slider-combo input[type="range"] {
+    -webkit-appearance: auto;
+    appearance: auto;
+    accent-color: var(--accent-primary);
+    flex: 1;
+    min-width: 0;
+    height: 34px;          /* big touch target */
+    margin: 0;
+    padding: 0;
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    cursor: pointer;
+}
+.slider-combo input[type="range"]:focus { outline: none; box-shadow: none; }
+.slider-combo input[type="number"] {
+    width: 72px;
+    flex-shrink: 0;
+    margin: 0;
+    padding: 9px 10px;
+    text-align: center;
 }
 
 .cert-preview-wrap {
@@ -265,9 +310,20 @@
 input.drag-over { outline: 2px dashed var(--accent-primary); outline-offset: 2px; }
 
 /* Seasons */
-.season-controls { display: flex; flex-wrap: wrap; gap: 12px; margin: 10px 0; }
-.season-controls label { display: flex; flex-direction: column; gap: 4px; font-size: 0.75rem; font-weight: 600; color: var(--text-muted); }
-.season-controls input, .season-controls select { margin-bottom: 0; }
+/* Season form: dates + year in a tidy grid (no more overlapping inputs) */
+.season-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 14px 0; }
+.season-grid label {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    color: var(--text-muted);
+}
+.season-grid input { margin-bottom: 0; width: 100%; padding: 10px; }
+@media (max-width: 520px) { .season-grid { grid-template-columns: 1fr 1fr; } }
 
 .season-actions { display: flex; gap: 6px; flex-shrink: 0; }
 .season-archived { opacity: 0.72; background: rgba(0,0,0,0.03); }

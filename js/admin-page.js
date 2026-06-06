@@ -149,6 +149,7 @@ async function init() {
         .addEventListener('input', debounce(renderCertPreview, 350));
     populateCertFonts();
     setupCertPreviewDrag();
+    setupCertSliders();
 
     // Drag-drop / click upload for image URL fields (if a GAS endpoint is set)
     wireUpload('act-badge-url', 'badges');
@@ -163,7 +164,6 @@ async function init() {
 
     // Seasons
     document.getElementById('season-form').addEventListener('submit', submitSeason);
-    document.getElementById('season-scope').addEventListener('change', onSeasonScopeChange);
 
     const downloadBtn = document.getElementById('download-qr-btn');
     if (downloadBtn) {
@@ -634,6 +634,12 @@ async function renderCertPreview() {
     const tip = document.getElementById('cert-preview-tip');
     const cert = getCertFormValues();
 
+    // Keep slider value-labels + ranges in step with the number inputs (e.g.
+    // after the form resets to its defaults).
+    ['cert-font-size', 'cert-name-x', 'cert-name-y'].forEach(id => {
+        setCertControl(id, document.getElementById(id).value);
+    });
+
     if (!cert.background_url) {
         canvas.style.display = 'none';
         hint.style.display = '';
@@ -661,6 +667,30 @@ async function renderCertPreview() {
     }
 }
 
+// Keep a slider's number box, range, and the live "NN%" label in sync.
+function setCertControl(numId, value) {
+    const num = document.getElementById(numId);
+    if (num) num.value = value;
+    const range = document.getElementById(numId + '-range');
+    if (range) range.value = value;
+    const lbl = document.getElementById(numId + '-val');
+    if (lbl) lbl.textContent = value + '%';
+}
+
+// Touch-friendly placement: drag the sliders (no type-delete-type on iPad).
+function setupCertSliders() {
+    [['cert-font-size-range', 'cert-font-size'],
+     ['cert-name-x-range', 'cert-name-x'],
+     ['cert-name-y-range', 'cert-name-y']].forEach(([rangeId, numId]) => {
+        const range = document.getElementById(rangeId);
+        const num = document.getElementById(numId);
+        if (!range || !num) return;
+        range.addEventListener('input', () => { setCertControl(numId, range.value); renderCertPreview(); });
+        num.addEventListener('input', () => { setCertControl(numId, num.value); });
+        num.addEventListener('focus', () => num.select()); // tap selects all — easy retype
+    });
+}
+
 // Click / drag on the preview to place the name (updates X/Y + re-renders).
 function setupCertPreviewDrag() {
     const canvas = document.getElementById('cert-preview');
@@ -673,8 +703,8 @@ function setupCertPreviewDrag() {
         const pt = e.touches ? e.touches[0] : e;
         const x = Math.min(100, Math.max(0, ((pt.clientX - rect.left) / rect.width) * 100));
         const y = Math.min(100, Math.max(0, ((pt.clientY - rect.top) / rect.height) * 100));
-        document.getElementById('cert-name-x').value = Math.round(x);
-        document.getElementById('cert-name-y').value = Math.round(y);
+        setCertControl('cert-name-x', Math.round(x));
+        setCertControl('cert-name-y', Math.round(y));
         renderCertPreview();
     };
 
@@ -874,28 +904,14 @@ window.deleteSeason = async (id) => {
     renderSeasonsList();
 };
 
-function onSeasonScopeChange() {
-    const scope = document.getElementById('season-scope').value;
-    const wrap = document.getElementById('season-scope-id-wrap');
-    const sel = document.getElementById('season-scope-id');
-    const map = scope === 'department' ? DEPARTMENTS : scope === 'subdepartment' ? SUBDEPARTMENTS : null;
-    if (map) {
-        sel.innerHTML = Object.entries(map).map(([id, n]) => `<option value="${id}">${n}</option>`).join('');
-        wrap.style.display = '';
-    } else {
-        sel.innerHTML = '';
-        wrap.style.display = 'none';
-    }
-}
-
 async function submitSeason(e) {
     e.preventDefault();
-    const scope = document.getElementById('season-scope').value;
-    const scopeIdRaw = document.getElementById('season-scope-id').value;
+    // Seasons are always overall วาระ windows now. The leaderboard slices by
+    // department via its own dropdown, so a per-season scope isn't needed.
     const row = {
         name: document.getElementById('season-name').value.trim(),
-        scope,
-        scope_id: scope === 'overall' ? null : (scopeIdRaw ? parseInt(scopeIdRaw, 10) : null),
+        scope: 'overall',
+        scope_id: null,
         start_date: document.getElementById('season-start').value,
         end_date: document.getElementById('season-end').value,
         year: parseInt(document.getElementById('season-year').value, 10) || new Date().getFullYear(),
@@ -908,7 +924,6 @@ async function submitSeason(e) {
 
     document.getElementById('season-form').reset();
     document.getElementById('season-year').value = new Date().getFullYear();
-    onSeasonScopeChange();
     seasonsCache = [];
     await ensureSeasons();
     renderSeasonsList();

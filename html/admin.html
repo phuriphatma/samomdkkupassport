@@ -179,19 +179,8 @@
           <input type="url" id="cert-bg-url" placeholder="Background image URL (public)" required /><br />
 
           <div class="cert-controls">
-            <label>Font<select id="cert-font"></select></label>
-            <label>Font size (%)<input type="number" id="cert-font-size" value="6" min="1" max="40" step="0.5" list="cert-font-size-presets" />
-              <datalist id="cert-font-size-presets">
-                <option value="2"></option><option value="3"></option><option value="4"></option>
-                <option value="5"></option><option value="6"></option><option value="7"></option>
-                <option value="8"></option><option value="10"></option><option value="12"></option>
-                <option value="15"></option><option value="18"></option><option value="20"></option>
-                <option value="25"></option><option value="30"></option><option value="40"></option>
-              </datalist>
-            </label>
-            <label>Color<input type="color" id="cert-font-color" value="#1f2d3d" /></label>
-            <label>Name X (%)<input type="number" id="cert-name-x" value="50" min="0" max="100" step="1" /></label>
-            <label>Name Y (%)<input type="number" id="cert-name-y" value="52" min="0" max="100" step="1" /></label>
+            <label class="cert-ctl-inline">Font<select id="cert-font"></select></label>
+            <label class="cert-ctl-inline">Color<input type="color" id="cert-font-color" value="#1f2d3d" /></label>
           </div>
 
           <div class="cert-preview-wrap">
@@ -199,7 +188,32 @@
               <canvas id="cert-preview" class="cert-preview-canvas"></canvas>
             </div>
             <div id="cert-preview-hint" class="cert-preview-hint">Paste a background URL to preview.</div>
-            <small class="cert-preview-tip" id="cert-preview-tip" style="display:none;">Tip: click or drag on the preview to place the name.</small>
+            <small class="cert-preview-tip" id="cert-preview-tip" style="display:none;">Drag the name on the preview, or use the sliders below.</small>
+          </div>
+
+          <!-- Touch-friendly placement: drag sliders instead of typing -->
+          <div class="cert-sliders">
+            <label class="cert-slider-field">
+              <span class="csf-head">Font size <b id="cert-font-size-val">6%</b></span>
+              <span class="slider-combo">
+                <input type="range" id="cert-font-size-range" min="1" max="40" step="0.5" value="6" />
+                <input type="number" id="cert-font-size" value="6" min="1" max="40" step="0.5" aria-label="Font size %" />
+              </span>
+            </label>
+            <label class="cert-slider-field">
+              <span class="csf-head">Name X (←→) <b id="cert-name-x-val">50%</b></span>
+              <span class="slider-combo">
+                <input type="range" id="cert-name-x-range" min="0" max="100" step="1" value="50" />
+                <input type="number" id="cert-name-x" value="50" min="0" max="100" step="1" aria-label="Name X %" />
+              </span>
+            </label>
+            <label class="cert-slider-field">
+              <span class="csf-head">Name Y (↑↓) <b id="cert-name-y-val">52%</b></span>
+              <span class="slider-combo">
+                <input type="range" id="cert-name-y-range" min="0" max="100" step="1" value="52" />
+                <input type="number" id="cert-name-y" value="52" min="0" max="100" step="1" aria-label="Name Y %" />
+              </span>
+            </label>
           </div>
 
           <button type="submit">Add Certificate</button>
@@ -227,30 +241,18 @@
           activities</button>
         <h3>📅 Leaderboard Seasons</h3>
         <small style="color: var(--text-muted); display: block; margin-bottom: 10px;">A season is a named, dated window
-          (e.g. “Quarter 2 / 2026”). Standings are counted from scans within its dates, for its scope (overall, a
-          department, or a sub-department). Past seasons stay viewable in history.</small>
+          (e.g. “Quarter 2 / 2026”). Standings are counted from scans within its dates; slice them by department on the
+          leaderboard. Past seasons stay viewable in history.</small>
 
         <div id="seasons-list" style="margin: 12px 0;"></div>
 
         <h4>Add a season</h4>
         <form id="season-form">
-          <input type="text" id="season-name" placeholder="Name (e.g. Quarter 2 / 2026)" required /><br />
-          <div class="season-controls">
-            <label>Scope
-              <select id="season-scope">
-                <option value="overall">Overall (วาระสโม)</option>
-                <option value="department">Department</option>
-                <option value="subdepartment">Sub-department</option>
-              </select>
-            </label>
-            <label id="season-scope-id-wrap" style="display:none;">Which
-              <select id="season-scope-id"></select>
-            </label>
-            <label>Year<input type="number" id="season-year" min="2020" max="2100" step="1" /></label>
-          </div>
-          <div class="season-controls">
+          <input type="text" id="season-name" placeholder="Name (e.g. Quarter 2 / 2026)" required />
+          <div class="season-grid">
             <label>Start<input type="date" id="season-start" required /></label>
             <label>End<input type="date" id="season-end" required /></label>
+            <label>Year<input type="number" id="season-year" min="2020" max="2100" step="1" /></label>
           </div>
           <button type="submit">Add Season</button>
         </form>

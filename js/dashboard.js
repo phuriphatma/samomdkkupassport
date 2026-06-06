@@ -620,8 +620,10 @@ function pointsOfScan(s) {
 // otherwise the current calendar year. Points reset each วาระสโม.
 function currentVaraWindow() {
     const today = new Date().toISOString().slice(0, 10);
+    // Archived seasons are closed — they must not drive the "current" window,
+    // otherwise an archived season keeps showing as the live leaderboard.
     const overall = seasonsList
-        .filter(s => s.scope === 'overall' && s.start_date <= today && today <= s.end_date)
+        .filter(s => s.scope === 'overall' && !s.archived_at && s.start_date <= today && today <= s.end_date)
         .sort((a, b) => b.start_date.localeCompare(a.start_date))[0];
     if (overall) return { start: overall.start_date, end: overall.end_date, name: overall.name };
     const y = new Date().getFullYear();
@@ -720,54 +722,140 @@ function escapeHtmlText(s) {
 }
 
 // ─── Leaderboard ──────────────────────────────────────────
-async function openLeaderboard() {
-    const modal = document.getElementById('leaderboard-modal');
-    const list = document.getElementById('lb-list');
-    modal.style.display = 'flex';
-    syncModalViewport();
-    list.innerHTML = '<p class="lb-loading">Loading…</p>';
+// A single board that can show: the current วาระ (live), all-time total, and
+// every season (live windows or frozen archived snapshots) — optionally sliced
+// by department. Everyone's scans + names are fetched once and cached.
+let lbAllScans = null;
+let lbNameById = null;
 
-    // Rank by points within the CURRENT วาระสโม (resets each year).
-    const win = currentVaraWindow();
+async function ensureLbData() {
+    if (lbAllScans) return true;
     const [{ data: scans, error: e1 }, { data: profiles, error: e2 }] = await Promise.all([
         supabase.from('scans').select('user_id, activity_id, points_awarded, scanned_at'),
         supabase.from('profiles').select('id, full_name'),
     ]);
+    if (e1 || e2) return false;
+    lbAllScans = scans || [];
+    lbNameById = new Map((profiles || []).map(p => [p.id, p.full_name]));
+    return true;
+}
 
-    if (e1 || e2) {
+function lbComputeRanking(startDate, endDate, deptId) {
+    const totals = new Map();
+    lbAllScans.forEach(s => {
+        const d = (s.scanned_at || '').slice(0, 10);
+        if (startDate && d < startDate) return;
+        if (endDate && d > endDate) return;
+        const act = activityById.get(s.activity_id);
+        if (deptId && (!act || act.department_id !== deptId)) return;
+        totals.set(s.user_id, (totals.get(s.user_id) || 0) + pointsOfScan(s));
+    });
+    return [...totals.entries()]
+        .map(([uid, pts]) => ({ uid, pts, name: lbNameById.get(uid) || 'Traveler' }))
+        .sort((a, b) => b.pts - a.pts);
+}
+
+function populateLbControls() {
+    const viewSel = document.getElementById('lb-view');
+    const deptSel = document.getElementById('lb-dept');
+    const today = new Date().toISOString().slice(0, 10);
+    const win = currentVaraWindow();
+
+    let opts = `<option value="current">🔥 ${escapeHtmlText(win.name)} · now</option>`;
+    opts += '<option value="all">🏆 All-time total</option>';
+    seasonsList.forEach(s => {
+        const tag = s.archived_at ? '🔒' : (s.end_date < today ? '✓' : '•');
+        opts += `<option value="season:${s.id}">${tag} ${escapeHtmlText(s.name)}</option>`;
+    });
+    viewSel.innerHTML = opts;
+
+    deptSel.innerHTML = '<option value="">🌏 All departments</option>' +
+        Object.entries(DEPARTMENTS).map(([id, n]) => `<option value="${id}">${escapeHtmlText(n)}</option>`).join('');
+}
+
+async function renderLeaderboardView() {
+    const list = document.getElementById('lb-list');
+    const podium = document.getElementById('lb-podium');
+    const yourank = document.getElementById('lb-yourank');
+    const titleEl = document.querySelector('.lb-modal-title');
+    const viewVal = document.getElementById('lb-view').value;
+    const deptSel = document.getElementById('lb-dept');
+    const deptId = deptSel.value ? parseInt(deptSel.value, 10) : null;
+
+    list.innerHTML = '<p class="lb-loading">Loading…</p>';
+    podium.innerHTML = '';
+    yourank.style.display = 'none';
+
+    if (!(await ensureLbData())) {
         list.innerHTML = '<p class="lb-loading">Could not load leaderboard.</p>';
         return;
     }
 
-    const nameById = new Map((profiles || []).map(p => [p.id, p.full_name]));
-    const totals = new Map();
-    (scans || []).forEach(s => {
-        const d = (s.scanned_at || '').slice(0, 10);
-        if (d < win.start || d > win.end) return;
-        totals.set(s.user_id, (totals.get(s.user_id) || 0) + (s.points_awarded || 0));
-    });
+    let rows = [];
+    let label = '';
+    let deptApplies = true;
+    const today = new Date().toISOString().slice(0, 10);
 
-    const rows = [...totals.entries()]
-        .map(([uid, pts]) => ({ uid, pts, name: nameById.get(uid) || 'Traveler' }))
-        .sort((a, b) => b.pts - a.pts)
-        .slice(0, 100);
+    if (viewVal === 'all') {
+        rows = lbComputeRanking(null, null, deptId);
+        label = 'All-time total';
+    } else if (viewVal.startsWith('season:')) {
+        const sid = viewVal.slice(7);
+        const s = seasonsList.find(x => x.id === sid);
+        if (s && s.archived_at) {
+            // Frozen snapshot — survives activity deletion; can't slice by dept.
+            deptApplies = false;
+            const { data } = await supabase
+                .from('season_results').select('user_id, full_name, points')
+                .eq('season_id', sid).order('points', { ascending: false });
+            rows = (data || []).map(r => ({ uid: r.user_id, pts: r.points, name: r.full_name || 'Traveler' }));
+            label = `${s.name} · 🔒 archived`;
+        } else if (s) {
+            rows = lbComputeRanking(s.start_date, s.end_date, deptId);
+            label = `${s.name}${s.end_date < today ? ' · ended' : ''}`;
+        }
+    } else { // 'current'
+        const win = currentVaraWindow();
+        rows = lbComputeRanking(win.start, win.end, deptId);
+        label = win.name;
+    }
 
-    document.querySelector('.lb-modal-title').textContent = `🏆 Leaderboard · ${win.name}`;
+    // Dept filter is meaningless on a frozen snapshot.
+    deptSel.disabled = !deptApplies;
+    deptSel.style.opacity = deptApplies ? '' : '0.45';
+    if (deptApplies && deptId) label += ` · ${DEPARTMENTS[deptId]}`;
+
+    titleEl.textContent = '🏆 Leaderboard';
+    document.getElementById('lb-podium').setAttribute('data-label', label);
 
     if (rows.length === 0) {
-        list.innerHTML = '<p class="lb-loading">No rankings yet for this วาระสโม.</p>';
+        list.innerHTML = `<p class="lb-loading">No rankings yet for “${escapeHtmlText(label)}”.</p>`;
         return;
     }
 
+    // Podium for the top 3
+    const medals = ['🥇', '🥈', '🥉'];
+    const order = [1, 0, 2]; // visual order: 2nd, 1st, 3rd
+    podium.innerHTML = `<div class="lb-scope-pill">${escapeHtmlText(label)}</div><div class="lb-podium-row">` +
+        order.filter(i => rows[i]).map(i => {
+            const r = rows[i];
+            return `<div class="lb-podium-spot lb-podium-${i + 1}${r.uid === currentUserId ? ' lb-me' : ''}">
+                <div class="lb-podium-medal">${medals[i]}</div>
+                <div class="lb-podium-name">${escapeHtmlText(r.name)}</div>
+                <div class="lb-podium-pts">${r.pts}<small>km</small></div>
+              </div>`;
+        }).join('') + '</div>';
+
+    // Ranks 4+
+    const rest = rows.slice(3, 100);
     list.innerHTML = '';
-    rows.forEach((r, i) => {
+    rest.forEach((r, i) => {
         const row = document.createElement('div');
         row.className = 'lb-row' + (r.uid === currentUserId ? ' lb-me' : '');
-        const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}`;
+        row.innerHTML = `<span class="lb-rank">${i + 4}</span>`;
         const nameEl = document.createElement('span');
         nameEl.className = 'lb-row-name';
         nameEl.textContent = r.name;
-        row.innerHTML = `<span class="lb-rank">${medal}</span>`;
         row.appendChild(nameEl);
         const pts = document.createElement('span');
         pts.className = 'lb-row-pts';
@@ -775,6 +863,25 @@ async function openLeaderboard() {
         row.appendChild(pts);
         list.appendChild(row);
     });
+    if (rest.length === 0) list.innerHTML = '<p class="lb-loading" style="padding:8px;">That\'s everyone 🎉</p>';
+
+    // Your standing, if you fell outside the visible list
+    const myIdx = rows.findIndex(r => r.uid === currentUserId);
+    if (myIdx >= 100) {
+        const me = rows[myIdx];
+        yourank.style.display = '';
+        yourank.innerHTML = `<span class="lb-rank">#${myIdx + 1}</span>` +
+            `<span class="lb-row-name">You · ${escapeHtmlText(me.name)}</span>` +
+            `<span class="lb-row-pts">${me.pts} km</span>`;
+    }
+}
+
+function openLeaderboard() {
+    const modal = document.getElementById('leaderboard-modal');
+    modal.style.display = 'flex';
+    syncModalViewport();
+    populateLbControls();
+    renderLeaderboardView();
 }
 
 function closeLeaderboard() {
@@ -965,6 +1072,8 @@ async function init() {
     });
     document.getElementById('lb-close').addEventListener('click', closeLeaderboard);
     document.getElementById('lb-backdrop').addEventListener('click', closeLeaderboard);
+    document.getElementById('lb-view').addEventListener('change', renderLeaderboardView);
+    document.getElementById('lb-dept').addEventListener('change', renderLeaderboardView);
 
     // History
     document.getElementById('history-btn').addEventListener('click', (e) => {
