@@ -510,6 +510,53 @@ function importUserData(file) {
     reader.readAsText(file);
 }
 
+// ─── Leaderboard ──────────────────────────────────────────
+async function openLeaderboard() {
+    const modal = document.getElementById('leaderboard-modal');
+    const list = document.getElementById('lb-list');
+    modal.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+    list.innerHTML = '<p class="lb-loading">Loading…</p>';
+
+    const { data, error } = await supabase
+        .from('profiles')
+        .select('id, full_name, total_km')
+        .order('total_km', { ascending: false })
+        .limit(100);
+
+    if (error) {
+        list.innerHTML = '<p class="lb-loading">Could not load leaderboard.</p>';
+        return;
+    }
+
+    if (!data || data.length === 0) {
+        list.innerHTML = '<p class="lb-loading">No rankings yet.</p>';
+        return;
+    }
+
+    list.innerHTML = '';
+    data.forEach((p, i) => {
+        const row = document.createElement('div');
+        row.className = 'lb-row' + (p.id === currentUserId ? ' lb-me' : '');
+        const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}`;
+        const nameEl = document.createElement('span');
+        nameEl.className = 'lb-row-name';
+        nameEl.textContent = p.full_name || 'Traveler';
+        row.innerHTML = `<span class="lb-rank">${medal}</span>`;
+        row.appendChild(nameEl);
+        const pts = document.createElement('span');
+        pts.className = 'lb-row-pts';
+        pts.textContent = `${p.total_km || 0} km`;
+        row.appendChild(pts);
+        list.appendChild(row);
+    });
+}
+
+function closeLeaderboard() {
+    document.getElementById('leaderboard-modal').style.display = 'none';
+    document.body.style.overflow = '';
+}
+
 // ─── Edit name ────────────────────────────────────────────
 async function editName() {
     const current = currentUserName || '';
@@ -608,6 +655,14 @@ async function init() {
         showToast('Memory saved ✓');
         closeModal();
     });
+
+    // Leaderboard
+    document.getElementById('leaderboard-btn').addEventListener('click', (e) => {
+        e.preventDefault();
+        openLeaderboard();
+    });
+    document.getElementById('lb-close').addEventListener('click', closeLeaderboard);
+    document.getElementById('lb-backdrop').addEventListener('click', closeLeaderboard);
 
     // Edit name
     document.getElementById('edit-name-btn').addEventListener('click', editName);

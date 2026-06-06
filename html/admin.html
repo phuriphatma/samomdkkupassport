@@ -117,6 +117,7 @@
       <div id="manage-section">
         <div>
           <h3>Manage Existing Activities</h3>
+          <button type="button" onclick="openLeaderboard()" class="btn-action" style="width:auto;margin-bottom:12px;">🏆 View Leaderboard</button><br />
           <input type="search" id="search-activity" placeholder="🔍 Search activities by name…" /><br />
           <select id="filter-department">
             <option value="">Filter by Department</option>
@@ -194,6 +195,18 @@
 
           <button type="submit">Add Certificate</button>
         </form>
+      </div>
+
+      <div id="leaderboard-section" style="display: none;">
+        <button type="button" onclick="closeLeaderboard()" class="btn-cancel-edit" style="margin-bottom: 15px;">← Back to
+          activities</button>
+        <h3>🏆 Leaderboard</h3>
+        <div class="lb-controls">
+          <select id="lb-department"></select>
+          <select id="lb-subdepartment" style="display: none;"></select>
+        </div>
+        <p id="lb-scope-label" class="lb-scope-label"></p>
+        <div id="leaderboard-table"></div>
       </div>
     </div>
   </div>

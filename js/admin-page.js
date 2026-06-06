@@ -6,6 +6,39 @@ import { renderCertificate, loadCertImage, CERT_FONTS } from './certificate.js';
 
 const CERT_SAMPLE_NAME = 'ชื่อ นามสกุล';
 
+const DEPARTMENTS = {
+    1: 'อุปนายกฝ่ายบริหารองค์กร', 2: 'ดิจิทัลและสื่อสารองค์กร', 3: 'กิจการภายใน',
+    4: 'กิจการภายนอก', 5: 'กิจการมหาวิทยาลัย', 6: 'วิชาการ',
+    7: 'ยุทธศาสตร์และพัฒนาองค์กร', 8: 'คุณภาพชีวิตและสิ่งแวดล้อม',
+    9: 'เวชนิทัศน์', 10: 'รังสีเทคนิค',
+};
+
+/**
+ * Aggregate total points per user from scans, optionally filtered to a
+ * department / sub-department via the activity each scan belongs to.
+ * Returns rows sorted by points desc: { userId, name, email, points }.
+ */
+function aggregateLeaderboard(scans, activities, profiles, deptId, subId) {
+    const actMap = new Map(activities.map(a => [a.id, a]));
+    const profMap = new Map(profiles.map(p => [p.id, p]));
+    const totals = new Map();
+
+    scans.forEach(s => {
+        const act = actMap.get(s.activity_id);
+        if (deptId && (!act || act.department_id !== deptId)) return;
+        if (subId && (!act || act.sub_department_id !== subId)) return;
+        const pts = s.points_awarded || act?.base_points_km || 0;
+        totals.set(s.user_id, (totals.get(s.user_id) || 0) + pts);
+    });
+
+    return [...totals.entries()]
+        .map(([userId, points]) => {
+            const p = profMap.get(userId);
+            return { userId, points, name: p?.full_name || '(unknown)', email: p?.email || '—' };
+        })
+        .sort((a, b) => b.points - a.points);
+}
+
 // --- CONFIG ---
 const SUB_DEPT_OPTIONS = {
     '3': [{ value: '1', label: 'โครงการ' }, { value: '2', label: 'ชุมนุม' }],
@@ -81,6 +114,10 @@ async function init() {
         .addEventListener('input', debounce(renderCertPreview, 350));
     populateCertFonts();
     setupCertPreviewDrag();
+
+    // Leaderboard filters
+    document.getElementById('lb-department').addEventListener('change', onLbDeptChange);
+    document.getElementById('lb-subdepartment').addEventListener('change', renderLeaderboard);
 
     const downloadBtn = document.getElementById('download-qr-btn');
     if (downloadBtn) {
@@ -608,6 +645,103 @@ async function submitCertificate(e) {
     document.getElementById('cert-form').reset();
     renderCertPreview();
     loadCerts(certActivityId);
+}
+
+// --- LEADERBOARD ---
+let lbData = null; // { scans, activities, profiles }
+
+function escapeHtml(s) {
+    return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+}
+
+function populateLbDepartments() {
+    const sel = document.getElementById('lb-department');
+    if (sel.options.length) return;
+    sel.innerHTML = '<option value="">All departments (total)</option>' +
+        Object.entries(DEPARTMENTS).map(([id, name]) => `<option value="${id}">${name}</option>`).join('');
+}
+
+window.openLeaderboard = async () => {
+    document.getElementById('event-creation').style.display = 'none';
+    document.getElementById('manage-section').style.display = 'none';
+    document.getElementById('leaderboard-section').style.display = 'block';
+    populateLbDepartments();
+    await loadLeaderboard();
+};
+
+window.closeLeaderboard = () => {
+    document.getElementById('leaderboard-section').style.display = 'none';
+    document.getElementById('event-creation').style.display = 'block';
+    document.getElementById('manage-section').style.display = 'block';
+};
+
+function onLbDeptChange() {
+    const dept = document.getElementById('lb-department').value;
+    const subSel = document.getElementById('lb-subdepartment');
+    const options = SUB_DEPT_OPTIONS[dept];
+    if (options) {
+        subSel.innerHTML = '<option value="">All sub-departments</option>' +
+            options.map(o => `<option value="${o.value}">${o.label}</option>`).join('');
+        subSel.style.display = '';
+    } else {
+        subSel.innerHTML = '';
+        subSel.style.display = 'none';
+    }
+    renderLeaderboard();
+}
+
+async function loadLeaderboard() {
+    const table = document.getElementById('leaderboard-table');
+    table.innerHTML = '<p style="font-size:0.9rem;">Loading…</p>';
+
+    const [{ data: scans, error: e1 }, { data: activities, error: e2 }, { data: profiles, error: e3 }] =
+        await Promise.all([
+            supabase.from('scans').select('user_id, activity_id, points_awarded'),
+            supabase.from('activities').select('id, department_id, sub_department_id, base_points_km'),
+            supabase.from('profiles').select('id, full_name, email'),
+        ]);
+
+    if (e1 || e2 || e3) {
+        table.innerHTML = `<p style="color:var(--accent-danger);">Could not load leaderboard: ${(e1 || e2 || e3).message}</p>`;
+        return;
+    }
+
+    lbData = { scans: scans || [], activities: activities || [], profiles: profiles || [] };
+    renderLeaderboard();
+}
+
+function renderLeaderboard() {
+    if (!lbData) return;
+    const deptRaw = document.getElementById('lb-department').value;
+    const subRaw = document.getElementById('lb-subdepartment').value;
+    const deptId = deptRaw ? parseInt(deptRaw, 10) : null;
+    const subId = subRaw ? parseInt(subRaw, 10) : null;
+
+    document.getElementById('lb-scope-label').textContent = deptId
+        ? `${DEPARTMENTS[deptId]}${subId ? ' — sub-department' : ''}`
+        : 'All departments (overall total)';
+
+    const rows = aggregateLeaderboard(lbData.scans, lbData.activities, lbData.profiles, deptId, subId);
+    const table = document.getElementById('leaderboard-table');
+
+    if (rows.length === 0) {
+        table.innerHTML = '<p style="font-size:0.9rem;">No points recorded for this scope yet.</p>';
+        return;
+    }
+
+    table.innerHTML = `
+      <table class="lb-table">
+        <thead><tr><th>#</th><th>Name</th><th>Email</th><th>Points</th></tr></thead>
+        <tbody>
+          ${rows.map((r, i) => `
+            <tr>
+              <td>${i + 1}</td>
+              <td>${escapeHtml(r.name)}</td>
+              <td class="lb-email">${escapeHtml(r.email)}</td>
+              <td class="lb-points">${r.points}</td>
+            </tr>`).join('')}
+        </tbody>
+      </table>`;
 }
 
 init();

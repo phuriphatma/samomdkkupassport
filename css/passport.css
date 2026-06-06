@@ -360,6 +360,33 @@ body.passport-page-theme {
     margin-bottom: 10px;
 }
 
+/* Topbar right group + leaderboard */
+.topbar-right { display: flex; align-items: center; gap: 12px; }
+.topbar-trophy { font-size: 1.1rem; text-decoration: none; }
+
+.lb-card { max-width: 420px; }
+.lb-modal-title {
+    font-family: var(--font-heading);
+    font-size: 1.1rem;
+    margin: 0 0 12px;
+    color: var(--text-dark);
+}
+.lb-list { display: flex; flex-direction: column; gap: 6px; max-height: 60dvh; overflow-y: auto; }
+.lb-loading { font-size: 0.85rem; color: var(--text-muted); text-align: center; padding: 16px; }
+
+.lb-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 12px;
+    border-radius: 10px;
+    background: #F6FBFF;
+}
+.lb-row.lb-me { background: linear-gradient(90deg, #FFF7ED, #FFEDD5); outline: 1px solid var(--accent-primary); }
+.lb-rank { width: 28px; text-align: center; font-weight: 700; color: var(--text-muted); flex-shrink: 0; }
+.lb-row-name { flex: 1; font-weight: 600; font-size: 0.88rem; color: var(--text-dark); }
+.lb-row-pts { font-weight: 700; color: var(--accent-primary); font-size: 0.88rem; }
+
 /* Stamp search */
 .stamp-search-bar {
     position: relative;
