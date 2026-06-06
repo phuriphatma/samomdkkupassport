@@ -97,3 +97,43 @@ DDL cannot be run from the app (anon key has no schema privileges).
 - Keep the existing style: ES module imports, `window.fnName = ...` for inline
   `onclick` handlers in admin, small focused functions.
 - After any change, run `npm run build` — it's the closest thing to a test here.
+
+## End-of-turn loop (MANDATORY)
+
+Before sending the final response on **any task that modified files**, run this loop. Each step
+is conditional — do it only if that category actually changed. This is a side-effect of meaningful
+change, **not a tax on every commit** (internal-only refactors/typos can skip 1–5):
+
+1. **`STATE.md`** — update if real state changed (what's working / pending, required config, latest
+   migration, in-flight work, blockers). Don't append a session narrative — `git log` is the archive.
+   Keep it tight (~150 lines); prune stale sections if it bloats.
+2. **`MISTAKES.md`** — if a new bug class or non-obvious trap was discovered, append it
+   (**symptom → cause → fix → where it lives now**). This is what saves cold-start agents from
+   re-walking bugs we already paid for.
+3. **`CLAUDE.md`** (this file) — if structure, conventions, the DB schema, or a workflow changed,
+   update the relevant section.
+4. **Persistent memory** (`~/.claude/projects/-Users-xeno-development-samodevmdkku69-passport/memory/`)
+   — if a **durable** fact changed (user preference, architecture decision, external resource, a
+   blocker resolved or discovered), update the matching memory file **and** the `MEMORY.md` index.
+   Don't duplicate what the repo already records (code, git history, this file).
+5. **Skills** — if a repeatable multi-step workflow appeared, capture it (global skill or a `skills/`
+   note) so it isn't re-derived next time.
+6. **Say what you updated** in the user-facing response (e.g. "Updated STATE.md + MISTAKES.md +
+   memory."). If nothing needed updating, no need to mention it.
+
+> Philosophy (from the sibling repo `refactorsamoweb/samomdkkuweb`): keep this file a **slim router**
+> — most detail is read on demand (`STATE.md`, `MISTAKES.md`, the `db/` migrations, the persistent
+> memory). The loop keeps those honest without bloating context.
+
+## Authority model
+
+- **Pre-authorized:** commit + push directly to `main` (Cloudflare auto-deploys); `npm run build`;
+  read-only Supabase queries with the anon key; branch-and-push for previews.
+- **Ask first:** destructive DB ops beyond the current feature's scope (mass row deletes, dropping
+  tables), prod GAS redeploys, force-push, anything irreversible and outward-facing.
+- **The user runs all DDL** in the Supabase SQL editor (the anon key can't). Hand over the exact
+  `db/*.sql` to run + any Supabase/GAS config step, and make code **degrade gracefully** if a
+  migration hasn't run yet.
+- **Console tests hit production** — localhost and the deployed app share one Supabase project, so
+  any insert/delete you run in the browser console writes to prod. Clean up test rows; never attach
+  fake scans to real `profiles`.
