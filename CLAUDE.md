@@ -36,6 +36,9 @@ js/
   admin-page.js       Admin: activities CRUD, QR, department filter/search, certificates
   scanning.js         Validates a scanned QR (static token) and records a scan
   certificate.js      Shared canvas renderer (draws a name onto a background)
+  samo.js             SamoYear/Season helpers ("current" = open row, ended_at IS NULL)
+  upload.js           Drive image upload/delete via the GAS web app
+  constants.js        Shared DEPARTMENTS / SUBDEPARTMENTS maps (admin + dashboard)
   utils.js            fixGoogleDriveUrl(), generateUUID(), pending-scan helpers
   routes.js           Central route paths (ROUTES.HOME/DASHBOARD/ADMIN/SCAN)
 css/                  main.css (global+landing), passport.css (dashboard), admin.css

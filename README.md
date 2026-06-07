@@ -37,14 +37,17 @@ passport/
 │   ├── passport.css        # Boarding pass dashboard styles
 │   └── scan.css            # Scan page styles (spinner, status)
 ├── js/
-│   ├── admin-page.js       # Admin CRUD, login, QR token rotation
+│   ├── admin-page.js       # Admin CRUD, login, QR, season control, leaderboard
 │   ├── app.js              # Supabase client initialization
 │   ├── auth.js             # Session checking, OAuth error handling, logout
-│   ├── cropper-setup.js    # Image cropper for badge uploads (optional)
-│   ├── dashboard.js        # Dashboard data fetching & rendering
+│   ├── certificate.js      # Shared canvas renderer (name drawn on a background)
+│   ├── constants.js        # Shared DEPARTMENTS / SUBDEPARTMENTS maps
+│   ├── dashboard.js        # Passport book, stamps, flight log, leaderboard, certs
 │   ├── index.js            # Landing page logic
 │   ├── routes.js           # Centralized routing constants
+│   ├── samo.js             # SamoYear/Season helpers (current = open row)
 │   ├── scanning.js         # Scan processing, token verification, stamp insertion
+│   ├── upload.js           # Drive image upload/delete via the GAS web app
 │   └── utils.js            # Shared helpers (UUID, Google Drive URL fixer, localStorage)
 ├── .env.example            # Template for environment variables
 ├── .gitignore              # Ignored files and directories for Git
