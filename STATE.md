@@ -56,10 +56,13 @@ Run these in the Supabase SQL editor (safe, idempotent):
       and dropped activity FKs on scans/certificates (history survives deletion).
       Verified live: control page, scan stamping, leaderboard period filter, season-scoped
       certs. Admin season-control has a guarded **🧹 Clean ALL data** button (danger zone).
-- [ ] **`db/0007_clean_all_policies.sql` — RUN THIS.** Adds DELETE RLS policies on
-      `scans` + `activities` so "🧹 Clean ALL data" can actually wipe scans (without it,
-      the wipe silently leaves scans → customer Flight Log keeps showing deleted
-      activities). Clean-all now also reports any table still blocked by RLS.
+- [x] **`db/0007_clean_all_policies.sql` — RUN (2026-06-07).** Adds DELETE RLS policies on
+      `scans` + `activities` so "🧹 Clean ALL data" can wipe scans (also deletes the
+      badge/cert Drive images). ⚠️ It enabled RLS on `activities` with only a DELETE
+      policy → broke create/list (see 0008).
+- [ ] **`db/0008_activities_policies.sql` — RUN THIS.** Restores the full permissive
+      policy set on `activities` (select/insert/update/delete). Fixes "new row violates
+      row-level security policy for table activities" on create, regression from 0007.
 
 Other:
 - [ ] **Local OAuth:** add `http://localhost:5173/**` to Supabase Redirect URLs.

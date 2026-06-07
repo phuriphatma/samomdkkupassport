@@ -877,6 +877,14 @@ body.passport-page-theme {
     flex: 1; font-family: var(--font-heading); font-size: 0.8rem; font-weight: 700;
     padding: 8px; border-radius: 9px; border: none; cursor: pointer; width: auto;
     background: transparent; color: var(--text-muted);
+    -webkit-tap-highlight-color: transparent; -webkit-appearance: none; appearance: none;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+/* Don't let a lingering tap/focus/hover state masquerade as "selected" — only
+   the .on button shows the white pill. */
+.seg-tg:focus { outline: none; }
+.seg-tg:not(.on), .seg-tg:not(.on):hover, .seg-tg:not(.on):focus, .seg-tg:not(.on):active {
+    background: transparent; color: var(--text-muted); box-shadow: none;
 }
 .seg-tg.on { background: #fff; color: var(--passport-navy); box-shadow: 0 2px 6px rgba(27, 63, 107, 0.15); }
 

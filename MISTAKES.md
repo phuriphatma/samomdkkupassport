@@ -137,6 +137,16 @@ affected rows; if 0 deleted while rows exist, report "needs DELETE policy". Run
 **db/0007_clean_all_policies.sql** to add the `scans`/`activities` DELETE policies. Lives
 in `cleanAllData` (`js/admin-page.js`).
 
+## Enabling RLS without ALL the policies locks a table (db/0007 → 0008)
+**Symptom:** after running db/0007, creating an activity failed with *"new row violates
+row-level security policy for table activities"* (HTTP 401), and the list could come back empty.
+**Cause:** db/0007 ran `alter table activities enable row level security` but only added a
+**DELETE** policy. Postgres RLS denies by default — with RLS on and no SELECT/INSERT/UPDATE
+policy, those ops are blocked. The table had been open (RLS off), so this was a regression.
+**Fix:** db/0008 adds the full permissive set (select/insert/update/delete). **Rule: if you
+`enable row level security` on a table, add a policy for EVERY operation the app uses**, not
+just the one you came for.
+
 ## "Current" SamoYear/Season = the open row (ended_at IS NULL)
 **Note:** There's no `is_current` flag. `samo.js` finds the open year/season by
 `ended_at IS NULL`. Starting a new one sets the previous open row's `ended_at=now()`

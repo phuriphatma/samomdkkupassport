@@ -29,7 +29,7 @@ let lbpView = 'season';                     // 'season' | 'year'
 let lbpFilter = { type: 'all', id: null };  // all | dept | sub
 
 const DEPARTMENTS = {
-    1: 'อุปนายกฝ่ายบริหารองค์กร', 2: 'ดิจิทัลและสื่อสารองค์กร', 3: 'กิจการภายใน',
+    1: 'บริหารองค์กร', 2: 'ดิจิทัลและสื่อสารองค์กร', 3: 'กิจการภายใน',
     4: 'กิจการภายนอก', 5: 'กิจการมหาวิทยาลัย', 6: 'วิชาการ',
     7: 'ยุทธศาสตร์และพัฒนาองค์กร', 8: 'คุณภาพชีวิตและสิ่งแวดล้อม',
     9: 'เวชนิทัศน์', 10: 'รังสีเทคนิค',
@@ -919,9 +919,15 @@ async function renderLeaderboardPage() {
     const medals = ['🥇', '🥈', '🥉'];
     const order = [1, 0, 2];
 
+    // The Season button only exists when there's an open season — otherwise the
+    // view is forced to 'year' above and a Season toggle would be a dead, but
+    // still-highlightable, button (the source of the toggle colour glitch).
+    const seasonBtn = currentSeason
+        ? `<button class="seg-tg${lbpView === 'season' ? ' on' : ''}" data-v="season">${escapeHtmlText(currentSeason.name)}</button>`
+        : '';
     let html = `
       <div class="seg-toggle">
-        <button class="seg-tg${lbpView === 'season' ? ' on' : ''}" data-v="season">${currentSeason ? escapeHtmlText(currentSeason.name) : 'Season'}</button>
+        ${seasonBtn}
         <button class="seg-tg${lbpView === 'year' ? ' on' : ''}" data-v="year">${currentYear ? escapeHtmlText(currentYear.name) : 'วาระ'}</button>
       </div>
       <div class="seg-filter">${filterChipsHtml(chipScans, lbpFilter)}</div>`;
