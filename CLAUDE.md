@@ -70,9 +70,10 @@ npm run preview  # serve the production build locally
   = the open row (`ended_at IS NULL`). See `js/samo.js` for the helpers.
 - `user_tiers` — `full_name`, `total_km`, `final_tier`, `has_travel_visa`.
 - `certificates` — multiple per activity (`label`, `background_url`, name placement,
-  `font_family`). **Season-scoped (db/0006):** `season_id` ties a template to a season;
-  `NULL` = seasonless default/fallback. Run `db/0001_certificates.sql` +
-  `db/0002_certificates_font.sql` (+ `db/0006`).
+  `font_family`). **NOT season-scoped** (the `season_id` column exists but is unused —
+  reverted 2026-06-07): a cert belongs to its activity, always shows current settings,
+  and is **deleted when the activity is deleted**. Students see every cert on an earned
+  activity. Run `db/0001_certificates.sql` + `db/0002_certificates_font.sql`.
 - `profiles` — `full_name`, `email`, `total_km`. Source of truth for the name;
   leaderboards read from here. `db/0003_profiles_name_policy.sql` allows own-name edits.
 - `seasons` — named, scoped (overall/department/subdepartment), dated windows for

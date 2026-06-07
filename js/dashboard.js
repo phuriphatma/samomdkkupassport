@@ -151,6 +151,16 @@ function buildStampPages(allActivities, userScans) {
             slot.appendChild(circle);
             slot.appendChild(label);
 
+            // Certificate indicator — a small ribbon on stamps that have a cert to claim.
+            if (isActive && (certsByActivity.get(activity.id) || []).length > 0) {
+                slot.classList.add('has-cert');
+                const ribbon = document.createElement('span');
+                ribbon.className = 'stamp-cert-badge';
+                ribbon.textContent = '🎓';
+                ribbon.title = 'Certificate available';
+                slot.appendChild(ribbon);
+            }
+
             slot.addEventListener('click', () => {
                 if (isActive) openMemoryModal(activity, scan);
                 else openLockedModal(activity);
@@ -286,8 +296,9 @@ function openMemoryModal(activity, scan) {
 
     document.getElementById('modal-locked').style.display = 'none';
 
-    // Season-scoped certs: show the cert for the season this scan was earned in.
-    populateCerts(activity.id, scan?.season_id ?? null);
+    // Certificates always reflect the activity's CURRENT templates (no season
+    // snapshot). If the activity is later deleted, its certs go with it.
+    populateCerts(activity.id);
 
     // If memory or photos exist → view card; otherwise → write form
     const savedText = localStorage.getItem(`mem_${currentUserId}_${activity.id}`) || '';
@@ -325,15 +336,11 @@ function openLockedModal(activity) {
 }
 
 // ─── Certificates ─────────────────────────────────────────
-function populateCerts(activityId, scanSeasonId = null) {
+function populateCerts(activityId) {
     const section = document.getElementById('modal-certs');
     const list = document.getElementById('modal-certs-list');
-    const all = certsByActivity.get(activityId) || [];
-
-    // Prefer certs for the season this scan was earned in; otherwise fall back to
-    // the activity's seasonless (default) certs. Keeps past earners on their cert.
-    let certs = all.filter(c => (c.season_id ?? null) === (scanSeasonId ?? null));
-    if (certs.length === 0) certs = all.filter(c => !c.season_id);
+    // Certs are no longer season-scoped — show every template on the activity.
+    const certs = certsByActivity.get(activityId) || [];
 
     if (certs.length === 0) {
         section.style.display = 'none';

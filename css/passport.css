@@ -744,8 +744,23 @@ body.passport-page-theme {
     user-select: none;
 }
 
+.stamp-slot { position: relative; }
 .stamp-slot:hover { transform: scale(1.06); background: rgba(41,171,226,0.08); }
 .stamp-slot:active { transform: scale(0.96); }
+
+/* Certificate-available ribbon (top-right of the stamp circle) */
+.stamp-cert-badge {
+    position: absolute;
+    top: 2px;
+    right: 8px;
+    font-size: 0.78rem;
+    line-height: 1;
+    padding: 2px;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.25);
+    pointer-events: none;
+}
 
 /* Brief highlight when navigated to from search */
 .stamp-slot.flash { animation: stampFlash 1.6s ease; }

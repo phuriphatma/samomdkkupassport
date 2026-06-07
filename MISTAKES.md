@@ -109,18 +109,33 @@ join to `activities`. So:
 - Editing an activity's km updates scans **only for the current season**
   (`submitEditActivity` filters `eq('season_id', currentSeason)`); past seasons/years
   must stay frozen.
-- Deleting an activity must **not** delete its scans or certificates — migration 0006
-  drops the `activity_id` FKs on both so the activity row can go while the snapshot
-  rows remain (matched by the still-present `activity_id`).
+- Deleting an activity keeps its **scans** (flight-log history; migration 0006 drops the
+  `activity_id` FK so the snapshot rows survive). Its **certificates ARE deleted** with it
+  (see below) — that's deliberate, not a bug.
 - `scanning.js` stamps the snapshot on insert with a "retry minimal on missing column"
   fallback, so it works before 0006 is run. Don't remove that fallback.
 
-## Certificates are season-scoped — current = editable, past = frozen
-**Note (db/0006):** `certificates.season_id` ties a template to the season it was made
-in. The student gets the cert whose `season_id` matches **their scan's** season (else
-the seasonless `NULL` default). Admin can only Edit/Delete current-season (or default)
-certs; older-season certs show 🔒 + "Duplicate to current season". Don't make cert
-editing rewrite a past-season template — that would change what past earners download.
+## Certificates are NOT season-scoped (reverted 2026-06-07)
+**Note:** Certificates belong to their activity and always reflect their **current**
+settings — no season snapshot, no freezing. The student sees **every** cert template on
+the activity (`populateCerts(activityId)` ignores `season_id`). Deleting the activity
+deletes its certs too (`deleteActivity` runs `certificates.delete().eq('activity_id', id)`)
+— "activity gone ⇒ cert gone; collect it while the activity is open." The `season_id`
+column still exists but is unused (new certs insert it NULL). Don't reintroduce
+season-matching on certs — it silently hid certs whenever a scan's `season_id` didn't
+equal the cert's (the exact bug that prompted the revert).
+
+## "Delete all data" / bulk delete: filter type + RLS DELETE policy
+**Symptom:** admin "🧹 Clean ALL data" left scans (→ customer Flight Log still showed
+deleted activities) and samo_year/season rows behind.
+**Causes (two):** (1) the wipe used `.neq('id', '<uuid>')`, but `scans.id` is a **bigint**
+→ Postgres throws `invalid input syntax for type integer` on the first table and aborts
+the whole loop. (2) `scans` has no DELETE **RLS policy** (it's append-only by design), so
+even a valid delete affects 0 rows with **no error**.
+**Fix:** use `.not('id', 'is', null)` (works for any PK type) + `.select('id')` to count
+affected rows; if 0 deleted while rows exist, report "needs DELETE policy". Run
+**db/0007_clean_all_policies.sql** to add the `scans`/`activities` DELETE policies. Lives
+in `cleanAllData` (`js/admin-page.js`).
 
 ## "Current" SamoYear/Season = the open row (ended_at IS NULL)
 **Note:** There's no `is_current` flag. `samo.js` finds the open year/season by

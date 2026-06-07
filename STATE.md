@@ -14,12 +14,17 @@ Last updated: 2026-06-06.
 - **SamoYear/Season model (db/0006)** — admin declares the current วาระสโม + Season
   (`samo_years`/`samo_seasons`, "current" = `ended_at IS NULL`). Scans are **immutable
   snapshots** stamped with year/season + activity name/dept/sub-dept/points. Editing an
-  activity touches only **current-season** scans; deleting an activity keeps all scans
-  + certificates (FKs dropped). **Certificates are season-scoped** (`certificates.season_id`)
-  — students get the cert for the season they earned in; past-season certs are frozen
-  with "Duplicate to current season". Admin: วาระสโม/Season control + period leaderboard
-  (year→season + dept/sub-dept, CSV). Customer: swipeable **Flight Log** + **Leaderboard**
-  pages (topbar 📜 / 🏆). The old date-window seasons + archive UI are retired.
+  activity touches only **current-season** scans; deleting an activity keeps its scans
+  (FKs dropped) but DELETES its certificates. Admin: วาระสโม/Season control + period
+  leaderboard (year→season + dept/sub-dept, CSV). Customer: swipeable **Flight Log** +
+  **Leaderboard** pages (topbar 📜 / 🏆). The old date-window seasons + archive UI are retired.
+- **Certificates (NOT season-scoped, 2026-06-07)** — a cert belongs to its activity and
+  always reflects its current settings; the student sees **every** cert template on an
+  activity (no `season_id` matching). Stamps with a cert show a 🎓 ribbon. Deleting an
+  activity deletes its certs ("activity gone ⇒ cert gone"). Scans/flight-log stay immutable.
+- **Admin activity filter by วาระสโม/Season (2026-06-07)** — dropdowns filter the activity
+  list by the time window each activity was **created** in (`created_at` vs the year/season
+  `started_at..ended_at`).
 - **Memory modal** — per-activity note + photos, stored in `localStorage` (per device).
 - **Profile photo** — `localStorage`, per device.
 - **Data backup** — Export/Import all on-device user content as a JSON file.
@@ -51,6 +56,10 @@ Run these in the Supabase SQL editor (safe, idempotent):
       and dropped activity FKs on scans/certificates (history survives deletion).
       Verified live: control page, scan stamping, leaderboard period filter, season-scoped
       certs. Admin season-control has a guarded **🧹 Clean ALL data** button (danger zone).
+- [ ] **`db/0007_clean_all_policies.sql` — RUN THIS.** Adds DELETE RLS policies on
+      `scans` + `activities` so "🧹 Clean ALL data" can actually wipe scans (without it,
+      the wipe silently leaves scans → customer Flight Log keeps showing deleted
+      activities). Clean-all now also reports any table still blocked by RLS.
 
 Other:
 - [ ] **Local OAuth:** add `http://localhost:5173/**` to Supabase Redirect URLs.

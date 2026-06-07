@@ -110,6 +110,14 @@ async function init() {
         .getElementById('search-activity')
         .addEventListener('input', renderActivityList);
 
+    document
+        .getElementById('filter-samoyear')
+        .addEventListener('change', () => { populateActivitySamoFilters(); renderActivityList(); });
+
+    document
+        .getElementById('filter-season')
+        .addEventListener('change', renderActivityList);
+
     // Certificates: live preview + submit
     document
         .getElementById('cert-form')
@@ -189,11 +197,31 @@ function setupSubDepartmentToggle(deptSelectId, subDeptSelectId) {
     });
 }
 
-function showAdminPanel() {
+async function showAdminPanel() {
     document.getElementById('admin-login-section').style.display = 'none';
     document.getElementById('admin-content').style.display = 'block';
     document.getElementById('admin-logout').style.display = 'inline-block';
+    await loadSamoData().catch(() => {}); // for the วาระสโม/Season activity filters
+    populateActivitySamoFilters();
     loadActivities();
+}
+
+// Fill the วาระสโม + Season dropdowns used to filter the activity list. The
+// season list narrows to the chosen year (or shows all when no year is picked).
+function populateActivitySamoFilters() {
+    const yearSel = document.getElementById('filter-samoyear');
+    const seasonSel = document.getElementById('filter-season');
+    if (!yearSel || !seasonSel) return;
+    const selYear = yearSel.value;
+    yearSel.innerHTML = '<option value="">All วาระสโม</option>' +
+        samoYears.map(y => `<option value="${y.id}">${escapeHtml(y.name)}</option>`).join('');
+    yearSel.value = selYear;
+
+    const selSeason = seasonSel.value;
+    const seasons = selYear ? samoSeasons.filter(s => s.samo_year_id === selYear) : samoSeasons;
+    seasonSel.innerHTML = '<option value="">All Seasons</option>' +
+        seasons.map(s => `<option value="${s.id}">${escapeHtml(s.name)}</option>`).join('');
+    seasonSel.value = seasons.some(s => s.id === selSeason) ? selSeason : '';
 }
 
 function handleLogin(e) {
@@ -245,6 +273,10 @@ function renderActivityList(){
     const filterDept = document.getElementById('filter-department').value;
     const filterSubDept = document.getElementById('filter-sub-department').value;
     const searchTerm = document.getElementById('search-activity').value.trim().toLowerCase();
+    const filterYear = document.getElementById('filter-samoyear')?.value || '';
+    const filterSeason = document.getElementById('filter-season')?.value || '';
+    // วาระสโม/Season filter the activity list by the time window it was CREATED in.
+    const win = activitySamoWindow(filterSeason || filterYear, !!filterSeason);
 
     activitiesCache.forEach((act) => {
         // Apply filters
@@ -255,6 +287,9 @@ function renderActivityList(){
             return;
         }
         if (searchTerm && !(act.name || '').toLowerCase().includes(searchTerm)) {
+            return;
+        }
+        if (win && !withinWindow(act.created_at, win)) {
             return;
         }
 
@@ -277,6 +312,23 @@ function renderActivityList(){
     if(activitiesCache.length > 0 && list.innerHTML === '') {
         list.innerHTML = '<p style="font-size: 0.9rem;">No activities match the selected filters.</p>';
     }
+}
+
+// Resolve a วาระสโม/Season id to its [started_at, ended_at] window. `ended_at`
+// NULL = still open. Returns null when nothing is selected (no time filtering).
+function activitySamoWindow(id, isSeason) {
+    if (!id) return null;
+    const row = isSeason ? samoSeasons.find(s => s.id === id) : samoYears.find(y => y.id === id);
+    return row ? { start: row.started_at, end: row.ended_at } : null;
+}
+
+function withinWindow(createdAt, win) {
+    if (!win) return true;
+    if (!createdAt) return false;
+    const t = new Date(createdAt).getTime();
+    if (win.start && t < new Date(win.start).getTime()) return false;
+    if (win.end && t > new Date(win.end).getTime()) return false;
+    return true;
 }
 
 window.startScannerFor = (id) => {
@@ -325,15 +377,14 @@ window.cancelEdit = () => {
 window.deleteActivity = async (id) => {
     if (
         !confirm(
-            'Delete this activity?\n\nIt disappears from the admin list and can no longer be scanned, but everyone who already earned it KEEPS their points, flight-log entry, and certificate (history is immutable).',
+            'Delete this activity?\n\nIt disappears from the admin list and can no longer be scanned. Earners KEEP their points + flight-log entry (history is immutable), but its CERTIFICATES are deleted with it — once the activity is gone, the certificate is gone (students must collect it while the activity is open).',
         )
     )
         return;
 
-    // Only the badge image is removed from Drive — certificate backgrounds stay,
-    // because past earners can still download those certificates. Scans + cert
-    // templates are intentionally NOT deleted (they're frozen history; the DB FKs
-    // were dropped in migration 0006 so the activity row can go without them).
+    // The badge image is removed from Drive. Scans are kept (immutable flight-log
+    // history), but certificate templates are deleted with the activity: certs are
+    // no longer season-scoped snapshots — "activity gone ⇒ cert gone".
     const { data: actRow } = await supabase.from('activities').select('badge_url').eq('id', id).single();
 
     const { data, error } = await supabase
@@ -348,6 +399,7 @@ window.deleteActivity = async (id) => {
     } else if (!data || data.length === 0) {
         alert('Delete failed: No matching activity found, or restricted by permissions (RLS). Please check database policies.');
     } else {
+        await supabase.from('certificates').delete().eq('activity_id', id); // certs die with the activity
         if (actRow?.badge_url) deleteFromDrive(actRow.badge_url); // best-effort
         loadActivities();
     }
@@ -502,17 +554,9 @@ async function generateStaticQR() {
 let certActivityId = null;
 let editingCertId = null;       // null = adding; otherwise editing this cert
 let certListCache = [];         // last-loaded certs for the open activity
-let certCurrentSeason = null;   // the open season while managing certs
-let certSeasonNames = new Map();// season_id -> name (for frozen-cert labels)
 
-// New certs/edits attach to the current season; past-season certs are frozen.
-async function loadCertSeasonContext() {
-    const { season } = await getCurrentContext().catch(() => ({ season: null }));
-    certCurrentSeason = season;
-    const { data } = await supabase.from('samo_seasons').select('id, name');
-    certSeasonNames = new Map((data || []).map(s => [s.id, s.name]));
-}
-const certEditable = (c) => !c.season_id || c.season_id === (certCurrentSeason?.id || null);
+// Certificates are NOT season-scoped: a template belongs to its activity and
+// always reflects its current settings. Delete the activity → its certs go too.
 
 function debounce(fn, ms) {
     let t;
@@ -541,7 +585,6 @@ window.manageCerts = async (id) => {
     updateCertFormMode();
     previewImg = null; previewImgUrl = '';
     renderCertPreview();
-    await loadCertSeasonContext();
     loadCerts(id);
 };
 
@@ -558,10 +601,6 @@ window.closeCerts = () => {
 window.editCert = (id) => {
     const c = certListCache.find(x => x.id === id);
     if (!c) return;
-    if (!certEditable(c)) {
-        alert('This certificate belongs to a past season and is frozen (so past earners keep it). Use "Duplicate to current season" to make an editable copy.');
-        return;
-    }
     editingCertId = id;
     document.getElementById('cert-label').value = c.label || '';
     document.getElementById('cert-bg-url').value = c.background_url || '';
@@ -605,23 +644,12 @@ async function loadCerts(activityId) {
         return;
     }
 
-    const curId = certCurrentSeason?.id || null;
-    const seasonLabel = (sid) => sid ? (certSeasonNames.get(sid) || 'season') : 'Default (any season)';
-
     list.innerHTML = certListCache.map(c => {
-        const editable = certEditable(c);
-        let tag;
-        if (!c.season_id) tag = '<span class="cert-season-tag">Default</span>';
-        else if (c.season_id === curId) tag = `<span class="cert-season-tag cur">${escapeHtml(seasonLabel(c.season_id))} · current</span>`;
-        else tag = `<span class="cert-season-tag frozen">🔒 ${escapeHtml(seasonLabel(c.season_id))}</span>`;
-
-        const actions = editable
-            ? `<button onclick="editCert('${c.id}')" class="btn-action btn-edit">Edit</button>
-               <button onclick="deleteCert('${c.id}')" class="btn-action btn-delete">Delete</button>`
-            : `<button onclick="duplicateCertToCurrent('${c.id}')" class="btn-action">Duplicate to current season</button>`;
-
+        const actions =
+            `<button onclick="editCert('${c.id}')" class="btn-action btn-edit">Edit</button>
+             <button onclick="deleteCert('${c.id}')" class="btn-action btn-delete">Delete</button>`;
         return `<div class="cert-list-item${c.id === editingCertId ? ' cert-editing' : ''}">
-            <span class="cert-list-label">${escapeHtml(c.label)} ${tag}</span>
+            <span class="cert-list-label">${escapeHtml(c.label)}</span>
             <span class="cert-actions">${actions}</span>
           </div>`;
     }).join('');
@@ -635,27 +663,6 @@ window.deleteCert = async (id) => {
         return;
     }
     if (certActivityId) loadCerts(certActivityId);
-};
-
-// Clone a (frozen, other-season) cert into the current season as an editable copy.
-window.duplicateCertToCurrent = async (id) => {
-    const c = certListCache.find(x => x.id === id);
-    if (!c) return;
-    const payload = {
-        activity_id: c.activity_id,
-        label: c.label,
-        background_url: c.background_url,
-        name_x: c.name_x, name_y: c.name_y,
-        font_size: c.font_size, font_color: c.font_color, font_family: c.font_family,
-        season_id: certCurrentSeason?.id || null,
-    };
-    let { error } = await supabase.from('certificates').insert([payload]);
-    if (error && /font_family/.test(error.message || '')) {
-        const { font_family, ...rest } = payload;
-        ({ error } = await supabase.from('certificates').insert([rest]));
-    }
-    if (error) { alert('Duplicate failed: ' + error.message); return; }
-    loadCerts(certActivityId);
 };
 
 function getCertFormValues() {
@@ -781,18 +788,17 @@ async function submitCertificate(e) {
     if (!certActivityId) return;
     const cert = getCertFormValues();
 
-    // Update the existing cert when editing, otherwise insert a new one stamped
-    // with the CURRENT season (so it only applies to this season's earners).
-    const insertExtras = { activity_id: certActivityId, season_id: certCurrentSeason?.id ?? null };
+    // Certs are not season-scoped — just attach to the activity (season_id stays
+    // NULL). Editing updates in place so the template is always "what it is now".
+    const insertExtras = { activity_id: certActivityId };
     const run = (payload) => editingCertId
         ? supabase.from('certificates').update(payload).eq('id', editingCertId)
         : supabase.from('certificates').insert([{ ...insertExtras, ...payload }]);
 
     let { error } = await run(cert);
-    // Drop optional columns the DB may not have yet (migration not run), then retry.
-    if (error && /season_id|font_family|column|schema cache/i.test(error.message || '')) {
+    // Drop the optional font column if the DB doesn't have it yet, then retry.
+    if (error && /font_family|column|schema cache/i.test(error.message || '')) {
         const { font_family, ...rest } = cert;
-        delete insertExtras.season_id;
         ({ error } = await run(rest));
     }
 
@@ -915,6 +921,8 @@ window.closeSeasons = () => {
     document.getElementById('seasons-section').style.display = 'none';
     document.getElementById('event-creation').style.display = 'block';
     document.getElementById('manage-section').style.display = 'block';
+    populateActivitySamoFilters(); // a new วาระสโม/season may have been added
+    renderActivityList();
 };
 
 function renderSamoControl() {
@@ -999,16 +1007,31 @@ window.cleanAllData = async () => {
     const typed = prompt('Type DELETE to confirm wiping all data:');
     if ((typed || '').trim() !== 'DELETE') { alert('Cancelled — you did not type DELETE.'); return; }
 
-    const ALL = '00000000-0000-0000-0000-000000000000';
-    const wipe = (table) => supabase.from(table).delete().neq('id', ALL);
+    // `id IS NOT NULL` matches every row and works for ANY primary-key type.
+    // (The old `.neq('id', <uuid>)` threw "invalid input syntax for type integer"
+    // on scans — whose id is a bigint — aborting the whole wipe. See MISTAKES.md.)
+    const wipe = (table) => supabase.from(table).delete().not('id', 'is', null).select('id');
     try {
         // Dependents first (FKs to activities were dropped in 0006; samo_seasons +
         // season_results cascade from their parents, but delete explicitly to be safe).
+        const stuck = [];
         for (const t of ['scans', 'certificates', 'season_results', 'samo_seasons', 'samo_years', 'seasons', 'activities']) {
-            const { error } = await wipe(t);
+            const { data, error } = await wipe(t);
+            // A missing table/column is fine (migration not run yet); anything else is real.
             if (error && !/does not exist|schema cache/i.test(error.message || '')) {
                 throw new Error(`${t}: ${error.message}`);
             }
+            // No error but 0 rows deleted while rows exist ⇒ blocked by RLS (no DELETE
+            // policy). Flag it so the admin knows the wipe was incomplete.
+            if (!error && Array.isArray(data) && data.length === 0) {
+                const { count } = await supabase.from(t).select('id', { count: 'exact', head: true });
+                if (count) stuck.push(`${t} (${count} rows — needs a DELETE policy; run db/0007)`);
+            }
+        }
+        if (stuck.length) {
+            alert('⚠️ Some data could NOT be deleted (blocked by RLS):\n\n' + stuck.join('\n') +
+                '\n\nRun db/0007_clean_all_policies.sql in the Supabase SQL editor, then try again.');
+            return;
         }
         alert('✅ All data cleared. Reloading.');
         window.location.reload();
