@@ -900,6 +900,27 @@ body.passport-page-theme {
 .fl-item-km { color: var(--accent-primary); font-weight: 700; white-space: nowrap; }
 .fl-empty { text-align: center; color: var(--text-muted); font-size: 0.85rem; padding: 20px; }
 
+/* Flight-log history grouping: วาระสโม (year) → season → flights */
+.fl-year {
+    display: flex; justify-content: space-between; align-items: baseline; gap: 8px;
+    margin: 16px 0 6px; padding-bottom: 5px;
+    border-bottom: 2px solid var(--passport-navy);
+}
+.fl-year:first-child { margin-top: 4px; }
+.fl-year-name { font-family: var(--font-heading); font-weight: 700; font-size: 0.98rem; color: var(--passport-navy); }
+.fl-year-km { font-family: var(--font-heading); font-weight: 700; font-size: 0.86rem; color: var(--passport-navy); white-space: nowrap; }
+.fl-season-head {
+    display: flex; justify-content: space-between; align-items: baseline; gap: 8px;
+    margin: 9px 0 5px;
+}
+.fl-season-name { font-weight: 700; font-size: 0.78rem; color: var(--text-dark); text-transform: uppercase; letter-spacing: 0.4px; }
+.fl-season-km { font-weight: 700; font-size: 0.74rem; color: var(--accent-primary); white-space: nowrap; }
+.fl-now {
+    font-size: 0.58rem; font-weight: 700; color: #fff; background: var(--accent-primary);
+    border-radius: 999px; padding: 1px 7px; vertical-align: middle; letter-spacing: 0;
+    text-transform: none;
+}
+
 /* =========================================
    PAGE NAVIGATION
 ========================================= */

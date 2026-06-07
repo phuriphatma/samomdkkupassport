@@ -22,6 +22,7 @@ const activityById = new Map();
 let currentYear = null;          // open samo_year
 let currentSeason = null;        // open samo_season
 const seasonNameById = new Map(); // season_id -> name (for labels)
+const yearNameById = new Map();   // samo_year_id -> name (for flight-log grouping)
 let flightLogPageIndex = -1;
 let leaderboardPageIndex = -1;
 let flFilter = { type: 'all', id: null };  // all | dept | sub
@@ -69,9 +70,13 @@ function buildPageDots() {
 // ─── Stamp pages ──────────────────────────────────────────
 function buildStampPages(allActivities, userScans) {
     const scannedIds = new Set(userScans.map(s => s.activity_id));
+    const scanByActivity = new Map(userScans.map(s => [s.activity_id, s]));
     // Only show stamps the student has actually earned (scanned). Locked/unearned
-    // activities are not displayed in the passport.
-    const earned = allActivities.filter(a => scannedIds.has(a.id));
+    // activities are not displayed. Order newest-earned → oldest (by scan time).
+    const earned = allActivities
+        .filter(a => scannedIds.has(a.id))
+        .sort((a, b) => (scanByActivity.get(b.id)?.scanned_at || '')
+            .localeCompare(scanByActivity.get(a.id)?.scanned_at || ''));
     const numStampPages = Math.ceil(earned.length / STAMPS_PER_PAGE);
     const book = document.getElementById('page-1').parentElement; // passport-container
 
@@ -801,11 +806,6 @@ function scanDisplayName(s) { return s.activity_name || activityById.get(s.activ
 function scanDept(s) { return s.department_id ?? activityById.get(s.activity_id)?.department_id ?? null; }
 function scanSubDept(s) { return s.sub_department_id ?? activityById.get(s.activity_id)?.sub_department_id ?? null; }
 
-// The user's scans in the current วาระสโม (or all, if none is declared yet).
-function yearScans() {
-    return userScansCache.filter(s => !currentYear || s.samo_year_id === currentYear.id);
-}
-
 function filterChipsHtml(scans, filter) {
     const depts = [...new Set(scans.map(scanDept).filter(x => x != null))];
     const subs = [...new Set(scans.map(scanSubDept).filter(x => x != null))];
@@ -828,42 +828,82 @@ function parseChip(el) {
     return { type: t, id: parseInt(id, 10) };
 }
 
+// Group scans into [samoYear → season → scans], all newest-first, for the full
+// flight-log history (current AND past วาระสโม/seasons). Grouping order is by the
+// most recent scan in each group, so "now" floats to the top without needing the
+// year/season start dates. Null year/season fall into an "unassigned" bucket.
+function groupScansByYearSeason(scans) {
+    const recent = s => s.scanned_at || '';
+    const years = new Map(); // yearId -> { id, scans:[], seasons: Map }
+    scans.forEach(s => {
+        const yId = s.samo_year_id ?? '∅';
+        if (!years.has(yId)) years.set(yId, { id: s.samo_year_id ?? null, scans: [], seasons: new Map() });
+        const y = years.get(yId);
+        y.scans.push(s);
+        const sId = s.season_id ?? '∅';
+        if (!y.seasons.has(sId)) y.seasons.set(sId, { id: s.season_id ?? null, scans: [] });
+        y.seasons.get(sId).scans.push(s);
+    });
+    const maxOf = arr => arr.reduce((m, s) => recent(s) > m ? recent(s) : m, '');
+    const byRecentDesc = (a, b) => maxOf(b.scans).localeCompare(maxOf(a.scans));
+    const sortScans = arr => arr.sort((a, b) => recent(b).localeCompare(recent(a)));
+    return [...years.values()].sort(byRecentDesc).map(y => ({
+        id: y.id,
+        total: y.scans.reduce((t, s) => t + pointsOfScan(s), 0),
+        seasons: [...y.seasons.values()].sort(byRecentDesc).map(se => ({
+            id: se.id,
+            total: se.scans.reduce((t, s) => t + pointsOfScan(s), 0),
+            scans: sortScans(se.scans.slice()),
+        })),
+    }));
+}
+
 function renderFlightLogPage() {
     const box = document.getElementById('flightlog-content');
     if (!box) return;
     const winEl = document.getElementById('fl-window');
-    if (winEl) winEl.textContent = currentYear ? currentYear.name : '—';
+    if (winEl) winEl.textContent = 'All time';
 
-    const scans = yearScans();
-    // Totals reflect the active department/sub-department filter, so the student
-    // can read their points "filtered by each department" (per the requirement).
-    const filtered = applyFilter(scans, flFilter);
-    const yearTotal = filtered.reduce((t, s) => t + pointsOfScan(s), 0);
-    const seasonTotal = currentSeason
-        ? filtered.filter(s => s.season_id === currentSeason.id).reduce((t, s) => t + pointsOfScan(s), 0)
-        : 0;
-
-    const list = filtered.slice().sort((a, b) => (b.scanned_at || '').localeCompare(a.scanned_at || ''));
+    // Full history: every scan the user owns, across all วาระสโม/seasons.
+    const all = userScansCache.slice();
+    const filtered = applyFilter(all, flFilter);
+    const grandTotal = filtered.reduce((t, s) => t + pointsOfScan(s), 0);
+    const groups = groupScansByYearSeason(filtered);
 
     let html = `
       <div class="seg-totals">
-        <div class="seg-total"><span>${currentYear ? escapeHtmlText(currentYear.name) : 'Total'}</span><strong>${yearTotal}<small>km</small></strong></div>
-        <div class="seg-total alt"><span>${currentSeason ? escapeHtmlText(currentSeason.name) : 'Season'}</span><strong>${seasonTotal}<small>km</small></strong></div>
+        <div class="seg-total"><span>All time</span><strong>${grandTotal}<small>km</small></strong></div>
       </div>
-      <div class="seg-filter">${filterChipsHtml(scans, flFilter)}</div>
-      <div class="fl-list">`;
-    if (list.length === 0) {
+      <div class="seg-filter">${filterChipsHtml(all, flFilter)}</div>`;
+
+    if (filtered.length === 0) {
         html += '<div class="fl-empty">No flights logged here yet ✈️</div>';
     } else {
-        list.forEach(s => {
-            const sName = s.season_id ? (seasonNameById.get(s.season_id) || '') : '';
-            html += `<div class="fl-item">
-                <span class="fl-item-name">✈️ ${escapeHtmlText(scanDisplayName(s))}${sName ? ` <small class="fl-season">${escapeHtmlText(sName)}</small>` : ''}</span>
-                <span class="fl-item-km">+${pointsOfScan(s)} km</span>
+        groups.forEach(y => {
+            const yName = y.id ? (yearNameById.get(y.id) || 'วาระสโม') : 'ไม่ระบุวาระสโม';
+            const isCurY = currentYear && y.id === currentYear.id;
+            html += `<div class="fl-year">
+                <span class="fl-year-name">${escapeHtmlText(yName)}${isCurY ? ' <span class="fl-now">ปัจจุบัน</span>' : ''}</span>
+                <span class="fl-year-km">${y.total} km</span>
               </div>`;
+            y.seasons.forEach(se => {
+                const seName = se.id ? (seasonNameById.get(se.id) || 'ซีซั่น') : 'ไม่ระบุซีซั่น';
+                const isCurS = currentSeason && se.id === currentSeason.id;
+                html += `<div class="fl-season-head">
+                    <span class="fl-season-name">${escapeHtmlText(seName)}${isCurS ? ' <span class="fl-now">ปัจจุบัน</span>' : ''}</span>
+                    <span class="fl-season-km">${se.total} km</span>
+                  </div>
+                  <div class="fl-list">`;
+                se.scans.forEach(s => {
+                    html += `<div class="fl-item">
+                        <span class="fl-item-name">✈️ ${escapeHtmlText(scanDisplayName(s))}</span>
+                        <span class="fl-item-km">+${pointsOfScan(s)} km</span>
+                      </div>`;
+                });
+                html += '</div>';
+            });
         });
     }
-    html += '</div>';
     box.innerHTML = html;
 
     box.querySelectorAll('.seg-chip').forEach(btn => btn.addEventListener('click', () => {
@@ -1131,12 +1171,14 @@ async function init() {
             { data: allCerts },
             samoCtx,
             { data: samoSeasonRows },
+            { data: samoYearRows },
         ] = await Promise.all([
             supabase.from('scans').select('*').eq('user_id', user.id).order('scanned_at', { ascending: false }),
             supabase.from('activities').select('*').order('created_at', { ascending: true }),
             supabase.from('certificates').select('*').order('created_at', { ascending: true }),
             getCurrentContext().catch(() => ({ year: null, season: null })),
             supabase.from('samo_seasons').select('id, name'),
+            supabase.from('samo_years').select('id, name'),
         ]);
 
         if (scansError) throw scansError;
@@ -1151,6 +1193,8 @@ async function init() {
         currentSeason = samoCtx?.season || null;
         seasonNameById.clear();
         (samoSeasonRows || []).forEach(s => seasonNameById.set(s.id, s.name));
+        yearNameById.clear();
+        (samoYearRows || []).forEach(y => yearNameById.set(y.id, y.name));
 
         // Group certificate templates by activity (ignore errors — certs are optional)
         certsByActivity.clear();

@@ -8,9 +8,11 @@ Last updated: 2026-06-06.
 - **Auth** — Google OAuth via Supabase; session handled in `auth.js` / `index.js`.
 - **Student dashboard** — passport "ebook": cover, personal info, stamp pages
   (earned + locked), future page, back cover; page navigation with dots.
-- **Stamps & flight log** — only **earned** stamps are shown (scanned activities);
-  tapping one opens its memory modal. Stamp search flips to the stamp's page and
-  highlights it (no popup). The info page is fixed; only the flight log scrolls.
+- **Stamps & flight log** — only **earned** stamps are shown (scanned activities),
+  ordered **newest-earned → oldest**; tapping one opens its memory modal. Stamp search
+  flips to the stamp's page and highlights it (no popup). The Flight Log shows the
+  **full history** across every วาระสโม/season, grouped **samoyear → season** (newest
+  first) with per-group km subtotals + an all-time total; respects the dept/sub filter.
 - **SamoYear/Season model (db/0006)** — admin declares the current วาระสโม + Season
   (`samo_years`/`samo_seasons`, "current" = `ended_at IS NULL`). Scans are **immutable
   snapshots** stamped with year/season + activity name/dept/sub-dept/points. Editing an
