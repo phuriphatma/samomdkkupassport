@@ -56,13 +56,16 @@ Run these in the Supabase SQL editor (safe, idempotent):
       and dropped activity FKs on scans/certificates (history survives deletion).
       Verified live: control page, scan stamping, leaderboard period filter, season-scoped
       certs. Admin season-control has a guarded **🧹 Clean ALL data** button (danger zone).
-- [x] **`db/0007_clean_all_policies.sql` — RUN (2026-06-07).** Adds DELETE RLS policies on
-      `scans` + `activities` so "🧹 Clean ALL data" can wipe scans (also deletes the
-      badge/cert Drive images). ⚠️ It enabled RLS on `activities` with only a DELETE
-      policy → broke create/list (see 0008).
-- [ ] **`db/0008_activities_policies.sql` — RUN THIS.** Restores the full permissive
-      policy set on `activities` (select/insert/update/delete). Fixes "new row violates
-      row-level security policy for table activities" on create, regression from 0007.
+- [x] **`db/0007_clean_all_policies.sql` — RUN (2026-06-07, old delete-only version).**
+      Enabled RLS on `scans` + `activities`; the original file added only DELETE policies,
+      which (with RLS now on) silently broke select/insert/update → activity-create and QR
+      scanning failed. **The file has since been rewritten to add all four ops** — re-running
+      it is equivalent to 0008+0009. Clean-all also deletes the badge/cert Drive images.
+- [x] **`db/0008_activities_policies.sql` — RUN (2026-06-07).** Full permissive policy set
+      on `activities`. Fixed "new row violates RLS policy for table activities" on create.
+- [ ] **`db/0009_scans_policies.sql` — RUN THIS.** Full permissive policy set on `scans`
+      (select/insert/update/delete). Fixes "new row violates RLS policy for table scans" on
+      QR scan, plus empty Flight Log/Leaderboard reads. Same regression as 0008, for scans.
 
 Other:
 - [ ] **Local OAuth:** add `http://localhost:5173/**` to Supabase Redirect URLs.

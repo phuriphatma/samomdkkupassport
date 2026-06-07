@@ -137,15 +137,18 @@ affected rows; if 0 deleted while rows exist, report "needs DELETE policy". Run
 **db/0007_clean_all_policies.sql** to add the `scans`/`activities` DELETE policies. Lives
 in `cleanAllData` (`js/admin-page.js`).
 
-## Enabling RLS without ALL the policies locks a table (db/0007 → 0008)
+## Enabling RLS without ALL the policies locks a table (db/0007 → 0008 + 0009)
 **Symptom:** after running db/0007, creating an activity failed with *"new row violates
-row-level security policy for table activities"* (HTTP 401), and the list could come back empty.
-**Cause:** db/0007 ran `alter table activities enable row level security` but only added a
-**DELETE** policy. Postgres RLS denies by default — with RLS on and no SELECT/INSERT/UPDATE
-policy, those ops are blocked. The table had been open (RLS off), so this was a regression.
-**Fix:** db/0008 adds the full permissive set (select/insert/update/delete). **Rule: if you
-`enable row level security` on a table, add a policy for EVERY operation the app uses**, not
-just the one you came for.
+row-level security policy for table activities"* (HTTP 401); then QR scanning failed the same
+way for `scans`. Reads could also come back empty (a SELECT on an RLS table with no SELECT
+policy returns **200 with `[]`**, not an error — so it looks like "no data," not "blocked").
+**Cause:** db/0007 ran `enable row level security` on `scans` + `activities` but only added a
+**DELETE** policy each. Postgres RLS denies by default — with RLS on and no SELECT/INSERT/UPDATE
+policy, those ops are blocked. Both tables had been open (RLS off), so this was a regression.
+**Fix:** db/0008 (activities) + db/0009 (scans) add the full set; db/0007 was rewritten to do
+the same. **Rule: if you `enable row level security` on a table, add a policy for EVERY
+operation the app uses (select/insert/update/delete), not just the one you came for.** And
+when probing RLS, remember a blocked SELECT returns empty-200, not 4xx — test INSERT to be sure.
 
 ## "Current" SamoYear/Season = the open row (ended_at IS NULL)
 **Note:** There's no `is_current` flag. `samo.js` finds the open year/season by
