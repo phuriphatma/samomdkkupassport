@@ -1003,9 +1003,21 @@ window.startNewSeason = async () => {
 
 // Danger zone: wipe all app content (keeps user accounts). Double-gated.
 window.cleanAllData = async () => {
-    if (!confirm('⚠️ This permanently deletes ALL activities, certificates, scans, and every วาระสโม/season.\n\nUser accounts (profiles) are kept. This CANNOT be undone.\n\nContinue?')) return;
+    if (!confirm('⚠️ This permanently deletes ALL activities, certificates, scans, and every วาระสโม/season — AND the badge + certificate images they stored in the SAMO Google Drive.\n\nUser accounts (profiles) are kept. This CANNOT be undone.\n\nContinue?')) return;
     const typed = prompt('Type DELETE to confirm wiping all data:');
     if ((typed || '').trim() !== 'DELETE') { alert('Cancelled — you did not type DELETE.'); return; }
+
+    // Collect the Drive image URLs BEFORE deleting the rows that hold them, so we
+    // can remove the files from the SAMO Drive too (otherwise they're orphaned).
+    const driveUrls = [];
+    if (isUploadConfigured()) {
+        const [{ data: acts }, { data: certs }] = await Promise.all([
+            supabase.from('activities').select('badge_url'),
+            supabase.from('certificates').select('background_url'),
+        ]);
+        (acts || []).forEach(a => { if (a.badge_url) driveUrls.push(a.badge_url); });
+        (certs || []).forEach(c => { if (c.background_url) driveUrls.push(c.background_url); });
+    }
 
     // `id IS NOT NULL` matches every row and works for ANY primary-key type.
     // (The old `.neq('id', <uuid>)` threw "invalid input syntax for type integer"
@@ -1030,10 +1042,20 @@ window.cleanAllData = async () => {
         }
         if (stuck.length) {
             alert('⚠️ Some data could NOT be deleted (blocked by RLS):\n\n' + stuck.join('\n') +
-                '\n\nRun db/0007_clean_all_policies.sql in the Supabase SQL editor, then try again.');
+                '\n\nRun db/0007_clean_all_policies.sql in the Supabase SQL editor, then try again.' +
+                '\n\n(Drive images were NOT touched — fix RLS and retry for a full wipe.)');
             return;
         }
-        alert('✅ All data cleared. Reloading.');
+
+        // Rows are gone — now delete their Drive images (best-effort, in parallel).
+        let drive = '';
+        if (driveUrls.length) {
+            const res = await Promise.allSettled(driveUrls.map(u => deleteFromDrive(u)));
+            const failed = res.filter(r => r.status === 'rejected').length;
+            drive = `\n${driveUrls.length - failed}/${driveUrls.length} Drive image(s) deleted.` +
+                (failed ? ` ${failed} failed (delete them manually).` : '');
+        }
+        alert('✅ All data cleared.' + drive + '\n\nReloading.');
         window.location.reload();
     } catch (e) {
         alert('Clean failed: ' + (e.message || e));
