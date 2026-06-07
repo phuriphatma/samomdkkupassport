@@ -1,7 +1,7 @@
 # STATE.md — project state
 
 Snapshot of what's built, what's pending, and required config. Update as things land.
-Last updated: 2026-06-06.
+Last updated: 2026-06-07. **Tagged release: v1.0.0.**
 
 ## Working
 

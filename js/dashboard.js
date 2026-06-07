@@ -315,28 +315,6 @@ function openMemoryModal(activity, scan) {
     showModal();
 }
 
-function openLockedModal(activity) {
-    currentModalActivity = activity;
-    currentModalScan = null;
-
-    document.getElementById('modal-title').textContent = activity.name;
-    const km = activity.base_points_km ?? 0;
-    document.getElementById('modal-km').textContent = `+${km} km`;
-
-    const wrap = document.getElementById('modal-badge-wrap');
-    if (activity.badge_url) {
-        wrap.innerHTML = `<img src="${fixGoogleDriveUrl(activity.badge_url)}" alt="${activity.name}" style="filter:grayscale(1);opacity:0.5;">`;
-    } else {
-        wrap.innerHTML = `<span class="modal-badge-placeholder" style="filter:grayscale(1);opacity:0.5;">🏅</span>`;
-    }
-
-    document.getElementById('modal-locked').style.display = '';
-    document.getElementById('modal-body').style.display = 'none';
-    document.getElementById('modal-view').style.display = 'none';
-    document.getElementById('modal-certs').style.display = 'none';
-
-    showModal();
-}
 
 // ─── Certificates ─────────────────────────────────────────
 function populateCerts(activityId) {
@@ -855,6 +833,14 @@ function renderFlightLogPage() {
     const box = document.getElementById('flightlog-content');
     if (!box) return;
 
+    // No scans yet → just the empty state (no point showing empty dropdowns).
+    if (userScansCache.length === 0) {
+        const winEl0 = document.getElementById('fl-window');
+        if (winEl0) winEl0.textContent = '—';
+        box.innerHTML = '<div class="fl-empty">No flights logged here yet ✈️</div>';
+        return;
+    }
+
     // Resolve the selected วาระสโม/season, defaulting to the current ones.
     const yearKeys = flYearKeys();
     if (flYear === undefined || !yearKeys.includes(flYear)) {
@@ -872,6 +858,14 @@ function renderFlightLogPage() {
     const scope = userScansCache.filter(s =>
         (s.samo_year_id ?? 'none') === flYear &&
         (flSeason === 'all' || (s.season_id ?? 'none') === flSeason));
+    // Keep the department filter in sync with the scope: if the chosen dept/sub
+    // isn't present in this period, fall back to "all" (avoids an empty list while
+    // the dropdown shows a stale value).
+    const inScope = (get, id) => scope.some(s => get(s) === id);
+    if ((flFilter.type === 'dept' && !inScope(scanDept, flFilter.id)) ||
+        (flFilter.type === 'sub' && !inScope(scanSubDept, flFilter.id))) {
+        flFilter = { type: 'all', id: null };
+    }
     const filtered = applyFilter(scope, flFilter)
         .slice().sort((a, b) => (b.scanned_at || '').localeCompare(a.scanned_at || ''));
     const total = filtered.reduce((t, s) => t + pointsOfScan(s), 0);
