@@ -195,6 +195,7 @@ body.passport-page-theme {
     margin-bottom: 20px;
     padding-bottom: 10px;
     border-bottom: 1.5px solid rgba(27, 63, 107, 0.15);
+    flex-shrink: 0;
 }
 
 .inner-page-label {
@@ -224,6 +225,7 @@ body.passport-page-theme {
 .inner-page-footer {
     margin-top: auto;
     padding-top: 14px;
+    flex-shrink: 0;
 }
 
 .barcode-lines {
@@ -858,6 +860,13 @@ body.passport-page-theme {
    FLIGHT LOG / LEADERBOARD PAGES
 ========================================= */
 .fl-content, .lbp-content { display: flex; flex-direction: column; gap: 12px; flex: 1; min-height: 0; }
+/* The flight log / leaderboard list scrolls WITHIN the page so it never spills onto
+   the barcode footer; the selectors/total/toggle/podium stay pinned above it. */
+.fl-content .fl-list, .lbp-content .lbp-list {
+    flex: 1; min-height: 0; overflow-y: auto;
+    overscroll-behavior: contain; -webkit-overflow-scrolling: touch;
+}
+.fl-selectors, .seg-totals, .seg-toggle, .seg-filter, .lb-podium-row { flex-shrink: 0; }
 
 .seg-totals { display: flex; gap: 10px; }
 .seg-total {

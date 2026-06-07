@@ -90,6 +90,18 @@ in JS (the theme already sets `overflow:hidden`).
 could still rubber-band, exposing the fixed `.sky-bg`.
 **Fix:** `body.passport-page-theme` is `position:fixed; inset:0; overscroll-behavior:none`.
 
+## Flight Log / Leaderboard list overlaps the barcode footer
+**Symptom:** the last flight-log row renders *underneath* the decorative barcode footer
+(they visually overlap at the bottom of the page).
+**Cause:** `.fl-content`/`.lbp-content` are `flex:1` with NO internal scroll, while the
+footer uses `margin-top:auto`. A long list overflows its flex box downward and lands on
+top of the footer instead of scrolling.
+**Fix:** the inner list (`.fl-list`/`.lbp-list`) takes the leftover space and scrolls:
+`flex:1; min-height:0; overflow-y:auto`; the selectors/total/toggle/podium + header +
+footer get `flex-shrink:0`. Lives in `css/passport.css`. (Pattern: in a fixed-height
+flex-column page, the *scrolling region* must be a `flex:1; min-height:0; overflow:auto`
+child — not the whole column.)
+
 ## Info page: only the flight log scrolls (don't make the whole page scroll)
 **Note:** `#page-1` is `overflow:hidden`; `.info-flight-log`/`.activity-log-list`
 are `flex:1; min-height:0; overflow-y:auto`. The flight log markup is a **sibling**
