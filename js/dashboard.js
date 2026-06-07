@@ -5,6 +5,7 @@ import { fixGoogleDriveUrl, getPendingScanUrl, clearPendingScanUrl } from './uti
 import { renderCertificate, downloadCanvasPng } from './certificate.js';
 import { ROUTES } from './routes.js';
 import { getCurrentContext } from './samo.js';
+import { DEPARTMENTS, SUBDEPARTMENTS } from './constants.js';
 
 // ─── State ───────────────────────────────────────────────
 let currentPageIndex = 0;
@@ -30,14 +31,6 @@ let flYear = undefined;   // selected วาระสโม key in the Flight Lo
 let flSeason = undefined; // selected season key ('all' | 'none' | season id)
 let lbpView = 'season';                     // 'season' | 'year'
 let lbpFilter = { type: 'all', id: null };  // all | dept | sub
-
-const DEPARTMENTS = {
-    1: 'บริหารองค์กร', 2: 'ดิจิทัลและสื่อสารองค์กร', 3: 'กิจการภายใน',
-    4: 'กิจการภายนอก', 5: 'กิจการมหาวิทยาลัย', 6: 'วิชาการ',
-    7: 'ยุทธศาสตร์และพัฒนาองค์กร', 8: 'คุณภาพชีวิตและสิ่งแวดล้อม',
-    9: 'เวชนิทัศน์', 10: 'รังสีเทคนิค',
-};
-const SUBDEPARTMENTS = { 1: 'โครงการ', 2: 'ชุมนุม', 3: 'จิตอาสา', 4: '7 คณะ' };
 
 const STAMPS_PER_PAGE = 12; // 3-col × 4-row grid
 

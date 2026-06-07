@@ -5,6 +5,7 @@ import { ROUTES } from './routes.js';
 import { renderCertificate, loadCertImage, CERT_FONTS } from './certificate.js';
 import { uploadToDrive, deleteFromDrive, deleteFromDriveBeacon, isUploadConfigured } from './upload.js';
 import { getCurrentContext } from './samo.js';
+import { DEPARTMENTS, SUBDEPARTMENTS } from './constants.js';
 
 // --- ORPHANED-UPLOAD TRACKING ---
 // Images upload to Drive immediately (so the preview/QR works), but if the admin
@@ -31,13 +32,6 @@ function discardPendingUpload(inputId) {
 }
 
 const CERT_SAMPLE_NAME = 'ชื่อ นามสกุล';
-
-const DEPARTMENTS = {
-    1: 'บริหารองค์กร', 2: 'ดิจิทัลและสื่อสารองค์กร', 3: 'กิจการภายใน',
-    4: 'กิจการภายนอก', 5: 'กิจการมหาวิทยาลัย', 6: 'วิชาการ',
-    7: 'ยุทธศาสตร์และพัฒนาองค์กร', 8: 'คุณภาพชีวิตและสิ่งแวดล้อม',
-    9: 'เวชนิทัศน์', 10: 'รังสีเทคนิค',
-};
 
 // --- CONFIG ---
 const SUB_DEPT_OPTIONS = {
@@ -883,8 +877,6 @@ function wireUpload(inputId, folder) {
 }
 
 // --- วาระสโม (SamoYear) & SEASON CONTROL ---
-const SUBDEPARTMENTS = { 1: 'โครงการ', 2: 'ชุมนุม', 3: 'จิตอาสา', 4: '7 คณะ' };
-
 let samoYears = [];
 let samoSeasons = [];
 
