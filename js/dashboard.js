@@ -26,6 +26,8 @@ const yearNameById = new Map();   // samo_year_id -> name (for flight-log groupi
 let flightLogPageIndex = -1;
 let leaderboardPageIndex = -1;
 let flFilter = { type: 'all', id: null };  // all | dept | sub
+let flYear = undefined;   // selected วาระสโม key in the Flight Log ('none' = unassigned)
+let flSeason = undefined; // selected season key ('all' | 'none' | season id)
 let lbpView = 'season';                     // 'season' | 'year'
 let lbpFilter = { type: 'all', id: null };  // all | dept | sub
 
@@ -71,109 +73,105 @@ function buildPageDots() {
 function buildStampPages(allActivities, userScans) {
     const scannedIds = new Set(userScans.map(s => s.activity_id));
     const scanByActivity = new Map(userScans.map(s => [s.activity_id, s]));
-    // Only show stamps the student has actually earned (scanned). Locked/unearned
-    // activities are not displayed. Order newest-earned → oldest (by scan time).
-    const earned = allActivities
-        .filter(a => scannedIds.has(a.id))
-        .sort((a, b) => (scanByActivity.get(b.id)?.scanned_at || '')
-            .localeCompare(scanByActivity.get(a.id)?.scanned_at || ''));
-    const numStampPages = Math.ceil(earned.length / STAMPS_PER_PAGE);
     const book = document.getElementById('page-1').parentElement; // passport-container
 
-    // Flat registry so users can search across all (earned) stamp pages
-    allStamps.length = 0;
-    earned.forEach((activity, i) => {
-        allStamps.push({
-            activity,
-            isActive: true,
-            scan: userScans.find(sc => sc.activity_id === activity.id),
-            pageIndex: 2 + Math.floor(i / STAMPS_PER_PAGE), // page that holds this stamp
-        });
-    });
-
-    // Activity stamp pages
-    for (let p = 0; p < numStampPages; p++) {
-        const pageActivities = earned.slice(p * STAMPS_PER_PAGE, (p + 1) * STAMPS_PER_PAGE);
-        const globalPageIdx = 2 + p;
-        const pageNumLabel = String(globalPageIdx).padStart(2, '0');
-
-        const page = document.createElement('div');
-        page.className = 'passport-page page-inner';
-        page.id = `page-${globalPageIdx}`;
-        page.style.display = 'none';
-
-        page.innerHTML = `
-            <div class="inner-page-watermark">🏅</div>
-            <div class="inner-page-header">
-                <span class="inner-page-label">STAMP COLLECTION</span>
-                <span class="inner-page-num">${pageNumLabel}</span>
-            </div>
-            <div class="stamp-page-grid" id="stamp-grid-${p}"></div>
-            <div class="inner-page-footer"><div class="barcode-lines"></div></div>
-        `;
-
-        book.appendChild(page);
-
-        const grid = page.querySelector(`#stamp-grid-${p}`);
-
-        for (let s = 0; s < STAMPS_PER_PAGE; s++) {
-            const activity = pageActivities[s];
-            const slot = document.createElement('div');
-
-            if (!activity) {
-                slot.className = 'stamp-slot blank';
-                slot.innerHTML = `<div class="stamp-circle"></div><div class="stamp-name"></div>`;
-                grid.appendChild(slot);
-                continue;
-            }
-
-            const isActive = scannedIds.has(activity.id);
-            const scan = userScans.find(sc => sc.activity_id === activity.id);
-
-            slot.className = `stamp-slot ${isActive ? 'active' : 'inactive'}`;
-            slot.setAttribute('data-activity-id', activity.id);
-
-            const circle = document.createElement('div');
-            circle.className = 'stamp-circle';
-
-            if (activity.badge_url && isActive) {
-                const img = document.createElement('img');
-                img.src = fixGoogleDriveUrl(activity.badge_url);
-                img.className = 'stamp-img';
-                img.alt = activity.badge_name || activity.name;
-                circle.appendChild(img);
-            } else {
-                const emoji = document.createElement('span');
-                emoji.className = 'stamp-emoji-placeholder';
-                emoji.textContent = isActive ? '✅' : '○';
-                circle.appendChild(emoji);
-            }
-
-            const label = document.createElement('div');
-            label.className = 'stamp-name';
-            label.textContent = activity.badge_name || activity.name;
-
-            slot.appendChild(circle);
-            slot.appendChild(label);
-
-            // Certificate indicator — a small ribbon on stamps that have a cert to claim.
-            if (isActive && (certsByActivity.get(activity.id) || []).length > 0) {
-                slot.classList.add('has-cert');
-                const ribbon = document.createElement('span');
-                ribbon.className = 'stamp-cert-badge';
-                ribbon.textContent = '🎓';
-                ribbon.title = 'Certificate available';
-                slot.appendChild(ribbon);
-            }
-
-            slot.addEventListener('click', () => {
-                if (isActive) openMemoryModal(activity, scan);
-                else openLockedModal(activity);
-            });
-
-            grid.appendChild(slot);
+    // Build one stamp cell (earned activity, or a blank filler when none).
+    const makeStampSlot = (activity) => {
+        const slot = document.createElement('div');
+        if (!activity) {
+            slot.className = 'stamp-slot blank';
+            slot.innerHTML = `<div class="stamp-circle"></div><div class="stamp-name"></div>`;
+            return slot;
         }
-    }
+        const scan = scanByActivity.get(activity.id);
+        slot.className = 'stamp-slot active';
+        slot.setAttribute('data-activity-id', activity.id);
+
+        const circle = document.createElement('div');
+        circle.className = 'stamp-circle';
+        if (activity.badge_url) {
+            const img = document.createElement('img');
+            img.src = fixGoogleDriveUrl(activity.badge_url);
+            img.className = 'stamp-img';
+            img.alt = activity.badge_name || activity.name;
+            circle.appendChild(img);
+        } else {
+            const emoji = document.createElement('span');
+            emoji.className = 'stamp-emoji-placeholder';
+            emoji.textContent = '✅';
+            circle.appendChild(emoji);
+        }
+
+        const label = document.createElement('div');
+        label.className = 'stamp-name';
+        label.textContent = activity.badge_name || activity.name;
+
+        slot.appendChild(circle);
+        slot.appendChild(label);
+
+        // Certificate indicator — a small ribbon on stamps that have a cert to claim.
+        if ((certsByActivity.get(activity.id) || []).length > 0) {
+            slot.classList.add('has-cert');
+            const ribbon = document.createElement('span');
+            ribbon.className = 'stamp-cert-badge';
+            ribbon.textContent = '🎓';
+            ribbon.title = 'Certificate available';
+            slot.appendChild(ribbon);
+        }
+
+        slot.addEventListener('click', () => openMemoryModal(activity, scan));
+        return slot;
+    };
+
+    // Split the stamp collection into per-section pages, grouped วาระสโม → season
+    // (newest first, by scan time); activities within a section are newest-first.
+    const recent = a => scanByActivity.get(a.id)?.scanned_at || '';
+    const groupsMap = new Map(); // key -> { yearId, seasonId, acts: [] }
+    allActivities.filter(a => scannedIds.has(a.id)).forEach(a => {
+        const sc = scanByActivity.get(a.id);
+        const key = `${sc?.samo_year_id ?? '∅'}|${sc?.season_id ?? '∅'}`;
+        if (!groupsMap.has(key)) groupsMap.set(key, { yearId: sc?.samo_year_id ?? null, seasonId: sc?.season_id ?? null, acts: [] });
+        groupsMap.get(key).acts.push(a);
+    });
+    const maxOf = acts => acts.reduce((m, a) => recent(a) > m ? recent(a) : m, '');
+    const groups = [...groupsMap.values()].sort((x, y) => maxOf(y.acts).localeCompare(maxOf(x.acts)));
+    groups.forEach(g => g.acts.sort((a, b) => recent(b).localeCompare(recent(a))));
+
+    // Flat registry so users can search across all (earned) stamp pages.
+    allStamps.length = 0;
+
+    let pageIdx = 2; // running global page index (cover + info = 0,1)
+    groups.forEach(g => {
+        const yName = g.yearId ? (yearNameById.get(g.yearId) || 'วาระสโม') : 'ไม่ระบุวาระสโม';
+        const seName = g.seasonId ? (seasonNameById.get(g.seasonId) || 'ซีซั่น') : 'ไม่ระบุซีซั่น';
+        const isCur = currentYear && g.yearId === currentYear.id && currentSeason && g.seasonId === currentSeason.id;
+        const nPages = Math.max(1, Math.ceil(g.acts.length / STAMPS_PER_PAGE));
+        for (let p = 0; p < nPages; p++) {
+            const pageActs = g.acts.slice(p * STAMPS_PER_PAGE, (p + 1) * STAMPS_PER_PAGE);
+            const globalPageIdx = pageIdx;
+
+            pageActs.forEach(a => allStamps.push({ activity: a, isActive: true, scan: scanByActivity.get(a.id), pageIndex: globalPageIdx }));
+
+            const page = document.createElement('div');
+            page.className = 'passport-page page-inner';
+            page.id = `page-${globalPageIdx}`;
+            page.style.display = 'none';
+            page.innerHTML = `
+                <div class="inner-page-watermark">🏅</div>
+                <div class="inner-page-header stamp-section-header">
+                    <span class="inner-page-label">${escapeHtmlText(yName)} · ${escapeHtmlText(seName)}${nPages > 1 ? ` (${p + 1}/${nPages})` : ''}${isCur ? ' <span class="fl-now">ปัจจุบัน</span>' : ''}</span>
+                    <span class="inner-page-num">${String(globalPageIdx).padStart(2, '0')}</span>
+                </div>
+                <div class="stamp-page-grid"></div>
+                <div class="inner-page-footer"><div class="barcode-lines"></div></div>`;
+            book.appendChild(page);
+
+            const grid = page.querySelector('.stamp-page-grid');
+            for (let s = 0; s < STAMPS_PER_PAGE; s++) grid.appendChild(makeStampSlot(pageActs[s]));
+            pageIdx++;
+        }
+    });
+    const numStampPages = pageIdx - 2;
 
     // ── Flight Log page (current วาระสโม + season, with dept/sub-dept filters) ──
     flightLogPageIndex = 2 + numStampPages;
@@ -806,12 +804,16 @@ function scanDisplayName(s) { return s.activity_name || activityById.get(s.activ
 function scanDept(s) { return s.department_id ?? activityById.get(s.activity_id)?.department_id ?? null; }
 function scanSubDept(s) { return s.sub_department_id ?? activityById.get(s.activity_id)?.sub_department_id ?? null; }
 
-function filterChipsHtml(scans, filter) {
+// Compact department/sub-department filter as a single <select> (there can be ~10
+// departments — chips took up too much space). Only lists scopes present in `scans`.
+function deptSelectHtml(scans, filter) {
     const depts = [...new Set(scans.map(scanDept).filter(x => x != null))];
     const subs = [...new Set(scans.map(scanSubDept).filter(x => x != null))];
-    let html = `<button class="seg-chip${filter.type === 'all' ? ' on' : ''}" data-f="all">All</button>`;
-    depts.forEach(d => html += `<button class="seg-chip${filter.type === 'dept' && filter.id === d ? ' on' : ''}" data-f="dept:${d}">${escapeHtmlText(DEPARTMENTS[d] || ('ฝ่าย ' + d))}</button>`);
-    subs.forEach(d => html += `<button class="seg-chip${filter.type === 'sub' && filter.id === d ? ' on' : ''}" data-f="sub:${d}">${escapeHtmlText(SUBDEPARTMENTS[d] || ('ย่อย ' + d))}</button>`);
+    const sel = (cond) => cond ? ' selected' : '';
+    let html = `<select class="seg-select"><option value="all"${sel(filter.type === 'all')}>ทุกฝ่าย (All)</option>`;
+    depts.forEach(d => html += `<option value="dept:${d}"${sel(filter.type === 'dept' && filter.id === d)}>${escapeHtmlText(DEPARTMENTS[d] || ('ฝ่าย ' + d))}</option>`);
+    subs.forEach(d => html += `<option value="sub:${d}"${sel(filter.type === 'sub' && filter.id === d)}>${escapeHtmlText(SUBDEPARTMENTS[d] || ('ย่อย ' + d))}</option>`);
+    html += '</select>';
     return html;
 }
 
@@ -821,95 +823,97 @@ function applyFilter(scans, filter) {
     return scans;
 }
 
-function parseChip(el) {
-    const f = el.getAttribute('data-f');
-    if (f === 'all') return { type: 'all', id: null };
-    const [t, id] = f.split(':');
+function parseDeptValue(v) {
+    if (v === 'all') return { type: 'all', id: null };
+    const [t, id] = v.split(':');
     return { type: t, id: parseInt(id, 10) };
 }
 
-// Group scans into [samoYear → season → scans], all newest-first, for the full
-// flight-log history (current AND past วาระสโม/seasons). Grouping order is by the
-// most recent scan in each group, so "now" floats to the top without needing the
-// year/season start dates. Null year/season fall into an "unassigned" bucket.
-function groupScansByYearSeason(scans) {
-    const recent = s => s.scanned_at || '';
-    const years = new Map(); // yearId -> { id, scans:[], seasons: Map }
-    scans.forEach(s => {
-        const yId = s.samo_year_id ?? '∅';
-        if (!years.has(yId)) years.set(yId, { id: s.samo_year_id ?? null, scans: [], seasons: new Map() });
-        const y = years.get(yId);
-        y.scans.push(s);
-        const sId = s.season_id ?? '∅';
-        if (!y.seasons.has(sId)) y.seasons.set(sId, { id: s.season_id ?? null, scans: [] });
-        y.seasons.get(sId).scans.push(s);
+// Distinct วาระสโม keys present in the user's scans, newest-first ('none' = no year).
+function flYearKeys() {
+    const m = new Map();
+    userScansCache.forEach(s => {
+        const k = s.samo_year_id ?? 'none', t = s.scanned_at || '';
+        if (!m.has(k) || t > m.get(k)) m.set(k, t);
     });
-    const maxOf = arr => arr.reduce((m, s) => recent(s) > m ? recent(s) : m, '');
-    const byRecentDesc = (a, b) => maxOf(b.scans).localeCompare(maxOf(a.scans));
-    const sortScans = arr => arr.sort((a, b) => recent(b).localeCompare(recent(a)));
-    return [...years.values()].sort(byRecentDesc).map(y => ({
-        id: y.id,
-        total: y.scans.reduce((t, s) => t + pointsOfScan(s), 0),
-        seasons: [...y.seasons.values()].sort(byRecentDesc).map(se => ({
-            id: se.id,
-            total: se.scans.reduce((t, s) => t + pointsOfScan(s), 0),
-            scans: sortScans(se.scans.slice()),
-        })),
-    }));
+    return [...m.entries()].sort((a, b) => b[1].localeCompare(a[1])).map(([k]) => k);
 }
+// Distinct season keys within a year key, newest-first ('none' = no season).
+function flSeasonKeys(yearKey) {
+    const m = new Map();
+    userScansCache.forEach(s => {
+        if ((s.samo_year_id ?? 'none') !== yearKey) return;
+        const k = s.season_id ?? 'none', t = s.scanned_at || '';
+        if (!m.has(k) || t > m.get(k)) m.set(k, t);
+    });
+    return [...m.entries()].sort((a, b) => b[1].localeCompare(a[1])).map(([k]) => k);
+}
+const yearKeyName = k => k === 'none' ? 'ไม่ระบุวาระสโม' : (yearNameById.get(k) || 'วาระสโม');
+const seasonKeyName = k => k === 'all' ? 'ทุกซีซั่น' : k === 'none' ? 'ไม่ระบุซีซั่น' : (seasonNameById.get(k) || 'ซีซั่น');
 
 function renderFlightLogPage() {
     const box = document.getElementById('flightlog-content');
     if (!box) return;
-    const winEl = document.getElementById('fl-window');
-    if (winEl) winEl.textContent = 'All time';
 
-    // Full history: every scan the user owns, across all วาระสโม/seasons.
-    const all = userScansCache.slice();
-    const filtered = applyFilter(all, flFilter);
-    const grandTotal = filtered.reduce((t, s) => t + pointsOfScan(s), 0);
-    const groups = groupScansByYearSeason(filtered);
+    // Resolve the selected วาระสโม/season, defaulting to the current ones.
+    const yearKeys = flYearKeys();
+    if (flYear === undefined || !yearKeys.includes(flYear)) {
+        flYear = (currentYear && yearKeys.includes(currentYear.id)) ? currentYear.id : (yearKeys[0] ?? 'none');
+    }
+    const seasonKeys = flSeasonKeys(flYear);
+    if (flSeason === undefined || (flSeason !== 'all' && !seasonKeys.includes(flSeason))) {
+        flSeason = (currentSeason && seasonKeys.includes(currentSeason.id)) ? currentSeason.id : 'all';
+    }
+
+    const winEl = document.getElementById('fl-window');
+    if (winEl) winEl.textContent = yearKeys.length ? yearKeyName(flYear) : '—';
+
+    // Scope = scans in the selected วาระสโม (+ season unless "all").
+    const scope = userScansCache.filter(s =>
+        (s.samo_year_id ?? 'none') === flYear &&
+        (flSeason === 'all' || (s.season_id ?? 'none') === flSeason));
+    const filtered = applyFilter(scope, flFilter)
+        .slice().sort((a, b) => (b.scanned_at || '').localeCompare(a.scanned_at || ''));
+    const total = filtered.reduce((t, s) => t + pointsOfScan(s), 0);
+
+    const yearOpts = yearKeys.map(k => `<option value="${k}"${k === flYear ? ' selected' : ''}>${escapeHtmlText(yearKeyName(k))}</option>`).join('');
+    const seasonOpts = [`<option value="all"${flSeason === 'all' ? ' selected' : ''}>${escapeHtmlText(seasonKeyName('all'))}</option>`]
+        .concat(seasonKeys.map(k => `<option value="${k}"${k === flSeason ? ' selected' : ''}>${escapeHtmlText(seasonKeyName(k))}</option>`)).join('');
 
     let html = `
-      <div class="seg-totals">
-        <div class="seg-total"><span>All time</span><strong>${grandTotal}<small>km</small></strong></div>
+      <div class="fl-selectors">
+        <select class="fl-year-select" aria-label="วาระสโม">${yearOpts}</select>
+        <select class="fl-season-select" aria-label="Season">${seasonOpts}</select>
+        ${deptSelectHtml(scope, flFilter)}
       </div>
-      <div class="seg-filter">${filterChipsHtml(all, flFilter)}</div>`;
-
+      <div class="seg-totals">
+        <div class="seg-total"><span>${escapeHtmlText(yearKeyName(flYear))} · ${escapeHtmlText(seasonKeyName(flSeason))}</span><strong>${total}<small>km</small></strong></div>
+      </div>
+      <div class="fl-list">`;
     if (filtered.length === 0) {
         html += '<div class="fl-empty">No flights logged here yet ✈️</div>';
     } else {
-        groups.forEach(y => {
-            const yName = y.id ? (yearNameById.get(y.id) || 'วาระสโม') : 'ไม่ระบุวาระสโม';
-            const isCurY = currentYear && y.id === currentYear.id;
-            html += `<div class="fl-year">
-                <span class="fl-year-name">${escapeHtmlText(yName)}${isCurY ? ' <span class="fl-now">ปัจจุบัน</span>' : ''}</span>
-                <span class="fl-year-km">${y.total} km</span>
+        filtered.forEach(s => {
+            const seTag = flSeason === 'all' && s.season_id ? ` <small class="fl-season">${escapeHtmlText(seasonNameById.get(s.season_id) || '')}</small>` : '';
+            html += `<div class="fl-item">
+                <span class="fl-item-name">✈️ ${escapeHtmlText(scanDisplayName(s))}${seTag}</span>
+                <span class="fl-item-km">+${pointsOfScan(s)} km</span>
               </div>`;
-            y.seasons.forEach(se => {
-                const seName = se.id ? (seasonNameById.get(se.id) || 'ซีซั่น') : 'ไม่ระบุซีซั่น';
-                const isCurS = currentSeason && se.id === currentSeason.id;
-                html += `<div class="fl-season-head">
-                    <span class="fl-season-name">${escapeHtmlText(seName)}${isCurS ? ' <span class="fl-now">ปัจจุบัน</span>' : ''}</span>
-                    <span class="fl-season-km">${se.total} km</span>
-                  </div>
-                  <div class="fl-list">`;
-                se.scans.forEach(s => {
-                    html += `<div class="fl-item">
-                        <span class="fl-item-name">✈️ ${escapeHtmlText(scanDisplayName(s))}</span>
-                        <span class="fl-item-km">+${pointsOfScan(s)} km</span>
-                      </div>`;
-                });
-                html += '</div>';
-            });
         });
     }
+    html += '</div>';
     box.innerHTML = html;
 
-    box.querySelectorAll('.seg-chip').forEach(btn => btn.addEventListener('click', () => {
-        flFilter = parseChip(btn);
+    box.querySelector('.fl-year-select')?.addEventListener('change', e => {
+        flYear = e.target.value; flSeason = undefined; // re-default the season for the new year
         renderFlightLogPage();
-    }));
+    });
+    box.querySelector('.fl-season-select')?.addEventListener('change', e => {
+        flSeason = e.target.value; renderFlightLogPage();
+    });
+    box.querySelector('.seg-select')?.addEventListener('change', e => {
+        flFilter = parseDeptValue(e.target.value); renderFlightLogPage();
+    });
 }
 
 // All-users leaderboard data (snapshot dept/season), fetched once.
@@ -970,7 +974,7 @@ async function renderLeaderboardPage() {
         ${seasonBtn}
         <button class="seg-tg${lbpView === 'year' ? ' on' : ''}" data-v="year">${currentYear ? escapeHtmlText(currentYear.name) : 'วาระ'}</button>
       </div>
-      <div class="seg-filter">${filterChipsHtml(chipScans, lbpFilter)}</div>`;
+      <div class="seg-filter">${deptSelectHtml(chipScans, lbpFilter)}</div>`;
 
     if (rows.length === 0) {
         html += '<p class="lb-loading">No rankings yet.</p>';
@@ -999,10 +1003,10 @@ async function renderLeaderboardPage() {
         lbpView = btn.getAttribute('data-v');
         renderLeaderboardPage();
     }));
-    box.querySelectorAll('.seg-chip').forEach(btn => btn.addEventListener('click', () => {
-        lbpFilter = parseChip(btn);
+    box.querySelector('.seg-select')?.addEventListener('change', e => {
+        lbpFilter = parseDeptValue(e.target.value);
         renderLeaderboardPage();
-    }));
+    });
 }
 
 // ─── Main init ────────────────────────────────────────────
