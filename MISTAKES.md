@@ -166,6 +166,10 @@ when probing RLS, remember a blocked SELECT returns empty-200, not 4xx — test 
 **Note:** There's no `is_current` flag. `samo.js` finds the open year/season by
 `ended_at IS NULL`. Starting a new one sets the previous open row's `ended_at=now()`
 first. Keep that ordering or you'll briefly have two "current" rows.
+**Invariant — a วาระสโม must never be open without an open season.** If it is, scans during
+the gap get `season_id = NULL` and fall into the customer's "ไม่ระบุซีซั่น" (uncategorized)
+bucket. So `startNewYear` (admin-page.js) REQUIRES a first-season name and inserts that season
+immediately after creating the year. Don't add a path that opens a year without a season.
 
 ## Vite is multi-page
 **Note:** Each HTML entry (`index.html`, `html/{dashboard,admin,scan}.html`) is a

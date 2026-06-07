@@ -976,15 +976,23 @@ function renderSamoHistory() {
 window.startNewYear = async () => {
     const name = (prompt("Name the new วาระสโม (e.g. วาระสโม'69):") || '').trim();
     if (!name) return;
-    if (!confirm(`Start "${name}"?\n\nThis ENDS the current วาระสโม + season and resets the live leaderboard and current-year totals. All past logs and standings are kept.`)) return;
+    // A วาระสโม must open WITH a season — otherwise scans before the first season is
+    // started would land in the uncategorized (season_id NULL) bucket. Require it here.
+    const seasonName = (prompt(`Name the FIRST season for "${name}" (e.g. Q1):`) || '').trim();
+    if (!seasonName) { alert('Cancelled — a วาระสโม must start with a season (so scans are never uncategorized).'); return; }
+    if (!confirm(`Start "${name}" with season "${seasonName}"?\n\nThis ENDS the current วาระสโม + season and resets the live leaderboard and current-year totals. All past logs and standings are kept.`)) return;
     const now = new Date().toISOString();
     await supabase.from('samo_seasons').update({ ended_at: now }).is('ended_at', null);
     await supabase.from('samo_years').update({ ended_at: now }).is('ended_at', null);
-    const { error } = await supabase.from('samo_years').insert([{ name }]);
+    const { data: yRows, error } = await supabase.from('samo_years').insert([{ name }]).select();
     if (error) { alert('Failed: ' + error.message); return; }
+    const newYear = yRows && yRows[0];
+    if (!newYear) { alert('วาระสโม created but could not read it back — add the season manually.'); await loadSamoData(); renderSamoControl(); return; }
+    const { error: sErr } = await supabase.from('samo_seasons').insert([{ samo_year_id: newYear.id, name: seasonName }]);
+    if (sErr) { alert(`วาระสโม "${name}" started, but the season failed: ${sErr.message}\nAdd a season now or scans will be uncategorized.`); }
     await loadSamoData();
     renderSamoControl();
-    alert(`Started "${name}". Now start its first season (e.g. Q1).`);
+    if (!sErr) alert(`Started "${name}" · season "${seasonName}".`);
 };
 
 window.startNewSeason = async () => {
