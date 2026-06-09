@@ -1,0 +1,22 @@
+/* Image upload (drag-drop) — URL field + Upload button as one neat row */
+.upload-row {
+    display: flex;
+    gap: 8px;
+    align-items: stretch;
+    margin-bottom: 20px;
+}
+.upload-row input {
+    flex: 1;
+    min-width: 0;        /* let the input shrink instead of overflowing the row */
+    margin-bottom: 0;
+}
+.upload-btn {
+    width: auto;
+    flex-shrink: 0;
+    margin: 0;
+    padding: 0 16px;
+    white-space: nowrap;
+    align-self: stretch;   /* match the input height */
+    flex-grow: 0;
+}
+input.drag-over { outline: 2px dashed var(--accent-primary); outline-offset: 2px; }

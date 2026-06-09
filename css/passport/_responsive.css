@@ -1,0 +1,66 @@
+/* ════════════════ RESPONSIVE ════════════════ */
+@media (max-width: 480px) {
+  .pb-photo { width: 76px; height: 96px; }
+  .modal-card { max-height: 92%; border-radius: 20px 20px 0 0; }
+}
+
+/* ── Tablet / Desktop content layouts ── */
+@media (min-width: 768px) {
+  /* Passport tab: book + boarding pass side by side is handled by `.pp-cols`
+     (see _shell.css); the page header sits full-width above it. */
+  .passport-book { margin-bottom: 0; }
+
+  /* Stamps: 3 columns */
+  .stamps-grid { grid-template-columns: repeat(3, 1fr); }
+
+  /* Modal: centered */
+  .memory-modal { align-items: center; }
+  .modal-card { border-radius: 24px; max-height: 88vh; }
+}
+
+/* Log tab side-card layout — only at ≥1024px, matching the Passport tab's
+   two-column breakpoint (`.pp-cols`). Below this the flight log stacks
+   full-width (banner → filter card → totals card → list), so its content is
+   as wide as the Passport / Stamps tabs on phones and tablets. */
+@media (min-width: 1024px) {
+  .log-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 300px;
+    grid-template-areas: "banner filter" "list totals";
+    gap: 14px 20px;
+    align-items: start;
+  }
+  /* Let the two side cards become direct grid items so they line up row-by-row
+     with the banner and list. */
+  #flightlog-side { display: contents; }
+  .log-grid > .stat-banner { grid-area: banner; }
+  .log-grid > #flightlog-list { grid-area: list; }
+  #flightlog-side > .filter-card { grid-area: filter; }
+  #flightlog-side > .totals-card { grid-area: totals; }
+  /* Row 1: banner and filter card stretch to the same height. */
+  .log-grid > .stat-banner,
+  #flightlog-side > .filter-card { align-self: stretch; }
+}
+
+/* Leaderboard side-card selects: full-width, stacked (matches the Flight Log
+   side card). Base markup is row-wrapped via the shared .fl-selectors rule. */
+.lb-side .fl-selectors { flex-direction: column; gap: 8px; }
+.lb-side .lb-year-select,
+.lb-side .lb-season-select,
+.lb-side .seg-select { flex: none; width: 100%; text-transform: uppercase; }
+
+/* Leaderboard: main list + side column (filter / stats / podium) side by side —
+   same ≥1024px breakpoint as the Passport and Flight Log two-column layouts. */
+@media (min-width: 1024px) {
+  .lb-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 300px;
+    gap: 14px 20px;
+    align-items: start;
+  }
+}
+
+/* Web / desktop: 6 stamps per row. */
+@media (min-width: 1024px) {
+  .stamps-grid { grid-template-columns: repeat(6, 1fr); }
+}

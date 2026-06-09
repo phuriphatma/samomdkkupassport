@@ -1,0 +1,55 @@
+/* Activity list cards */
+.activity-card {
+    background: rgba(255, 255, 255, 0.65);
+    padding: 15px;
+    margin-bottom: 15px;
+    border-radius: 8px;
+    border: 1px solid var(--glass-border);
+}
+
+.activity-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.activity-card-name {
+    color: var(--accent-primary);
+    font-size: 1rem;
+}
+
+.activity-card-km {
+    background: rgba(148, 163, 184, 0.15);
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+
+.activity-card-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.btn-action {
+    padding: 8px 12px;
+    font-size: 0.8rem;
+    width: auto;
+    flex-grow: 1;
+}
+
+.btn-edit {
+    background: var(--accent-secondary);
+}
+
+.btn-delete {
+    background: var(--accent-danger);
+}
+
+.btn-cancel-edit {
+    background: rgba(100, 116, 139, 0.15);
+    border: 1px solid rgba(100, 116, 139, 0.3);
+    color: var(--text-light);
+}

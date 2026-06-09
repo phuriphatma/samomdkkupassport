@@ -174,3 +174,98 @@ immediately after creating the year. Don't add a path that opens a year without 
 ## Vite is multi-page
 **Note:** Each HTML entry (`index.html`, `html/{dashboard,admin,scan}.html`) is a
 separate Rollup input in `vite.config.js`. Add new pages there or they won't build.
+
+## Dashboard inline onclick handlers must live on `window` (ES-module trap)
+**Symptom:** A handler called from `onclick="..."` in `html/dashboard.html` silently does
+nothing (or two copies of it drift apart).
+**Cause:** `js/dashboard.js` loads as `<script type="module">`, so its top-level functions are
+module-scoped, **not** global — inline `onclick` can't see them. The page also has a *classic*
+`<script>` block whose functions *are* global. It's tempting to define a handler in both; they
+then diverge (we had two `switchTab`s — the module copy missed panel-close + lazy render).
+**Fix:** One definition. Tab/data handlers that need module state live in `dashboard.js` and are
+exposed once via `window.fnName = fnName` (see `window.switchTab`). Pure-DOM helpers
+(`togglePlane`, theme/profile menus) stay in the classic inline `<script>`. Don't define the same
+handler in both places.
+
+## HTML partials & CSS @import indexes (modular build)
+**How it works:** `html/dashboard.html` is a skeleton of `<include src="partials/…">` tags
+expanded by `vite-plugin-html-includes.js` (a `transformIndexHtml` with `order:'pre'`, so any
+`<link>`/`<script>` inside a partial is still bundled). `css/{main,passport,admin}.css` are
+`@import` indexes; the rules live in `css/<name>/_*.css`.
+**Traps:**
+- **Edit the partial, not the bundle.** `dist/html/dashboard.html` is generated; so is the
+  concatenated CSS. Hand-editing those is lost on next build.
+- **Partials are fragments, not pages** — only entry HTML files are Vite `input`s. Don't add a
+  partial to `vite.config.js`. `<include>` paths resolve **relative to the including file**.
+- **`@import` must stay at the top** of the index (CSS spec) — the index is imports only.
+- **Split CSS only at rule boundaries** (section-comment lines). Splitting mid-rule changes the
+  cascade. Sanity check: total `{` across partials must equal the original (we verified 327/86/84).
+- Dev HMR: a partial edit triggers a full reload via the plugin's `configureServer` watcher
+  (Vite doesn't track partials as deps of the entry HTML on its own).
+
+## Mobile dashboard: bottom nav hidden by iOS toolbar / top bar not at the edge
+**Symptom (real iPhone):** the bottom nav pill sits behind Safari's bottom toolbar; the
+top bar doesn't reach the top edge (a strip of page background shows above it) and/or the
+shell isn't full-width.
+**Cause:** two safe-area mistakes in the mobile shell (`css/passport/_shell.css`,
+`@media (max-width:767px)`):
+1. `env(safe-area-inset-*)` were used but the viewport `<meta>` lacked **`viewport-fit=cover`**,
+   so the insets are all `0` and iOS *letterboxes* the notch / home-indicator areas — the page
+   background shows around the shell and the bars never reach the edges.
+2. The bottom nav was `position: fixed; bottom: 0`. On iOS a fixed `bottom:0` resolves against
+   the layout viewport and renders **behind** the dynamic bottom toolbar.
+**Fix:** add `viewport-fit=cover` to the viewport meta (`html/partials/head.html`); make the
+shell a full-bleed `position:fixed; top:0; left:0; width:100%; height:100dvh` flex column with
+**no transform/centering and no 480px cap**; make `.bottom-nav` an **in-flow flex child** (not
+fixed) so it lives inside the `100dvh` box; and pad header/content/nav with the matching
+`env(safe-area-inset-top/right/bottom/left)`. Verify on a real notched iPhone — desktop browsers
+and most simulators report zero insets, so the bug is invisible there.
+
+## Dashboard CSS silently overridden by main.css globals (specificity / inheritance)
+**Symptom:** edits to a dashboard rule "do nothing" — padding/margin/font-size/color on
+`.tnav-btn` or the flight-log `<select>`s wouldn't change no matter the value (e.g. shrinking
+the dropdown `gap` had no effect; the real spacing was a stray 20px margin).
+**Cause:** `css/main/*` is loaded **before** `css/passport.css` on the dashboard, and two of its
+rules outrank or leak into dashboard elements:
+1. `body.passport-page-theme button { padding:0; font-size:inherit; font-weight:inherit;
+   color:inherit; … }` (in `_base.css`) — specificity `(0,1,2)` **beats a bare `.tnav-btn`**
+   `(0,1,0)`, so the sidebar buttons ignored their own padding/font/color.
+2. `input, select { margin-bottom:20px; padding:14px; width:100% }` (in `_utilities.css`,
+   meant for the login/admin forms) applies to **every** dashboard `<select>`. A class that sets
+   only `padding` still inherits the **20px `margin-bottom`** — that was the flight-log dropdown gap.
+**Fix:** give dashboard rules enough specificity (`.tb-nav .tnav-btn { … }`) and **explicitly
+reset what the global sets** (`.fl-…-select { margin:0 }`). When a style "won't apply," check
+`main/_base.css` (button reset) and `main/_utilities.css` (`input, select`) for a winning rule
+before touching values.
+**Tell-tale symptom:** two elements with the **same class render differently** when one is a
+`<button>` and the other an `<a>` — e.g. `.pm-item` rows in the settings/profile menu: the
+`<a>` "Back to Home" kept its `10px 14px` padding + `700`/`16.1px`, but the `<button>` rows
+(Edit Name, Export…) collapsed to `padding:0`/`400`/`16px` because only `<button>` matches the
+`body.passport-page-theme button` reset (0,1,2) which beats a bare `.pm-item` (0,1,0). Fix was
+scoping to `.profile-menu .pm-item` (0,2,0). Lives in `css/passport/_panels.css`.
+
+## "Equal-height columns" / inflated gap from a row-spanning grid item
+**Symptom (flight log):** the gap between the teal banner and the (short) flight list was huge,
+and didn't shrink when the grid `row-gap` was lowered.
+**Cause:** the side card (Filter+Totals) was a grid item **spanning both rows**
+(`grid-template-areas:"banner side""list side"`). When that spanning item is taller than
+banner+list, CSS grid **grows the auto rows** to fit it, pushing the list down — the visible
+"gap" was inflated row height, not `row-gap`.
+**Fix:** don't span. Lay it out as a 2×2 grid (`"banner filter" / "list totals"`) with the side
+`<aside>` set to `display:contents` so its two cards become real grid cells; `align-self:stretch`
+on row-1 items gives banner==filter equal height, and the banner→list / filter→totals gaps are
+then both just `row-gap`. Lives in `css/passport/_responsive.css` + `_log.css`.
+
+## Per-tab edge spacing differs on mobile (centred flex body shrink-to-fits .app-body)
+**Symptom:** on mobile, the Flight Log tab's content sat at a different distance from the
+screen edges than the Passport / Stamps tabs, even though all tabs share `.app-body` and its
+left/right padding.
+**Cause:** the global `body` rule (`css/main/_reset.css`) is `display:flex; align-items:center`.
+The desktop dashboard escapes it via `body.passport-page-theme { display:block }`, but the
+**mobile** shell (`@media (max-width:767px)`) switches back to `display:flex; flex-direction:column`
+**without resetting `align-items`** — so it stayed `center`. Cross-axis centring makes `.app-body`
+**shrink-to-fit its content** instead of filling the width. Since only the active tab is rendered
+(`display:block`, others `display:none`), `.app-body`'s width tracked the active tab's intrinsic
+content width → each tab got different edge spacing.
+**Fix:** add `align-items: stretch` to the mobile `body.passport-page-theme` flex rule so
+`.app-body` always fills the viewport width. Lives in `css/passport/_shell.css` (mobile block).

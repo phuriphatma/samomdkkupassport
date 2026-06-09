@@ -1,0 +1,12 @@
+<!-- Profile menu dropdown -->
+<div class="profile-menu" id="profileMenu">
+  <button class="pm-item" onclick="document.getElementById('edit-name-btn').click();document.getElementById('profileMenu').classList.remove('open')">✏️ Edit Name</button>
+  <hr class="pm-divider">
+  <button class="pm-item" id="export-data-btn">⬇️ Export my data</button>
+  <button class="pm-item" id="import-data-btn">⬆️ Import my data</button>
+  <button class="pm-item pm-sub" id="backup-info-btn" type="button">ⓘ What is "my data"?</button>
+  <input type="file" id="import-data-input" accept="application/json" style="display:none;">
+  <hr class="pm-divider">
+  <a href="/" class="pm-item">🏠 Back to Home</a>
+  <button class="pm-item pm-danger" id="pm-logout">🚪 Sign Out</button>
+</div>

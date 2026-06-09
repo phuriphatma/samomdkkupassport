@@ -1,0 +1,144 @@
+/* =========================================
+   CERTIFICATES
+========================================= */
+.cert-list-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;            /* let actions drop below the text on narrow screens */
+    padding: 10px 14px;
+    background: var(--glass-bg, rgba(255, 255, 255, 0.9));
+    border: 1px solid var(--glass-border, rgba(0, 0, 0, 0.08));
+    border-radius: 10px;
+    margin-bottom: 8px;
+}
+.cert-list-item > span:first-child { flex: 1 1 60%; min-width: 0; }
+
+.cert-list-label {
+    font-weight: 600;
+}
+
+.cert-actions { display: flex; gap: 6px; flex-shrink: 0; }
+.cert-editing { outline: 2px solid var(--accent-primary); outline-offset: -1px; }
+
+.cert-controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+    margin: 12px 0 16px;
+    padding: 14px 16px;
+    background: rgba(255, 255, 255, 0.55);
+    border: 1px solid var(--glass-border, rgba(0, 0, 0, 0.08));
+    border-radius: 12px;
+}
+
+.cert-controls label {
+    display: flex;
+    flex-direction: column;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    color: var(--text-muted);
+    gap: 5px;
+}
+
+.cert-controls input,
+.cert-controls select {
+    margin-bottom: 0;
+    padding: 9px 11px;
+    font-size: 0.92rem;
+}
+
+.cert-controls input[type="number"] {
+    width: 96px;
+}
+
+.cert-controls input[type="color"] {
+    width: 48px;
+    height: 38px;
+    padding: 3px;
+    cursor: pointer;
+}
+
+/* Touch-friendly name placement (sliders) */
+.cert-sliders {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    margin: 14px 0 16px;
+}
+.cert-slider-field { display: flex; flex-direction: column; gap: 6px; }
+.csf-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    color: var(--text-muted);
+}
+.csf-head b { color: var(--accent-primary); font-size: 0.85rem; }
+.slider-combo { display: flex; align-items: center; gap: 12px; }
+.slider-combo input[type="range"] {
+    -webkit-appearance: auto;
+    appearance: auto;
+    accent-color: var(--accent-primary);
+    flex: 1;
+    min-width: 0;
+    height: 34px;          /* big touch target */
+    margin: 0;
+    padding: 0;
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    cursor: pointer;
+}
+.slider-combo input[type="range"]:focus { outline: none; box-shadow: none; }
+.slider-combo input[type="number"] {
+    width: 72px;
+    flex-shrink: 0;
+    margin: 0;
+    padding: 9px 10px;
+    text-align: center;
+}
+
+.cert-preview-wrap {
+    margin: 12px 0;
+    text-align: center;
+}
+
+.cert-preview-canvas {
+    max-width: 100%;
+    height: auto;
+    border-radius: 10px;
+    border: 1px solid var(--glass-border, rgba(0, 0, 0, 0.08));
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+}
+
+.cert-preview-hint {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    padding: 24px;
+    border: 1px dashed var(--glass-border, rgba(0, 0, 0, 0.12));
+    border-radius: 10px;
+}
+
+/* Certificate preview: draggable name positioning */
+.cert-preview-stage { display: inline-block; max-width: 100%; line-height: 0; }
+
+.cert-preview-canvas {
+    cursor: crosshair;
+    touch-action: none; /* let pointer drag set the name position without scrolling */
+}
+
+.cert-preview-tip {
+    display: block;
+    margin-top: 8px;
+    font-size: 0.78rem;
+    color: var(--text-muted);
+}
+
+#cert-font { min-width: 150px; }

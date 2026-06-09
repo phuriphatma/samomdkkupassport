@@ -1,0 +1,257 @@
+/* ════════════════════════════════════════════
+   DESKTOP / TABLET  (≥ 768px)
+   Normal page scroll; topbar is position:fixed
+   ════════════════════════════════════════════ */
+
+/* The dashboard isn't the "sky" theme — drop main.css's blue html background so
+   it can't bleed through on overscroll or in the notch/home-indicator safe areas.
+   (passport.css loads only here, so landing/admin/scan keep their blue sky.) */
+html { background: var(--bg); }
+/* Always reserve the scrollbar gutter so a tab with a scrollbar (long Flight Log /
+   Leaderboard list) isn't ~15px narrower than a short tab (Passport). Keeps every
+   tab the exact same content width. */
+html { scrollbar-gutter: stable; }
+
+body.passport-page-theme {
+  font-family: 'Nunito', system-ui, sans-serif;
+  background: var(--bg); color: var(--text);
+  min-height: 100vh; width: 100%;
+  /* main.css centers the landing page with `body{display:flex;…;padding:20px}`.
+     The dashboard is its own shell — reset that so .app-body fills/centres normally. */
+  display: block; padding: 0;
+}
+
+/* Fixed top navbar — brand on the left, actions on the right (nav is the sidebar) */
+.topbar {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+  height: var(--tb-h);
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 20px; gap: 0;
+  box-sizing: border-box;
+}
+
+.tb-left { display: flex; align-items: center; gap: 14px; min-width: 0; }
+.tb-brand {
+  display: flex; align-items: center; gap: 7px;
+  font-size: 17.2px; font-weight: 900; color: var(--text);
+  white-space: nowrap; flex-shrink: 0;
+  width: calc(var(--sidebar-w) - 20px); box-sizing: border-box;
+}
+.tb-crumb {
+  font-size: 14.9px; font-weight: 700; color: var(--t2);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+/* Left sidebar — the four nav buttons stacked vertically below the top bar */
+.tb-nav {
+  position: fixed; left: 0; top: var(--tb-h); bottom: 0; z-index: 90;
+  width: var(--sidebar-w);
+  display: flex; flex-direction: column; align-items: stretch; justify-content: flex-start;
+  gap: 7px; padding: 20px 14px;
+  background: var(--surface); border-right: 1px solid var(--border);
+  overflow-y: auto;
+}
+.tb-nav::-webkit-scrollbar { display: none; }
+
+.tb-nav .tnav-btn {
+  display: flex; align-items: center; gap: 13px;
+  padding: 20px 14px 20px 20px; border-radius: 12px;
+  height: 48px;
+  background: none; border: none; border-radius: 12px;
+  font-family: 'Nunito', sans-serif; font-size: 16.7px; font-weight: 700;
+  color: var(--t2); white-space: nowrap; cursor: pointer; text-align: left;
+  transition: color .18s, background .15s;
+}
+.tnav-icon { font-size: 21.8px; width: 22px; text-align: center;}
+.tnav-btn.active { color: var(--pri); background: var(--pri-s); }
+.tnav-btn:hover:not(.active) { color: var(--text); background: var(--s2); }
+
+/* Sidebar section label */
+.side-section {
+  font-size: 12.6px; font-weight: 800; letter-spacing: 1.2px; text-transform: uppercase;
+  color: var(--t3); padding: 4px 14px; margin-bottom: 2px;
+}
+.side-section + .side-section,
+.tnav-btn + .side-section { margin-top: 14px; }
+
+/* User card pinned to the bottom of the sidebar */
+.side-user {
+  margin-top: auto; display: flex; align-items: center; gap: 10px;
+  padding: 10px; border-radius: 14px; background: var(--s2);
+  border: 1px solid var(--border);
+}
+.su-av {
+  width: 34px; height: 34px; border-radius: 50%; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center; font-size: 20.7px;
+  background: var(--grad); box-shadow: 0 2px 8px var(--shadow-pri2);
+}
+.su-info { min-width: 0; flex: 1; }
+/* The whole card is the Settings toggle on desktop — click to expand the theme +
+   account popover; hover lifts it with a shadow. */
+.side-user { cursor: pointer; transition: box-shadow .18s, border-color .18s; }
+.side-user:hover { box-shadow: 0 6px 20px rgba(0,0,0,.12); border-color: var(--pri-m); }
+.su-gear {
+  flex-shrink: 0; width: 30px; height: 30px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center; font-size: 16.1px;
+  background: var(--s2); border: 1px solid var(--border); color: var(--t2);
+  transition: transform .18s;
+}
+.side-user:hover .su-gear { transform: rotate(40deg); }
+.su-name {
+  font-size: 14.4px; font-weight: 800; color: var(--text);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.su-sub {
+  font-size: 12.1px; font-weight: 700; color: var(--t2);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+/* Actions — right side */
+.tb-actions {
+  display: flex; align-items: center; gap: 8px; flex-shrink: 0; padding-left: 16px;
+}
+.tb-chip {
+  background: var(--pri-s); color: var(--pri); font-size: 12.6px; font-weight: 800;
+  padding: 4px 11px; border-radius: 20px; letter-spacing: .5px; white-space: nowrap;
+}
+
+/* Scrollable content — cleared below the top bar and right of the sidebar */
+.app-body {
+  padding-top: calc(var(--tb-h) + 24px);
+  padding-bottom: 40px;
+  padding-left: 44px; padding-right: 44px;
+  max-width: 1500px; margin-left: var(--sidebar-w); margin-right: auto;
+  overflow-x: hidden;
+}
+
+/* Bottom nav: hidden on desktop */
+.bottom-nav { display: none; }
+
+/* ── Page header (desktop title + subtitle above each tab) ── */
+.page-head { margin-bottom: 22px; }
+.page-title {
+  font-size: 34.5px; font-weight: 900; color: var(--text);
+  line-height: 1.1; margin: 0; display: flex; align-items: center; gap: 8px;
+}
+.page-emoji { font-size: 29.9px; }
+.page-sub { font-size: 15.5px; font-weight: 700; color: var(--t3); margin: 5px 0 0; }
+
+/* ── Passport tab: passport book + boarding pass side by side ── */
+.pp-cols {
+  display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr);
+  gap: 24px; align-items: start;
+}
+.pp-cols > .passport-book,
+.pp-cols > .bp-card { margin: 0; }
+@media (max-width: 1023px) {
+  .pp-cols { grid-template-columns: 1fr; gap: 18px; }
+}
+
+/* ════════════════════════════════════════════
+   MOBILE  (< 768px)
+   Fixed full-screen shell; bottom nav for tabs
+   ════════════════════════════════════════════ */
+@media (max-width: 767px) {
+  /* Full-bleed fixed app shell: header + scroll area + bottom nav stacked in a
+     flex column the exact height of the (dynamic) viewport. No transform/centering
+     so it reaches every screen edge; safe-area insets keep content off the
+     notch / status bar / home indicator (needs viewport-fit=cover in the <meta>). */
+  body.passport-page-theme {
+    position: fixed; top: 0; left: 0;
+    width: 100%; overflow: hidden;
+    height: 100vh;     /* fallback for browsers without svh */
+    height: 100svh;    /* size to the SMALL (toolbar-visible) viewport so the bottom
+                          nav is never hidden behind Safari's bottom toolbar */
+    display: flex; flex-direction: column;
+    /* main.css's body rule sets `align-items: center`; the desktop shell escapes it
+       via `display: block`, but here we're flex again, so reset it. Without this the
+       column's cross-axis centring shrink-to-fits .app-body to the active tab's
+       content, so each tab gets different left/right edge spacing (Flight Log vs
+       Passport/Stamps). Stretch makes .app-body fill the width on every tab. */
+    align-items: stretch;
+  }
+
+  /* Header: brand + actions (nav links move to the bottom bar). Its background
+     fills the status-bar / notch area so the bar reaches the very top edge. */
+  .topbar {
+    position: static;             /* static inside the fixed body */
+    height: auto; gap: 8px; align-items: center;
+    justify-content: space-between;   /* nav is hidden on mobile — keep brand left, actions right */
+    padding: calc(11px + env(safe-area-inset-top)) calc(14px + env(safe-area-inset-right))
+             11px calc(14px + env(safe-area-inset-left));
+    min-width: 100dvw;           /* ensure it always fills the viewport width, even when rotated */
+  }
+  .tb-nav { display: none; }       /* navigation is in .bottom-nav */
+  .tb-actions { padding-left: 0; }
+  .tb-brand { width: auto; }
+  .tb-crumb { display: none; }     /* breadcrumb is desktop-only */
+
+  /* Compact page header on mobile (matches the app feel) */
+  .page-head { margin-bottom: 14px; }
+  .page-title { font-size: 25.3px; }
+  .page-emoji { font-size: 23px; }
+  .page-sub { font-size: 13.8px; }
+
+  /* Dropdowns open just below the (now safe-area-taller) header */
+  .theme-panel, .profile-menu { top: calc(env(safe-area-inset-top) + 52px); }
+
+  /* Scrolls behind the floating nav; the big bottom padding keeps the last items
+     clear of the pill. */
+  .app-body {
+    flex: 1; min-height: 0;
+    overflow-y: auto; -webkit-overflow-scrolling: touch;
+    scrollbar-gutter: stable;   /* keep every tab the same width whether it scrolls or not */
+    overscroll-behavior: contain; overflow-x: hidden;
+    padding: 14px calc(14px + env(safe-area-inset-right))
+             calc(var(--bnav-h) + env(safe-area-inset-bottom) + 8px)
+             calc(14px + env(safe-area-inset-left));
+    min-width: 0; max-width: 100%; margin: 0;
+  }
+
+  /* Floating bottom nav: overlays the scrolling content, anchored to the bottom of
+     the (100svh) shell so it stays above Safari's toolbar. The gradient fades the
+     content out beneath the pill; only the pill itself is tappable. */
+  .bottom-nav {
+    position: absolute; left: 0; right: 0; bottom: 5dvh;
+    display: flex; justify-content: center;
+    padding: 6px calc(16px + env(safe-area-inset-right))
+             calc(8px + env(safe-area-inset-bottom)) calc(16px + env(safe-area-inset-left));
+    pointer-events: none;
+    background: linear-gradient(to bottom, transparent, var(--bg) 38%);
+  }
+  .bnav-pill {
+    background: #fff; border-radius: 30px;
+    box-shadow: 0 4px 24px rgba(0,0,0,.13);
+    display: flex; align-items: center;
+    padding: 6px 8px; gap: 2px; width: 100%;
+    pointer-events: all;
+  }
+  /* Scoped under .bnav-pill (0,2,0) so it outranks the `body.passport-page-theme
+     button` reset (0,1,2) — otherwise the buttons lose their 11.5px font + padding
+     (font-size jumps to 16px) and the labels overflow the active highlight. */
+  .bnav-pill .bnav-btn {
+    flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center;
+    justify-content: center; gap: 3px;
+    font-family: 'Nunito', sans-serif; font-size: 11.5px; font-weight: 700;
+    color: var(--t3); transition: color .2s, background .2s;
+    padding: 7px 4px; border-radius: 30px;
+  }
+  .bnav-pill .bnav-btn > span:last-child {
+    max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .bnav-icon { font-size: 23px; line-height: 1; }
+  .bnav-pill .bnav-btn.active { background: var(--pri-s); color: var(--pri); }
+}
+
+/* ════════════════ TAB PANES ════════════════ */
+.tab-pane { display: none; }
+.tab-pane.active { display: block; }
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@media (max-width: 767px) {
+  .tab-pane.active { animation: fadeUp .22s ease; }
+}

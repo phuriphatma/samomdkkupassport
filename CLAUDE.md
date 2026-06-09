@@ -25,7 +25,8 @@ Admins create activities, show QR codes, and manage certificate templates.
 
 ```
 index.html            Landing / login page
-html/dashboard.html   Student passport (the "ebook")
+html/dashboard.html   Student passport — a skeleton that <include>s html/partials/*
+html/partials/        Dashboard HTML fragments (head, topbar, tab-*, memory-modal, …)
 html/admin.html       Admin terminal
 html/scan.html        QR scan landing
 js/
@@ -41,8 +42,10 @@ js/
   constants.js        Shared DEPARTMENTS / SUBDEPARTMENTS maps (admin + dashboard)
   utils.js            fixGoogleDriveUrl(), generateUUID(), pending-scan helpers
   routes.js           Central route paths (ROUTES.HOME/DASHBOARD/ADMIN/SCAN)
-css/                  main.css (global+landing), passport.css (dashboard), admin.css
+css/                  main.css / passport.css / admin.css are @import indexes;
+                      the real rules live in css/{main,passport,admin}/_*.css partials
 db/                   SQL migrations to run manually in the Supabase SQL editor
+vite-plugin-html-includes.js   In-repo Vite plugin: expands <include src="…"> at build/dev
 ```
 
 ## Run / build / deploy
@@ -93,6 +96,11 @@ DDL cannot be run from the app (anon key has no schema privileges).
 ## Conventions
 
 - Central paths live in `routes.js` — don't hardcode `/html/...` in new code.
+- **Modular HTML/CSS:** the dashboard is `html/dashboard.html` (skeleton) + `html/partials/*`,
+  stitched at build time by `vite-plugin-html-includes.js` (`<include src="partials/…">`). CSS
+  files `css/{main,passport,admin}.css` are `@import` indexes; edit the `css/<name>/_*.css`
+  partials, not the index. Partials aren't standalone pages — only the entry HTML is a Vite input.
+  Add new section partials at sensible rule boundaries so the bundle stays byte-identical.
 - Google Drive image links go through `fixGoogleDriveUrl()` (→ `lh3.googleusercontent.com`,
   which is CORS-correct — important for `<canvas>` export).
 - User-generated content (profile photo, memories, photos) is **localStorage only**,

@@ -3,65 +3,98 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Samo Passport Terminal</title>
+    <title>Samo Passport — Life is a Journey</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;500;600;700&family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/css/main.css">
 </head>
-
 <body class="landing">
 
-    <!-- Floating clouds -->
-    <div class="sky-bg">
-        <div class="sky-cloud cloud-1"></div>
-        <div class="sky-cloud cloud-2"></div>
-        <div class="sky-cloud cloud-3"></div>
-        <div class="sky-cloud cloud-4"></div>
-        <div class="sky-cloud cloud-5"></div>
-        <div class="sky-cloud cloud-6"></div>
-    </div>
+    <div class="sc" style="top:7%;left:6%;--r:-15deg;--d:7s;--dl:0s;font-size:28px">✈️</div>
+    <div class="sc" style="top:13%;right:7%;--r:18deg;--d:6s;--dl:1s;font-size:22px">🛂</div>
+    <div class="sc" style="top:32%;left:3%;--r:-8deg;--d:8s;--dl:.5s;font-size:24px">🗺️</div>
+    <div class="sc" style="top:58%;right:4%;--r:12deg;--d:5.5s;--dl:1.5s;font-size:26px">🧳</div>
+    <div class="sc" style="bottom:22%;left:7%;--r:-20deg;--d:7s;--dl:.8s;font-size:22px">📮</div>
+    <div class="sc" style="bottom:10%;right:9%;--r:5deg;--d:6.5s;--dl:.3s;font-size:24px">🌍</div>
+    <div class="sc" style="top:44%;right:3%;--r:-10deg;--d:9s;--dl:2s;font-size:20px">✉️</div>
 
-    <div class="landing-wrap">
-
-        <!-- Hero: brand + floating passport preview -->
-        <div class="landing-hero">
-            <div class="landing-deco-character">🧳</div>
-            <div class="landing-brand">
-                <h1>Life is a Journey ✈️</h1>
-                <p class="brand-subtitle">Medical Student wellness passport system.</p>
+    <div class="lp-center">
+        <div class="lp-card">
+            <div class="lpc-top">
+                <div class="lpc-logo-row">
+                    <span style="font-size:32px;filter:drop-shadow(0 2px 4px rgba(0,0,0,.15))">✈️</span>
+                    <span class="lpc-brand">Wellness Passport</span>
+                </div>
+                <div class="lpc-sub">SAMO · KKU Medical</div>
             </div>
-            <div class="passport-preview-wrap">
-                <div class="passport-preview-book">
-                    <div class="preview-emblem">🌏</div>
-                    <div class="preview-divider"></div>
-                    <div class="preview-title">SAMO<br>PASSPORT</div>
-                    <div class="preview-subtitle">WELLNESS 2027</div>
+            <div class="lpc-body">
+                <div class="lpc-route">
+                    <div class="lpc-city">
+                        <div class="lpc-iata">YOU</div>
+                        <div class="lpc-city-name">Your Campus</div>
+                    </div>
+                    <div class="lpc-arrow">✈</div>
+                    <div class="lpc-city" style="text-align:right">
+                        <div class="lpc-iata">WLN</div>
+                        <div class="lpc-city-name">Wellness Goal</div>
+                    </div>
+                </div>
+                <div class="lpc-dash"></div>
+                <div class="lpc-fields">
+                    <div class="lpc-field">
+                        <div class="lpc-fl">Flight No.</div>
+                        <div class="lpc-fv">WL-2027</div>
+                    </div>
+                    <div class="lpc-field">
+                        <div class="lpc-fl">Class</div>
+                        <div class="lpc-fv">Wellness+</div>
+                    </div>
+                </div>
+
+                <p id="loading-text" class="lpc-loading">Reading device cache…</p>
+
+                <button id="google-login" style="display:none;" class="btn-board">🛫 &nbsp;Board with @kkumail.com</button>
+
+                <div id="logged-in-section" style="display:none;">
+                    <div class="lpc-welcome">
+                        <div class="lpc-fl">Welcome back</div>
+                        <div class="lpc-fv" id="user-email-display" style="font-size:13px;word-break:break-all;"></div>
+                    </div>
+                    <button id="continue-btn" class="btn-board">🛫 &nbsp;Board Your Flight</button>
+                    <div class="lpc-sub-links">
+                        <a href="#" id="logout-btn" class="text-link sign-out-link">Sign Out</a>
+                    </div>
+                </div>
+
+                <div class="lpc-admin-link">
+                    <a href="/html/admin.html" class="text-link">Admin Portal</a>
                 </div>
             </div>
         </div>
 
-        <!-- Login card -->
-        <div class="landing-card">
-            <p id="loading-text">Reading device cache...</p>
-
-            <button id="google-login" style="display:none;">Login with @kkumail.com</button>
-
-            <div id="logged-in-section" style="display:none;">
-                <div class="welcome-card">
-                    <p>Welcome back!</p>
-                    <h3 id="user-email-display"></h3>
-                </div>
-                <button id="continue-btn" style="margin-bottom:10px;">Board Your Flight ✈️</button>
-                <div class="landing-links">
-                    <a href="#" id="logout-btn" class="text-link sign-out-link">Sign Out</a>
-                </div>
-            </div>
-
-            <a href="/html/admin.html" class="text-link admin-link">Admin Portal</a>
+        <div class="theme-picker">
+            <span class="theme-picker-label">Theme</span>
+            <div class="theme-swatch active" data-t="ocean" data-label="Ocean" onclick="setLandingTheme('ocean',this)"></div>
+            <div class="theme-swatch" data-t="candy" data-label="Candy" onclick="setLandingTheme('candy',this)"></div>
+            <div class="theme-swatch" data-t="sunset" data-label="Sunset" onclick="setLandingTheme('sunset',this)"></div>
+            <div class="theme-swatch" data-t="violet" data-label="Violet" onclick="setLandingTheme('violet',this)"></div>
+            <div class="theme-swatch" data-t="forest" data-label="Forest" onclick="setLandingTheme('forest',this)"></div>
         </div>
-
     </div>
+
+    <script>
+    function setLandingTheme(name, el) {
+        document.documentElement.setAttribute('data-theme', name === 'ocean' ? '' : name);
+        localStorage.setItem('wp-theme', name);
+        document.querySelectorAll('.theme-swatch').forEach(s => s.classList.toggle('active', s.dataset.t === name));
+    }
+    const _t = localStorage.getItem('wp-theme') || 'ocean';
+    if (_t && _t !== 'ocean') document.documentElement.setAttribute('data-theme', _t);
+    document.addEventListener('DOMContentLoaded', () => {
+        document.querySelectorAll('.theme-swatch').forEach(s => s.classList.toggle('active', s.dataset.t === (_t || 'ocean')));
+    });
+    </script>
 
     <script type="module" src="/js/index.js"></script>
 </body>
