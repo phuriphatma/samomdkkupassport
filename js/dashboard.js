@@ -17,6 +17,11 @@ const allStamps = []; // flat registry for search: { activity, isActive, scan }
 let userScansCache = [];
 const activityById = new Map();
 let _allActivitiesCache = [];
+// Stamps tab: which วาระ/quartile period the view is scoped to (like the Flight
+// Log / Leaderboard), plus the department show/hide chip filter.
+let stampYear = undefined;   // selected วาระสโม key ('none' = unassigned)
+let stampSeason = undefined; // selected quartile key ('all' | 'none' | season id)
+let stampDeptFilter = null;  // dept id (string) or null = all departments
 
 // ── SamoYear / Season (new immutable model) ──
 let currentYear = null;          // open samo_year
@@ -64,38 +69,66 @@ window.switchTab = switchTab;
 const STAMP_COLORS = ['se-teal','se-blue','se-amber','se-rose','se-violet','se-coral'];
 
 function buildStampPages(allActivities, userScans) {
-    const scannedIds = new Set(userScans.map(s => s.activity_id));
-    const scanByActivity = new Map(userScans.map(s => [s.activity_id, s]));
     _allActivitiesCache = allActivities;
 
+    // Boarding pass shows the all-time distinct stamp count — independent of the
+    // period the user is browsing on this tab.
+    const bpStamps = document.getElementById('bp-stamps');
+    if (bpStamps) bpStamps.textContent = new Set(userScans.map(s => s.activity_id)).size;
+
+    // Resolve the selected วาระ (default = current), then build the controls and
+    // render the grid for that period.
+    const yearKeys = flYearKeys();
+    if (stampYear === undefined || (stampYear !== 'all' && !yearKeys.includes(stampYear))) {
+        stampYear = (currentYear && yearKeys.includes(currentYear.id)) ? currentYear.id : (yearKeys[0] ?? 'none');
+    }
+    stampDeptFilter = null;
+    buildStampPeriodSelectors();
+    buildDeptFilterChips(allActivities);
+    renderStampGrid();
+
+    renderFlightLogPage();
+}
+
+// Render the stamp grid + info strip for the selected วาระ/quartile. An activity
+// counts as "earned" only if it was scanned within that period; everything else
+// shows locked. Re-runs whenever the period selectors change.
+function renderStampGrid() {
     const grid = document.getElementById('stamps-grid');
     if (!grid) return;
+    const allActivities = _allActivitiesCache;
+
+    const scope = userScansCache.filter(s =>
+        (stampYear === 'all' || (s.samo_year_id ?? 'none') === stampYear) &&
+        (stampSeason === 'all' || (s.season_id ?? 'none') === stampSeason));
+    const scannedIds = new Set(scope.map(s => s.activity_id));
+    const scanByActivity = new Map(scope.map(s => [s.activity_id, s]));
+
     grid.innerHTML = '';
     allStamps.length = 0;
 
-    // Earned: newest-first by scan time
+    // Only earned stamps are shown (newest-first); not-yet-achieved ones are hidden.
     const earned = allActivities
         .filter(a => scannedIds.has(a.id))
         .sort((a, b) => (scanByActivity.get(b.id)?.scanned_at || '').localeCompare(scanByActivity.get(a.id)?.scanned_at || ''));
-    // Unearned: original order
-    const unearned = allActivities.filter(a => !scannedIds.has(a.id));
 
     earned.forEach(a => allStamps.push({ activity: a, isActive: true, scan: scanByActivity.get(a.id) }));
 
-    [...earned, ...unearned].forEach((a, idx) => {
+    if (earned.length === 0) {
+        grid.innerHTML = '<div class="fl-empty">No stamps earned in this period yet 🗺️</div>';
+    }
+
+    earned.forEach((a, idx) => {
         const scan = scanByActivity.get(a.id);
-        const isEarned = scannedIds.has(a.id);
         const card = document.createElement('div');
-        card.className = 'stamp-card' + (isEarned ? '' : ' locked');
+        card.className = 'stamp-card';
         card.setAttribute('data-activity-id', a.id);
         card.setAttribute('data-dept-id', a.department_id ?? '');
 
-        if (isEarned) {
-            const check = document.createElement('div');
-            check.className = 'stamp-check';
-            check.textContent = '✓';
-            card.appendChild(check);
-        }
+        const check = document.createElement('div');
+        check.className = 'stamp-check';
+        check.textContent = '✓';
+        card.appendChild(check);
 
         const emojiDiv = document.createElement('div');
         emojiDiv.className = 'stamp-emoji ' + STAMP_COLORS[idx % STAMP_COLORS.length];
@@ -114,9 +147,9 @@ function buildStampPages(allActivities, userScans) {
 
         const count = document.createElement('div');
         count.className = 'stamp-count';
-        count.textContent = isEarned ? `+${scan?.points_awarded || a.base_points_km || 0} km` : '—';
+        count.textContent = `+${scan?.points_awarded || a.base_points_km || 0} km`;
 
-        if (isEarned && (certsByActivity.get(a.id) || []).length > 0) {
+        if ((certsByActivity.get(a.id) || []).length > 0) {
             const ribbon = document.createElement('span');
             ribbon.className = 'stamp-cert-badge';
             ribbon.textContent = '🎓';
@@ -125,66 +158,111 @@ function buildStampPages(allActivities, userScans) {
         }
 
         card.append(emojiDiv, name, count);
-        if (isEarned) card.addEventListener('click', () => openMemoryModal(a, scan));
+        card.addEventListener('click', () => openMemoryModal(a, scan));
         grid.appendChild(card);
     });
 
-    // Update info strip
-    const totalKm = userScans.reduce((t, s) => t + (s.points_awarded || 0), 0);
-    const ec = document.getElementById('stamps-collected');
-    const et = document.getElementById('stamps-total');
-    const ep = document.getElementById('stamps-pct');
-    const ek = document.getElementById('stamps-km');
-    if (ec) ec.textContent = earned.length;
-    if (et) et.textContent = allActivities.length;
-    if (ep) ep.textContent = allActivities.length
-        ? `${Math.round((earned.length / allActivities.length) * 100)}%` : '0%';
-    if (ek) ek.textContent = totalKm.toLocaleString();
+    // Info strip. Collected + Total KM follow the selected period; "Km to status"
+    // and Completion track the lifetime journey toward the 10,000 km goal.
+    const periodKm = scope.reduce((t, s) => t + (s.points_awarded || 0), 0);
+    const lifetimeKm = userScansCache.reduce((t, s) => t + (s.points_awarded || 0), 0);
+    const toNext = kmToNextStatus(lifetimeKm);
+    const set = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
+    set('stamps-collected', earned.length);
+    set('stamps-next', toNext > 0 ? toNext.toLocaleString() : 'Max');
+    set('stamps-pct', kmCompletionPct(lifetimeKm) + '%');
+    set('stamps-km', periodKm.toLocaleString());
 
-    // Update boarding pass stamp count
-    const bpStamps = document.getElementById('bp-stamps');
-    if (bpStamps) bpStamps.textContent = earned.length;
+    // Re-apply the department show/hide filter on the freshly-rendered cards.
+    applyStampFilters();
+}
 
-    // Build dept filter chips
-    buildDeptFilterChips(allActivities);
+// วาระสโม + Quartile selectors for the stamps view (same model as the Flight Log
+// / Leaderboard). Hidden when the user has no scans (nothing to scope).
+function buildStampPeriodSelectors() {
+    const row = document.getElementById('stamps-period-row');
+    if (!row) return;
+    const yearKeys = flYearKeys();
+    if (yearKeys.length === 0) { row.style.display = 'none'; row.innerHTML = ''; return; }
+    row.style.display = '';
 
-    renderFlightLogPage();
+    // "ทุกวาระสโม" (all วาระ / all-time): quartiles are year-specific, so the
+    // quartile dropdown is hidden and the scope spans every วาระ.
+    const allYears = stampYear === 'all';
+    const seasonKeys = allYears ? [] : flSeasonKeys(stampYear);
+    if (allYears) {
+        stampSeason = 'all';
+    } else if (stampSeason === undefined || (stampSeason !== 'all' && !seasonKeys.includes(stampSeason))) {
+        stampSeason = 'all'; // default = the whole วาระ
+    }
+    const yearOpts = [`<option value="all"${allYears ? ' selected' : ''}>${escapeHtmlText(yearKeyName('all'))}</option>`]
+        .concat(yearKeys.map(k =>
+            `<option value="${k}"${k === stampYear ? ' selected' : ''}>${escapeHtmlText(yearKeyName(k))}</option>`)).join('');
+    const seasonSelect = allYears ? '' :
+        `<select class="fl-season-select" aria-label="Quartile">`
+        + [`<option value="all"${stampSeason === 'all' ? ' selected' : ''}>${escapeHtmlText(seasonKeyName('all'))}</option>`]
+            .concat(seasonKeys.map(k =>
+                `<option value="${k}"${k === stampSeason ? ' selected' : ''}>${escapeHtmlText(seasonKeyName(k))}</option>`)).join('')
+        + `</select>`;
+    row.innerHTML = `
+      <span class="filter-lbl">View</span>
+      <select class="fl-year-select" aria-label="วาระสโม">${yearOpts}</select>
+      ${seasonSelect}`;
+
+    row.querySelector('.fl-year-select').addEventListener('change', e => {
+        stampYear = e.target.value;
+        stampSeason = 'all';            // reset quartile when the วาระ changes
+        buildStampPeriodSelectors();    // refresh quartile options for the new วาระ
+        renderStampGrid();
+    });
+    row.querySelector('.fl-season-select')?.addEventListener('change', e => {
+        stampSeason = e.target.value;
+        renderStampGrid();
+    });
+}
+
+// Shared chip-row builder: a leading label, an "All" chip, then one chip per
+// value. `onPick(value)` runs with null for "All" or the value's key otherwise.
+function buildFilterChips(row, label, items, isActive, onPick) {
+    row.innerHTML = '';
+    const lbl = document.createElement('span');
+    lbl.className = 'filter-lbl';
+    lbl.textContent = label;
+    row.appendChild(lbl);
+
+    const mkChip = (text, value) => {
+        const chip = document.createElement('div');
+        chip.className = 'fchip' + (isActive(value) ? ' active' : '');
+        chip.textContent = text;
+        chip.addEventListener('click', () => {
+            row.querySelectorAll('.fchip').forEach(c => c.classList.remove('active'));
+            chip.classList.add('active');
+            onPick(value);
+        });
+        row.appendChild(chip);
+    };
+    mkChip('All', null);
+    items.forEach(({ text, value }) => mkChip(text, value));
 }
 
 function buildDeptFilterChips(allActivities) {
     const row = document.getElementById('dept-filter-row');
     if (!row) return;
     const deptIds = [...new Set(allActivities.map(a => a.department_id).filter(Boolean))];
-    row.innerHTML = '';
-
-    const allChip = document.createElement('div');
-    allChip.className = 'fchip active';
-    allChip.textContent = 'All';
-    allChip.addEventListener('click', () => {
-        row.querySelectorAll('.fchip').forEach(c => c.classList.remove('active'));
-        allChip.classList.add('active');
-        filterStampGrid(null);
-    });
-    row.appendChild(allChip);
-
-    deptIds.forEach(deptId => {
-        const chip = document.createElement('div');
-        chip.className = 'fchip';
-        chip.textContent = DEPARTMENTS[deptId] || ('ฝ่าย ' + deptId);
-        chip.addEventListener('click', () => {
-            row.querySelectorAll('.fchip').forEach(c => c.classList.remove('active'));
-            chip.classList.add('active');
-            filterStampGrid(String(deptId));
-        });
-        row.appendChild(chip);
+    const items = deptIds.map(id => ({ text: DEPARTMENTS[id] || ('ฝ่าย ' + id), value: String(id) }));
+    buildFilterChips(row, 'Dept', items, v => v === stampDeptFilter, v => {
+        stampDeptFilter = v;
+        applyStampFilters();
     });
 }
 
-function filterStampGrid(deptId) {
+// Department show/hide filter on the currently-rendered cards (วาระ/quartile
+// scoping is handled upstream in renderStampGrid).
+function applyStampFilters() {
     const grid = document.getElementById('stamps-grid');
     if (!grid) return;
     grid.querySelectorAll('.stamp-card').forEach(card => {
-        card.style.display = (!deptId || card.dataset.deptId === deptId) ? '' : 'none';
+        card.style.display = (!stampDeptFilter || card.dataset.deptId === stampDeptFilter) ? '' : 'none';
     });
 }
 
@@ -593,6 +671,26 @@ function pointsOfScan(s) {
     return s.points_awarded || activityById.get(s.activity_id)?.base_points_km || 0;
 }
 
+// Status ladder: one tier upgrade per 2,000 km, capped at the 10,000 km goal.
+const KM_PER_STATUS = 2000;
+const KM_STATUS_GOAL = 10000;
+// km left to reach the next status (0 once the 10,000 km goal is reached).
+function kmToNextStatus(km) {
+    if (km >= KM_STATUS_GOAL) return 0;
+    return (Math.floor(km / KM_PER_STATUS) + 1) * KM_PER_STATUS - km;
+}
+// Progress toward the 10,000 km goal as a clamped integer percent.
+function kmCompletionPct(km) {
+    return Math.max(0, Math.min(100, Math.round(km / KM_STATUS_GOAL * 100)));
+}
+// Progress through the current 2,000 km tier toward the next status (0–100%),
+// i.e. km earned since the last status / km required for the next one. Full once
+// the 10,000 km goal is reached.
+function kmStatusProgressPct(km) {
+    if (km >= KM_STATUS_GOAL) return 100;
+    return Math.round((km % KM_PER_STATUS) / KM_PER_STATUS * 100);
+}
+
 // Fallback window used for the headline only when no SamoYear is declared yet:
 // the current calendar year.
 function currentVaraWindow() {
@@ -858,7 +956,7 @@ function flSeasonKeys(yearKey) {
 // Flight (วาระสโม) names/numbers are always shown uppercased. Thai labels are
 // unaffected by toUpperCase(), so it only caps latin names like "samo71".
 const upFlight = s => (s || '').toUpperCase();
-const yearKeyName = k => upFlight(k === 'none' ? 'ไม่ระบุวาระสโม' : (yearNameById.get(k) || 'วาระสโม'));
+const yearKeyName = k => upFlight(k === 'all' ? 'ทุกวาระสโม' : k === 'none' ? 'ไม่ระบุวาระสโม' : (yearNameById.get(k) || 'วาระสโม'));
 const seasonKeyName = k => k === 'all' ? 'ทุกซีซั่น' : k === 'none' ? 'ไม่ระบุซีซั่น' : (seasonNameById.get(k) || 'ซีซั่น');
 
 function renderFlightLogPage() {
@@ -1089,8 +1187,14 @@ async function renderLeaderboardPage() {
     // ── Your Stats card ──
     const myIdx = rows.findIndex(r => r.uid === currentUserId);
     const myRow = myIdx >= 0 ? rows[myIdx] : null;
-    const earnedStamps = new Set(userScansCache.map(s => s.activity_id)).size;
-    const totalStamps = activityById.size;
+    // Distinct stamps the current user earned within the selected filter period.
+    const periodStamps = new Set((lbPageScans || []).filter(s =>
+        s.user_id === currentUserId &&
+        (s.samo_year_id ?? 'none') === lbYear &&
+        (lbSeason === 'all' || (s.season_id ?? 'none') === lbSeason) &&
+        (lbpFilter.type !== 'dept' || (s.department_id ?? null) === lbpFilter.id) &&
+        (lbpFilter.type !== 'sub' || (s.sub_department_id ?? null) === lbpFilter.id)
+    ).map(s => s.activity_id)).size;
     const statusTier = (currentUserId && lbPageTiers?.get(currentUserId))
         || document.getElementById('p-tier')?.textContent || 'Traveler';
     const statsCard = `
@@ -1099,7 +1203,7 @@ async function renderLeaderboardPage() {
         <div class="ls-summary">
           <div class="ls-row"><span class="ls-lbl">Rank</span><span class="ls-val">${myRow ? `#${myIdx + 1} of ${rows.length}` : '—'}</span></div>
           <div class="ls-row"><span class="ls-lbl">Total km</span><span class="ls-val">${myRow ? myRow.pts.toLocaleString() : 0} km</span></div>
-          <div class="ls-row"><span class="ls-lbl">Stamps</span><span class="ls-val">${earnedStamps} / ${totalStamps}</span></div>
+          <div class="ls-row"><span class="ls-lbl">Total Stamps</span><span class="ls-val">${periodStamps}</span></div>
           <div class="ls-row"><span class="ls-lbl">Status</span><span class="ls-val">${escapeHtmlText(statusTier)}</span></div>
         </div>
       </div>`;
@@ -1387,13 +1491,14 @@ async function init() {
             const wl = document.getElementById('km-window-label');
             windowLabelEl.textContent = wl ? wl.textContent || 'Distance traveled' : 'Distance traveled';
         }
-        // Progress bar + mini-stats reflect stamp collection: distinct stamps
-        // earned out of how many exist (e.g. 14/24).
-        const totalStamps = allActivities.length;
-        const earnedStamps = new Set(scans.map(s => s.activity_id)).size;
-        if (barFillEl) barFillEl.style.width = (totalStamps ? Math.min(100, Math.round(earnedStamps / totalStamps * 100)) : 0) + '%';
+        // Bar + "Km to next" mini-stat track progress to the next status: the bar
+        // fills with km earned in the current 2,000 km tier; the mini-stat shows
+        // km remaining (lifetime journey to the 10,000 km goal).
+        const lifetimeKm = scans.reduce((t, s) => t + pointsOfScan(s), 0);
+        const toNextStatus = kmToNextStatus(lifetimeKm);
+        if (barFillEl) barFillEl.style.width = kmStatusProgressPct(lifetimeKm) + '%';
         if (activitiesEl) activitiesEl.textContent = scans.length;
-        if (stampsCountEl) stampsCountEl.textContent = `${earnedStamps}/${totalStamps}`;
+        if (stampsCountEl) stampsCountEl.textContent = toNextStatus > 0 ? toNextStatus.toLocaleString() : 'Max';
         const seasonKmVal = currentSeason
             ? scans.filter(s => s.season_id === currentSeason.id).reduce((t, s) => t + pointsOfScan(s), 0)
             : 0;

@@ -269,3 +269,16 @@ The desktop dashboard escapes it via `body.passport-page-theme { display:block }
 content width → each tab got different edge spacing.
 **Fix:** add `align-items: stretch` to the mobile `body.passport-page-theme` flex rule so
 `.app-body` always fills the viewport width. Lives in `css/passport/_shell.css` (mobile block).
+
+## Bottom nav covered by Safari's bottom toolbar (min-height beats svh height)
+**Symptom:** on mobile, the floating bottom nav was sometimes hidden behind the browser's
+bottom toolbar (only when the toolbar was visible).
+**Cause:** the base `body.passport-page-theme` rule sets `min-height: 100vh`. The mobile shell
+sets `height: 100svh` to size to the SMALL (toolbar-visible) viewport, but never resets
+`min-height`. Because `100vh` (large viewport) > `100svh`, **`min-height` wins** and the shell is
+actually sized to the large viewport — so its bottom edge (where the `position:absolute` nav is
+anchored) sits *behind* the toolbar when the toolbar is shown. A secondary smell: the nav offset
+used `bottom: 5dvh` (dynamic) while the shell used `svh` (static) — mismatched bases.
+**Fix:** add `min-height: 0` to the mobile `body.passport-page-theme` rule so `height: 100svh`
+takes effect, and change the nav to `bottom: 5svh` so its anchor matches the shell's unit (stable
+through the toolbar animation). Lives in `css/passport/_shell.css` (mobile block).

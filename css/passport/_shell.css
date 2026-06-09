@@ -164,6 +164,10 @@ body.passport-page-theme {
     height: 100vh;     /* fallback for browsers without svh */
     height: 100svh;    /* size to the SMALL (toolbar-visible) viewport so the bottom
                           nav is never hidden behind Safari's bottom toolbar */
+    min-height: 0;     /* override the base `min-height:100vh` — otherwise it beats
+                          `height:100svh` (100vh > 100svh), the shell grows to the
+                          LARGE viewport, and its bottom (with the nav) ends up
+                          behind Safari's bottom toolbar when the toolbar is shown */
     display: flex; flex-direction: column;
     /* main.css's body rule sets `align-items: center`; the desktop shell escapes it
        via `display: block`, but here we're flex again, so reset it. Without this the
@@ -214,7 +218,9 @@ body.passport-page-theme {
      the (100svh) shell so it stays above Safari's toolbar. The gradient fades the
      content out beneath the pill; only the pill itself is tappable. */
   .bottom-nav {
-    position: absolute; left: 0; right: 0; bottom: 5dvh;
+    /* svh (not dvh) so the pill's offset matches the svh shell — a static anchor
+       that stays put (and above the toolbar) through Safari's toolbar animation. */
+    position: absolute; left: 0; right: 0; bottom: 0;
     display: flex; justify-content: center;
     padding: 6px calc(16px + env(safe-area-inset-right))
              calc(8px + env(safe-area-inset-bottom)) calc(16px + env(safe-area-inset-left));
