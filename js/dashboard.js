@@ -162,15 +162,14 @@ function renderStampGrid() {
         grid.appendChild(card);
     });
 
-    // Info strip. Collected + Total KM follow the selected period; "Km to status"
-    // and Completion track the lifetime journey toward the 10,000 km goal.
+    // Info strip. Collected, Total KM, "Km to status" and Completion all follow the
+    // selected period (progress toward the status goal within that period).
     const periodKm = scope.reduce((t, s) => t + (s.points_awarded || 0), 0);
-    const lifetimeKm = userScansCache.reduce((t, s) => t + (s.points_awarded || 0), 0);
-    const toNext = kmToNextStatus(lifetimeKm);
+    const toNext = kmToNextStatus(periodKm);
     const set = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
     set('stamps-collected', earned.length);
     set('stamps-next', toNext > 0 ? toNext.toLocaleString() : 'Max');
-    set('stamps-pct', kmCompletionPct(lifetimeKm) + '%');
+    set('stamps-pct', kmCompletionPct(periodKm) + '%');
     set('stamps-km', periodKm.toLocaleString());
 
     // Re-apply the department show/hide filter on the freshly-rendered cards.
@@ -671,24 +670,38 @@ function pointsOfScan(s) {
     return s.points_awarded || activityById.get(s.activity_id)?.base_points_km || 0;
 }
 
-// Status ladder: one tier upgrade per 2,000 km, capped at the 10,000 km goal.
+// Status ladder: named tiers, one upgrade per 2,000 km. The top tier is reached
+// at the goal (last rung × 2,000 km); progress and "km to next" track that goal.
 const KM_PER_STATUS = 2000;
-const KM_STATUS_GOAL = 10000;
-// km left to reach the next status (0 once the 10,000 km goal is reached).
+const STATUS_TIERS = ['Explorer', 'Adventurer', 'Pathfinder', 'Voyager', 'Pioneer'];
+const KM_STATUS_GOAL = (STATUS_TIERS.length - 1) * KM_PER_STATUS;  // 8,000 km (Pioneer)
+// Tier name for a lifetime km total (index = km / 2,000, capped at the top tier).
+function statusTierName(km) {
+    return STATUS_TIERS[Math.min(STATUS_TIERS.length - 1, Math.floor(Math.max(0, km) / KM_PER_STATUS))];
+}
+// km left to reach the next status (0 once the goal / top tier is reached).
 function kmToNextStatus(km) {
     if (km >= KM_STATUS_GOAL) return 0;
     return (Math.floor(km / KM_PER_STATUS) + 1) * KM_PER_STATUS - km;
 }
-// Progress toward the 10,000 km goal as a clamped integer percent.
+// Progress toward the status goal as a clamped integer percent.
 function kmCompletionPct(km) {
     return Math.max(0, Math.min(100, Math.round(km / KM_STATUS_GOAL * 100)));
 }
 // Progress through the current 2,000 km tier toward the next status (0–100%),
 // i.e. km earned since the last status / km required for the next one. Full once
-// the 10,000 km goal is reached.
+// the goal / top tier is reached.
 function kmStatusProgressPct(km) {
     if (km >= KM_STATUS_GOAL) return 100;
     return Math.round((km % KM_PER_STATUS) / KM_PER_STATUS * 100);
+}
+// Set the displayed Status (passport + sidebar) from a lifetime km total.
+function setStatusTier(km) {
+    const name = statusTierName(km);
+    const pTier = document.getElementById('p-tier');
+    if (pTier) { pTier.textContent = name; pTier.classList.remove('skeleton'); }
+    const sideTier = document.getElementById('side-tier');
+    if (sideTier) sideTier.textContent = name;
 }
 
 // Fallback window used for the headline only when no SamoYear is declared yet:
@@ -787,7 +800,7 @@ function renderPassportMeta() {
     set('bp-flight', currentYear ? upFlight(currentYear.name) : 'WL-2027');
     const tier = document.getElementById('p-tier')?.textContent || '';
     // Group mirrors the Status (tier): drop a leading "The", then the first 5
-    // letters, uppercased — e.g. "The Explorer" → "EXPLO", "Novice" → "NOVIC".
+    // letters, uppercased — e.g. "Explorer" → "EXPLO", "Adventurer" → "ADVEN".
     const tierWord = tier.replace(/^the\s+/i, '');
     set('bp-group', tierWord.replace(/[^A-Za-z]/g, '').slice(0, 5).toUpperCase() || '—');
 }
@@ -1078,19 +1091,16 @@ function renderFlightLogPage() {
 // All-users leaderboard data (snapshot dept/season), fetched once.
 let lbPageScans = null;
 let lbPageNames = null;
-let lbPageTiers = null;   // user_id -> final_tier (for the "Status" column / stats)
 
 async function ensureLbPageData() {
     if (lbPageScans) return true;
-    const [{ data: scans, error: e1 }, { data: profiles, error: e2 }, { data: tiers }] = await Promise.all([
+    const [{ data: scans, error: e1 }, { data: profiles, error: e2 }] = await Promise.all([
         supabase.from('scans').select('user_id, activity_id, points_awarded, samo_year_id, season_id, department_id, sub_department_id, scanned_at'),
         supabase.from('profiles').select('id, full_name'),
-        supabase.from('user_tiers').select('id, final_tier'),
     ]);
     if (e1 || e2) return false;
     lbPageScans = scans || [];
     lbPageNames = new Map((profiles || []).map(p => [p.id, p.full_name]));
-    lbPageTiers = new Map((tiers || []).map(t => [t.id, t.final_tier]));
     return true;
 }
 
@@ -1123,8 +1133,9 @@ function lbPageRanking() {
         if (lbpFilter.type === 'sub' && (s.sub_department_id ?? null) !== lbpFilter.id) return;
         totals.set(s.user_id, (totals.get(s.user_id) || 0) + (s.points_awarded || 0));
     });
+    // Status tier reflects the km earned in the selected period (the row's pts).
     return [...totals.entries()]
-        .map(([uid, pts]) => ({ uid, pts, name: lbPageNames.get(uid) || 'Traveler', tier: lbPageTiers.get(uid) || 'Traveler' }))
+        .map(([uid, pts]) => ({ uid, pts, name: lbPageNames.get(uid) || 'Traveler', tier: statusTierName(pts) }))
         .sort((a, b) => b.pts - a.pts);
 }
 
@@ -1195,8 +1206,8 @@ async function renderLeaderboardPage() {
         (lbpFilter.type !== 'dept' || (s.department_id ?? null) === lbpFilter.id) &&
         (lbpFilter.type !== 'sub' || (s.sub_department_id ?? null) === lbpFilter.id)
     ).map(s => s.activity_id)).size;
-    const statusTier = (currentUserId && lbPageTiers?.get(currentUserId))
-        || document.getElementById('p-tier')?.textContent || 'Traveler';
+    // Status mirrors the period total shown in this card (myRow.pts).
+    const statusTier = statusTierName(myRow ? myRow.pts : 0);
     const statsCard = `
       <div class="ls-card lb-stats-card">
         <div class="ls-title">📊 Your Stats</div>
@@ -1383,8 +1394,9 @@ async function init() {
     setPassportName(displayName);
     currentUserName = displayName;
 
-    // ── Profile / tier ──────────────────────────────────────
-    const pTier = document.getElementById('p-tier');
+    // ── Profile ──────────────────────────────────────────────
+    // Status (tier) is derived from total km after scans load (setStatusTier);
+    // user_tiers still supplies the stored name + travel-visa flag.
     const { data: profileTier, error: profileError } = await supabase
         .from('user_tiers')
         .select('*')
@@ -1393,16 +1405,10 @@ async function init() {
 
     if (!profileError && profileTier) {
         if (profileTier.full_name) { setPassportName(profileTier.full_name); currentUserName = profileTier.full_name; }
-        pTier.textContent = profileTier.final_tier || 'Novice';
         if (profileTier.has_travel_visa) {
             document.getElementById('visa-visa').style.display = '';
         }
-    } else {
-        pTier.textContent = 'Novice';
     }
-    pTier.classList.remove('skeleton');
-    const sideTier = document.getElementById('side-tier');
-    if (sideTier) sideTier.textContent = pTier.textContent;
 
     // ── Activities & scans ──────────────────────────────────
     const pKm = document.getElementById('p-km');
@@ -1493,8 +1499,9 @@ async function init() {
         }
         // Bar + "Km to next" mini-stat track progress to the next status: the bar
         // fills with km earned in the current 2,000 km tier; the mini-stat shows
-        // km remaining (lifetime journey to the 10,000 km goal).
+        // km remaining (lifetime journey to the status goal).
         const lifetimeKm = scans.reduce((t, s) => t + pointsOfScan(s), 0);
+        setStatusTier(lifetimeKm);
         const toNextStatus = kmToNextStatus(lifetimeKm);
         if (barFillEl) barFillEl.style.width = kmStatusProgressPct(lifetimeKm) + '%';
         if (activitiesEl) activitiesEl.textContent = scans.length;
@@ -1512,6 +1519,7 @@ async function init() {
         const flc = document.getElementById('flightlog-list');
         if (flc) flc.innerHTML = `<div style="color:var(--accent-danger);font-size:0.85rem;padding:12px;">Error loading activities.</div>`;
         if (pKm) { pKm.textContent = '0'; pKm.classList.remove('skeleton'); }
+        setStatusTier(0);
         buildStampPages([], []);
     }
 }

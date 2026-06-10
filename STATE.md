@@ -23,7 +23,7 @@ Last updated: 2026-06-09. **Tagged release: v1.0.0.**
   **icon**, name, and a meta line (**date · ฝ่ายอุปนายก · sub-dept** from the scan snapshot).
   The banner's progress bar + Stamps mini-stat are **earned/total** stamps (e.g. 14/24).
 - **Container radius** is a single knob: `--rl` (14px) in `css/main/_base.css` — all dashboard
-  cards/menus point at it. Boarding-pass **Group** mirrors the Status tier (drop "The", first
+  cards/menus point at it. Boarding-pass **Group** mirrors the Status tier (first
   5 letters, uppercase, e.g. `EXPLO`); names render uppercase on the Passport tab.
 - **SamoYear/Season model (db/0006)** — admin declares the current วาระสโม + Season
   (`samo_years`/`samo_seasons`, "current" = `ended_at IS NULL`). Scans are **immutable
@@ -35,9 +35,18 @@ Last updated: 2026-06-09. **Tagged release: v1.0.0.**
 - **Leaderboard tab redesign (2026-06-09)** — "Top Passengers" top-10 list (main) +
   side column: Flight-Log-style **filter card** (วาระสโม / quartile / dept dropdowns,
   global scope), **Your Stats** (rank #N of M, total km, stamps, tier), and a
-  **Top 3 Podium** bar chart. `ensureLbPageData()` now also loads `user_tiers` (all users)
-  for the per-row Status/tier. Two-column grid ≥1024px, stacks on mobile (`_leaderboard.css`
-  + `_responsive.css`). Replaced the old season/year `seg-toggle` + podium-row.
+  **Top 3 Podium** bar chart. Per-row Status (and Your Stats) is derived from the
+  **selected-period km** (the row's pts); `ensureLbPageData()` no longer loads `user_tiers`.
+  Two-column grid ≥1024px, stacks on mobile (`_leaderboard.css` + `_responsive.css`).
+  Replaced the old season/year `seg-toggle` + podium-row.
+- **Status ladder (km-derived, 2026-06-10)** — the Status/tier is computed from km, not
+  `user_tiers.final_tier` (now unused for display). The **passport + sidebar** use
+  **lifetime km**; the **leaderboard** rows/Your Stats use the **selected-period km**.
+  One named tier per 2,000 km: **Explorer** 0–1999 ·
+  **Adventurer** 2000–3999 · **Pathfinder** 4000–5999 · **Voyager** 6000–7999 ·
+  **Pioneer** 8000+. `STATUS_TIERS` + `statusTierName()` in `js/dashboard.js`; the goal
+  (`KM_STATUS_GOAL`, drives the progress bar / "km to next") is derived from the list
+  `(STATUS_TIERS.length-1)×2000` so names and goal can't drift.
 - **Certificates (NOT season-scoped, 2026-06-07)** — a cert belongs to its activity and
   always reflects its current settings; the student sees **every** cert template on an
   activity (no `season_id` matching). Stamps with a cert show a 🎓 ribbon. Deleting an

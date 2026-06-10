@@ -74,7 +74,9 @@ npm run preview  # serve the production build locally
   activities join, so history survives activity edits/deletes.
 - `samo_years` / `samo_seasons` (db/0006) — admin-declared วาระสโม + seasons; "current"
   = the open row (`ended_at IS NULL`). See `js/samo.js` for the helpers.
-- `user_tiers` — `full_name`, `total_km`, `final_tier`, `has_travel_visa`.
+- `user_tiers` — `full_name`, `total_km`, `final_tier`, `has_travel_visa`. (`final_tier` is
+  **no longer shown** — the Status/tier is derived from lifetime km in `js/dashboard.js`
+  via `statusTierName()`; this table still supplies the stored name + travel-visa flag.)
 - `certificates` — multiple per activity (`label`, `background_url`, name placement,
   `font_family`). **NOT season-scoped** (the `season_id` column exists but is unused —
   reverted 2026-06-07): a cert belongs to its activity, always shows current settings,
