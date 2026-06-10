@@ -10,7 +10,8 @@ export default defineConfig({
         main: resolve(__dirname, 'index.html'),
         dashboard: resolve(__dirname, 'html/dashboard.html'),
         admin: resolve(__dirname, 'html/admin.html'),
-        scan: resolve(__dirname, 'html/scan.html')
+        scan: resolve(__dirname, 'html/scan.html'),
+        themePreview: resolve(__dirname, 'theme-preview.html')
       }
     }
   }
