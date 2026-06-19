@@ -713,6 +713,12 @@ function setStatusTier(km) {
     if (pTier) { pTier.textContent = name; pTier.classList.remove('skeleton'); }
     const sideTier = document.getElementById('side-tier');
     if (sideTier) sideTier.textContent = name;
+    // Boarding-pass Group + Seat track the Status tier. Set here (not in
+    // renderPassportMeta, which runs before km loads) so they fill once the tier is known.
+    const grp = document.getElementById('bp-group');
+    if (grp) grp.textContent = name.replace(/^the\s+/i, '').replace(/[^A-Za-z]/g, '').slice(0, 5).toUpperCase() || '—';
+    const seat = document.getElementById('bp-seat');
+    if (seat) seat.textContent = seatCode(currentUserId, name);
 }
 
 // Fallback window used for the headline only when no SamoYear is declared yet:
@@ -809,11 +815,7 @@ function renderPassportMeta() {
     // Boarding pass
     set('bp-pax', currentUserName || '—');
     set('bp-flight', currentYear ? upFlight(currentYear.name) : 'MD-2027');
-    const tier = document.getElementById('p-tier')?.textContent || '';
-    // Group mirrors the Status (tier): drop a leading "The", then the first 5
-    // letters, uppercased — e.g. "Explorer" → "EXPLO", "Adventurer" → "ADVEN".
-    const tierWord = tier.replace(/^the\s+/i, '');
-    set('bp-group', tierWord.replace(/[^A-Za-z]/g, '').slice(0, 5).toUpperCase() || '—');
+    // Group + Seat are filled by setStatusTier (they need the loaded km/tier).
 }
 
 // ─── Edit name ────────────────────────────────────────────
@@ -1536,10 +1538,6 @@ async function init() {
         // km remaining (lifetime journey to the status goal).
         const lifetimeKm = scans.reduce((t, s) => t + pointsOfScan(s), 0);
         setStatusTier(lifetimeKm);
-        // Boarding-pass seat follows the lifetime Status tier's cabin (same fn the
-        // leaderboard uses), so the seat shown here matches the all-time standings.
-        const seatEl = document.getElementById('bp-seat');
-        if (seatEl) seatEl.textContent = seatCode(currentUserId, statusTierName(lifetimeKm));
         const toNextStatus = kmToNextStatus(lifetimeKm);
         if (barFillEl) barFillEl.style.width = kmStatusProgressPct(lifetimeKm) + '%';
         if (activitiesEl) activitiesEl.textContent = scans.length;
