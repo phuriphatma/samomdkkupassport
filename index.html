@@ -75,24 +75,24 @@
 
         <div class="theme-picker">
             <span class="theme-picker-label">Theme</span>
-            <div class="theme-swatch active" data-t="ocean" data-label="Ocean" onclick="setLandingTheme('ocean',this)"></div>
-            <div class="theme-swatch" data-t="candy" data-label="Candy" onclick="setLandingTheme('candy',this)"></div>
-            <div class="theme-swatch" data-t="sunset" data-label="Sunset" onclick="setLandingTheme('sunset',this)"></div>
-            <div class="theme-swatch" data-t="violet" data-label="Violet" onclick="setLandingTheme('violet',this)"></div>
-            <div class="theme-swatch" data-t="forest" data-label="Forest" onclick="setLandingTheme('forest',this)"></div>
+            <div class="theme-swatch active" data-t="teal" data-label="Teal" onclick="setLandingTheme('teal',this)"></div>
+            <div class="theme-swatch" data-t="skycandy" data-label="Candy" onclick="setLandingTheme('skycandy',this)"></div>
+            <div class="theme-swatch" data-t="navy" data-label="Navy" onclick="setLandingTheme('navy',this)"></div>
+            <div class="theme-swatch" data-t="lilac" data-label="Lilac" onclick="setLandingTheme('lilac',this)"></div>
+            <div class="theme-swatch" data-t="blush" data-label="Blush" onclick="setLandingTheme('blush',this)"></div>
         </div>
     </div>
 
     <script>
     function setLandingTheme(name, el) {
-        document.documentElement.setAttribute('data-theme', name === 'ocean' ? '' : name);
+        document.documentElement.setAttribute('data-theme', name === 'teal' ? '' : name);
         localStorage.setItem('wp-theme', name);
         document.querySelectorAll('.theme-swatch').forEach(s => s.classList.toggle('active', s.dataset.t === name));
     }
-    const _t = localStorage.getItem('wp-theme') || 'ocean';
-    if (_t && _t !== 'ocean') document.documentElement.setAttribute('data-theme', _t);
+    const _t = localStorage.getItem('wp-theme') || 'teal';
+    if (_t && _t !== 'teal') document.documentElement.setAttribute('data-theme', _t);
     document.addEventListener('DOMContentLoaded', () => {
-        document.querySelectorAll('.theme-swatch').forEach(s => s.classList.toggle('active', s.dataset.t === (_t || 'ocean')));
+        document.querySelectorAll('.theme-swatch').forEach(s => s.classList.toggle('active', s.dataset.t === (_t || 'teal')));
     });
     </script>
 

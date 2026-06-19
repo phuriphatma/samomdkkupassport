@@ -6,11 +6,14 @@ body.landing {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  /* `safe center` keeps the card centred when it fits, but falls back to top-aligned
+     when it's taller than the viewport so the theme picker below it isn't clipped. */
+  justify-content: safe center;
   min-height: 100dvh;
   padding: 40px 20px;
   position: relative;
-  overflow: hidden;
+  /* Only hide horizontal overflow (floating emoji); allow vertical scroll to the picker. */
+  overflow-x: hidden;
 }
 
 /* Floating emoji decorations */
@@ -116,11 +119,12 @@ body.landing {
 }
 .theme-swatch:hover { transform: scale(1.18); }
 .theme-swatch.active { border-color: #fff; box-shadow: 0 0 0 2px var(--pri), 0 2px 8px rgba(0,0,0,.18); }
-.theme-swatch[data-t="ocean"]  { background: linear-gradient(135deg, #2d6a8a, #48a89e); }
-.theme-swatch[data-t="candy"]  { background: linear-gradient(135deg, #6D9FD5, #c4a8c0); }
-.theme-swatch[data-t="sunset"] { background: linear-gradient(135deg, #d4607a, #d4a830); }
-.theme-swatch[data-t="violet"] { background: linear-gradient(135deg, #2a4a8a, #6a5acc); }
-.theme-swatch[data-t="forest"] { background: linear-gradient(135deg, #28888a, #2a6e4a); }
+/* Swatch colours mirror the dashboard theme dots (css/passport/_panels.css). */
+.theme-swatch[data-t="teal"]     { background: linear-gradient(135deg, #1f8189, #2f9aa0); }
+.theme-swatch[data-t="skycandy"] { background: linear-gradient(135deg, #72b2e2, #aebfe8); }
+.theme-swatch[data-t="navy"]     { background: linear-gradient(135deg, #1f3a68, #3060a0); }
+.theme-swatch[data-t="lilac"]    { background: linear-gradient(135deg, #9b8ad6, #b59ad8); }
+.theme-swatch[data-t="blush"]    { background: linear-gradient(135deg, #ea8fa0, #eccb68); }
 .theme-swatch::after {
   content: attr(data-label);
   position: absolute; bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%);
