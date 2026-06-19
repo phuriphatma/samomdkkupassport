@@ -758,7 +758,7 @@ function passportNumber(userId, startedAt) {
     let h = 0; const s = String(userId || '');
     for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
     const yr = startedAt && !isNaN(new Date(startedAt)) ? new Date(startedAt).getFullYear() : new Date().getFullYear();
-    return `WP-${yr}-${String(h % 10000).padStart(4, '0')}`;
+    return `MP-${yr}-${String(h % 10000).padStart(4, '0')}`;
 }
 
 function buildMrz(surname, given, passportNo, issuedIso, expiresIso) {
@@ -766,7 +766,7 @@ function buildMrz(surname, given, passportNo, issuedIso, expiresIso) {
     const pad = s => (s + '<'.repeat(44)).slice(0, 44);
     const ymd = iso => { const d = iso ? new Date(iso) : null; return (d && !isNaN(d))
         ? `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}` : ''; };
-    const l1 = pad(`PWLNS${up(surname)}<<${up(given)}`);
+    const l1 = pad(`PMDKS${up(surname)}<<${up(given)}`);
     const l2 = pad(`${(passportNo || '').replace(/-/g, '')}<<<THA<<${ymd(issuedIso)}<${ymd(expiresIso)}`);
     return [l1, l2];
 }
@@ -808,7 +808,7 @@ function renderPassportMeta() {
 
     // Boarding pass
     set('bp-pax', currentUserName || '—');
-    set('bp-flight', currentYear ? upFlight(currentYear.name) : 'WL-2027');
+    set('bp-flight', currentYear ? upFlight(currentYear.name) : 'MD-2027');
     const tier = document.getElementById('p-tier')?.textContent || '';
     // Group mirrors the Status (tier): drop a leading "The", then the first 5
     // letters, uppercased — e.g. "Explorer" → "EXPLO", "Adventurer" → "ADVEN".
@@ -1150,12 +1150,33 @@ function lbPageRanking() {
         .sort((a, b) => b.pts - a.pts);
 }
 
-// Decorative, stable "seat" code (e.g. W12) for the passenger list — on-theme flavour
-// like the passport number / flight code, derived from the user id so it never changes.
-function seatCode(uid) {
+// Cabin layout per Status tier, laid out like a real aircraft: First (Pioneer) is a
+// roomy 4-abreast at the nose, Business (Pathfinder/Voyager) 8-abreast in the middle,
+// Economy (Explorer/Adventurer + default) 10-abreast toward the back. "I" is skipped the
+// way airlines do. `rows` is the cabin's row count starting at `rowMin`. First/Business
+// are fixed cabins; Economy `grows` — `rows` is a realistic *minimum* that expands when
+// the crowd outgrows it, so the plane gains rows instead of running out of seats.
+function cabinLayout(tier) {
+    if (tier === 'Pioneer')                              // First — 4/row, 4 rows
+        return { letters: ['A', 'C', 'D', 'F'], rowMin: 1, rows: 4, grows: false };
+    if (tier === 'Pathfinder' || tier === 'Voyager')     // Business — 8/row, 10 rows
+        return { letters: ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'], rowMin: 5, rows: 10, grows: false };
+    return { letters: ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'J', 'K'], rowMin: 20, rows: 39, grows: true }; // Economy — 10/row, 39+ rows
+}
+
+// Decorative but stable boarding-pass seat (e.g. "12C"), derived from the user id so it
+// never changes per reload. The cabin (rows + seats/row) follows the Status tier. Row and
+// letter use different bits of the hash so they don't correlate. `population` is the head
+// count in this cabin: Economy adds rows so the plane is at least as big as the crowd
+// (10/row), keeping a realistic minimum; First/Business are fixed and ignore it.
+function seatCode(uid, tier, population = 0) {
     let h = 0; const s = String(uid || '');
     for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
-    return 'W' + String(h % 99 + 1).padStart(2, '0');
+    const { letters, rowMin, rows, grows } = cabinLayout(tier);
+    const rowSpan = grows ? Math.max(rows, Math.ceil(population / letters.length)) : rows;
+    const row = rowMin + (h % rowSpan);
+    const letter = letters[(h >>> 8) % letters.length];
+    return `${row}${letter}`;
 }
 
 async function renderLeaderboardPage() {
@@ -1259,6 +1280,8 @@ async function renderLeaderboardPage() {
     if (rows.length === 0) {
         listHtml = '<div class="lb-empty">No rankings yet ✈️</div>';
     } else {
+        // Economy cabin grows with its crowd, so the seat needs the cabin head count.
+        const econPop = rows.filter(r => cabinLayout(r.tier).grows).length;
         listHtml = rows.slice(0, 10).map((r, i) => {
             const rk = i + 1;
             const initial = escapeHtmlText((r.name.trim()[0] || '?').toUpperCase());
@@ -1269,7 +1292,7 @@ async function renderLeaderboardPage() {
                 <div class="lb-av">${initial}${medal}</div>
                 <div class="lb-info">
                   <div class="lb-name">${escapeHtmlText(r.name)}${youPill}</div>
-                  <div class="lb-badge">${escapeHtmlText(r.tier)} · ${seatCode(r.uid)}</div>
+                  <div class="lb-badge">${escapeHtmlText(r.tier)} · ${seatCode(r.uid, r.tier, econPop)}</div>
                 </div>
                 <div class="lb-km-wrap"><div class="lb-km">${r.pts.toLocaleString()}</div><div class="lb-kmu">km</div></div>
               </div>`;
@@ -1513,6 +1536,10 @@ async function init() {
         // km remaining (lifetime journey to the status goal).
         const lifetimeKm = scans.reduce((t, s) => t + pointsOfScan(s), 0);
         setStatusTier(lifetimeKm);
+        // Boarding-pass seat follows the lifetime Status tier's cabin (same fn the
+        // leaderboard uses), so the seat shown here matches the all-time standings.
+        const seatEl = document.getElementById('bp-seat');
+        if (seatEl) seatEl.textContent = seatCode(currentUserId, statusTierName(lifetimeKm));
         const toNextStatus = kmToNextStatus(lifetimeKm);
         if (barFillEl) barFillEl.style.width = kmStatusProgressPct(lifetimeKm) + '%';
         if (activitiesEl) activitiesEl.textContent = scans.length;

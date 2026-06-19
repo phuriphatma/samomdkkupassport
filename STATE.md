@@ -6,8 +6,11 @@ Last updated: 2026-06-09. **Tagged release: v1.0.0.**
 ## Working
 
 - **Auth** — Google OAuth via Supabase; session handled in `auth.js` / `index.js`.
-- **Student dashboard** — "Wellness Passport" redesign (Nunito, 5 themes via
-  `[data-theme]` + `wp-theme` localStorage). **Desktop:** fixed topbar (brand +
+- **Student dashboard** — "MDKKU Passport" redesign (Nunito, 5 themes via
+  `[data-theme]` + `wp-theme` localStorage). Brand/flavour is MDKKU Air — flight code
+  `MD-`, passport no. `MP-`, IATA `MDK`; the boarding-pass/leaderboard **seat** is a
+  stable per-user code whose cabin (First/Business/Economy) follows the Status tier
+  (`seatCode`/`cabinLayout` in `dashboard.js`). **Desktop:** fixed topbar (brand +
   breadcrumb) + left sidebar (Menu nav + pinned user card) + wide content; the
   Passport tab shows the passport book and boarding pass **side-by-side** (`.pp-cols`).
   **Mobile:** static header + floating bottom nav. Four tabs (`switchTab`): My Passport,
