@@ -26,7 +26,7 @@ body.admin-page-theme {
   /* Themed surface + passport font (Nunito, system fallback for Thai). */
   background: var(--bg);
   color: var(--text);
-  font-family: 'Nunito', system-ui, sans-serif;
+  font-family: 'Nunito', 'Noto Sans Thai', system-ui, sans-serif;
 }
 
 /* Headings: Nunito to match the passport (was --font-heading / Prompt). */
@@ -34,7 +34,7 @@ body.admin-page-theme h1,
 body.admin-page-theme h2,
 body.admin-page-theme h3,
 body.admin-page-theme h4 {
-  font-family: 'Nunito', system-ui, sans-serif;
+  font-family: 'Nunito', 'Noto Sans Thai', system-ui, sans-serif;
   color: var(--text);
 }
 
@@ -45,7 +45,7 @@ body.admin-page-theme h4 {
 button {
   background: var(--grad-btn); color: #fff;
   box-shadow: 0 4px 15px var(--shadow-pri);
-  font-family: 'Nunito', system-ui, sans-serif;
+  font-family: 'Nunito', 'Noto Sans Thai', system-ui, sans-serif;
 }
 button:hover {
   background: var(--grad-btn); filter: brightness(1.06);
@@ -57,7 +57,7 @@ body.admin-page-theme input,
 body.admin-page-theme select,
 body.admin-page-theme textarea {
   background: var(--surface); border-color: var(--border); color: var(--text);
-  font-family: 'Nunito', system-ui, sans-serif;
+  font-family: 'Nunito', 'Noto Sans Thai', system-ui, sans-serif;
 }
 body.admin-page-theme input:focus,
 body.admin-page-theme select:focus,

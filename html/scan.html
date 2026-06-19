@@ -12,7 +12,7 @@
   <link rel="stylesheet" href="/css/scan.css" />
 </head>
 
-<body>
+<body class="scan-page">
   <div class="container scan-container">
     <div id="loading-spinner">
       <div class="spinner"></div>
@@ -20,30 +20,33 @@
       <p>Please wait while we check your passport.</p>
     </div>
 
-    <div id="confirm-section"
-      style="display: none; background: rgba(0,0,0,0.2); padding: 25px 20px; border-radius: 12px; border: 1px solid var(--glass-border); margin-bottom: 20px;">
-      <p style="margin-bottom: 5px; font-size: 0.9rem; color: var(--text-muted);">Adding flight to passport:</p>
-      <h3 id="confirm-user" style="color: var(--accent-primary); margin-bottom: 20px; word-break: break-all;"></h3>
+    <div id="confirm-section" class="confirm-card" style="display: none;">
+      <p class="cc-eyebrow">Adding flight to passport</p>
+      <h3 id="confirm-user" class="cc-user"></h3>
 
-      <div
-        style="background: rgba(255,255,255,0.05); padding: 15px; border-radius: 8px; margin-bottom: 25px; text-align: center;">
-        <img id="confirm-badge"
-          style="display: none; width: 80px; height: 80px; margin: 0 auto 5px auto; border-radius: 8px; object-fit: cover;" />
-        <h4 id="confirm-badge-name"
-          style="display: none; color: var(--accent-primary); margin: 0 0 10px 0; font-size: 1rem;"></h4>
-        <h2 id="confirm-activity" style="color: var(--text-light); margin-bottom: 5px; font-size: 1.5rem;"></h2>
-        <p id="confirm-points" style="color: var(--accent-success); font-weight: bold; font-size: 1.2rem; margin: 0;">
-        </p>
+      <div class="cc-activity">
+        <img id="confirm-badge" class="cc-badge" style="display: none;" />
+        <h4 id="confirm-badge-name" class="cc-badge-name" style="display: none;"></h4>
+        <h2 id="confirm-activity" class="cc-name"></h2>
+        <p id="confirm-points" class="cc-km"></p>
       </div>
 
-      <div style="display: flex; flex-direction: column; gap: 12px;">
-        <button id="btn-confirm-add" class="btn-large"
-          style="background: linear-gradient(135deg, var(--accent-success), #059669); font-size: 1.1rem;">✈️ Confirm &
-          Stamp Passport</button>
-        <button id="btn-change-account" class="btn-large"
-          style="background: transparent; border: 1px solid var(--glass-border); color: var(--text-muted);">Not you?
-          Change Account</button>
+      <div class="cc-actions">
+        <button id="btn-confirm-add" class="cc-confirm">✈️ Confirm & Stamp Passport</button>
+        <button id="btn-change-account" class="cc-change">Not you? Change Account</button>
       </div>
+    </div>
+
+    <!-- Themed "new stamp earned" success screen -->
+    <div id="stamp-success" style="display: none;">
+      <div class="ss-eyebrow">Passport Stamped</div>
+      <div class="ss-stamp-wrap">
+        <div class="ss-stamp filled" id="ss-stamp"><img id="ss-badge" alt="" /></div>
+      </div>
+      <h1 class="ss-activity" id="ss-activity"></h1>
+      <div class="ss-km" id="ss-km"></div>
+      <p class="ss-sub">added to your wellness passport ✈️</p>
+      <button class="ss-cta" onclick="window.location.href = '/html/dashboard.html'">View My Passport →</button>
     </div>
 
     <h1 id="scan-title"></h1>

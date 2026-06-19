@@ -1,25 +1,27 @@
-/* ════════════════ THEMES ════════════════ */
-[data-theme="candy"] {
-  --pri: #6D9FD5;  --pri-s: #ddeef8;  --pri-m: #9abfe8;
-  --sec: #c4a8c0;  --sec-s: #EEDEEC;  --sec-m: #d8c0d4;
-  --land-a: #ddeef8; --land-b: #EEDEEC; --land-c: #e8f2fa;
-  --shadow-pri: rgba(109,159,213,.35); --shadow-pri2: rgba(109,159,213,.18);
+/* ════════════════ THEMES ════════════════
+   Default (Teal) lives in :root — see css/main/_base.css.
+   Ordered by color theory: a hue march from Teal → blue → navy → violet → pink. */
+[data-theme="skycandy"] {
+  --pri: #72b2e2;  --pri-s: #e0f1fb;  --pri-m: #a0cdee;
+  --sec: #aebfe8;  --sec-s: #ebeffb;  --sec-m: #c8d4f0;
+  --land-a: #e0f1fb; --land-b: #ebeffb; --land-c: #ecf4fc;
+  --shadow-pri: rgba(114,178,226,.35); --shadow-pri2: rgba(114,178,226,.18);
 }
-[data-theme="sunset"] {
-  --pri: #d4607a;  --pri-s: #fde8ef;  --pri-m: #e898aa;
-  --sec: #d4a830;  --sec-s: #fef4d0;  --sec-m: #e8c858;
-  --land-a: #fde8ef; --land-b: #fef4d0; --land-c: #fdf0f4;
-  --shadow-pri: rgba(212,96,122,.35); --shadow-pri2: rgba(212,96,122,.18);
+[data-theme="navy"] {
+  --pri: #1f3a68;  --pri-s: #dde4f0;  --pri-m: #5070a8;
+  --sec: #3060a0;  --sec-s: #e0eaf6;  --sec-m: #6a92c8;
+  --land-a: #dde4f0; --land-b: #e0eaf6; --land-c: #e6ecf4;
+  --shadow-pri: rgba(31,58,104,.35); --shadow-pri2: rgba(31,58,104,.18);
 }
-[data-theme="violet"] {
-  --pri: #2a4a8a;  --pri-s: #dde8fa;  --pri-m: #6888cc;
-  --sec: #6a5acc;  --sec-s: #eceafa;  --sec-m: #9a8ae0;
-  --land-a: #dde8fa; --land-b: #eceafa; --land-c: #e8eef8;
-  --shadow-pri: rgba(42,74,138,.35); --shadow-pri2: rgba(42,74,138,.18);
+[data-theme="lilac"] {  /* name kept; now uses the Twilight palette */
+  --pri: #5b3b9c;  --pri-s: #e4dcf1;  --pri-m: #9077c2;
+  --sec: #b88ad8;  --sec-s: #f3ebf9;  --sec-m: #d4b4e8;
+  --land-a: #e4dcf1; --land-b: #f3ebf9; --land-c: #ece2f5;
+  --shadow-pri: rgba(91,59,156,.35); --shadow-pri2: rgba(91,59,156,.18);
 }
-[data-theme="forest"] {
-  --pri: #28888a;  --pri-s: #d8f4f2;  --pri-m: #58b8ba;
-  --sec: #2a6e4a;  --sec-s: #d8f0e4;  --sec-m: #58a87a;
-  --land-a: #d8f4f2; --land-b: #d8f0e4; --land-c: #e4f8f6;
-  --shadow-pri: rgba(40,136,138,.35); --shadow-pri2: rgba(40,136,138,.18);
+[data-theme="blush"] {
+  --pri: #ea8fa0;  --pri-s: #fdeef2;  --pri-m: #f2b0bd;
+  --sec: #eccb68;  --sec-s: #fef8e0;  --sec-m: #f2dc90;
+  --land-a: #fdeef2; --land-b: #fef8e0; --land-c: #fdf2f4;
+  --shadow-pri: rgba(234,143,160,.35); --shadow-pri2: rgba(234,143,160,.18);
 }

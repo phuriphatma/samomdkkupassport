@@ -1,6 +1,6 @@
 // js/admin-page.js — Admin terminal logic
 import { supabase } from './app.js';
-import { generateUUID } from './utils.js';
+import { generateUUID, fixGoogleDriveUrl } from './utils.js';
 import { ROUTES } from './routes.js';
 import { renderCertificate, loadCertImage, CERT_FONTS } from './certificate.js';
 import { uploadToDrive, deleteFromDrive, deleteFromDriveBeacon, isUploadConfigured } from './upload.js';
@@ -127,6 +127,11 @@ async function init() {
     wireUpload('act-badge-url', 'badges');
     wireUpload('edit-badge-url', 'badges');
     wireUpload('cert-bg-url', 'certificates');
+
+    // Live stamp preview under each badge-image field (must run after wireUpload so
+    // it can anchor below the upload row when drag-drop is wired).
+    wireStampPreview('act-badge-url');
+    wireStampPreview('edit-badge-url');
 
     // Leaderboard filters (period = SamoYear → Season, + department/sub-dept)
     document.getElementById('lb-year').addEventListener('change', () => { populateLbSeasonsForYear(); renderAdminLeaderboard(); });
@@ -346,6 +351,7 @@ window.editActivity = async (id) => {
     document.getElementById('edit-km').value = data.base_points_km;
     document.getElementById('edit-badge-name').value = data.badge_name || '';
     document.getElementById('edit-badge-url').value = data.badge_url || '';
+    document.getElementById('edit-badge-url').dispatchEvent(new Event('input', { bubbles: true }));
 
     // ตั้งค่าตัวเลือกฝ่ายหลัก
     const deptVal = data.department_id || '';
@@ -874,6 +880,48 @@ function wireUpload(inputId, folder) {
         const f = e.dataTransfer?.files?.[0];
         if (f) doUpload(f);
     });
+}
+
+// Live preview of a badge image inside the real stamp treatment (perforated mask +
+// parchment + grain), shown under the badge-URL field so admins see what students get
+// before saving. Reuses the dashboard's exact markup + the shared _stamps.css partial,
+// so it's pixel-accurate, and updates on upload, paste, or edit-form populate.
+function wireStampPreview(inputId) {
+    const input = document.getElementById(inputId);
+    if (!input) return;
+
+    const preview = document.createElement('div');
+    preview.className = 'stamp-preview';
+    preview.hidden = true;
+    // shadow lives on .stamp-wrap; the masked .stamp-emoji holds the image (same as the
+    // dashboard). se-blue is just a representative accent — the parchment fill overrides it.
+    const emoji = document.createElement('div');
+    emoji.className = 'stamp-emoji se-blue filled';
+    const img = document.createElement('img');
+    img.alt = 'Stamp preview';
+    emoji.appendChild(img);
+    const wrap = document.createElement('div');
+    wrap.className = 'stamp-wrap';
+    wrap.appendChild(emoji);
+    const lbl = document.createElement('span');
+    lbl.className = 'stamp-preview-lbl';
+    lbl.textContent = 'Stamp preview';
+    preview.append(wrap, lbl);
+
+    // Anchor below the upload row (if wireUpload wrapped the field) or the field itself,
+    // skipping a trailing <br>.
+    const anchor = input.closest('.upload-row') || input;
+    const ref = anchor.nextElementSibling?.tagName === 'BR' ? anchor.nextElementSibling : anchor;
+    ref.parentNode.insertBefore(preview, ref.nextSibling);
+
+    const update = () => {
+        const url = input.value.trim();
+        preview.hidden = !url;
+        if (url) img.src = fixGoogleDriveUrl(url);
+        else img.removeAttribute('src');
+    };
+    input.addEventListener('input', update);
+    update();
 }
 
 // --- วาระสโม (SamoYear) & SEASON CONTROL ---

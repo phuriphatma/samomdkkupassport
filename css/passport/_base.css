@@ -9,7 +9,7 @@
 /* ── Prevent main.css orange button style leaking into the dashboard ── */
 body.passport-page-theme button {
   background: transparent; border: none; padding: 0; margin: 0;
-  width: auto; box-shadow: none; font-family: 'Nunito', system-ui, sans-serif;
+  width: auto; box-shadow: none; font-family: 'Nunito', 'Noto Sans Thai', system-ui, sans-serif;
   font-size: inherit; font-weight: inherit; color: inherit; cursor: pointer;
 }
 

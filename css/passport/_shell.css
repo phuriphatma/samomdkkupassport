@@ -13,7 +13,7 @@ html { background: var(--bg); }
 html { scrollbar-gutter: stable; }
 
 body.passport-page-theme {
-  font-family: 'Nunito', system-ui, sans-serif;
+  font-family: 'Nunito', 'Noto Sans Thai', system-ui, sans-serif;
   background: var(--bg); color: var(--text);
   min-height: 100vh; width: 100%;
   /* main.css centers the landing page with `body{display:flex;…;padding:20px}`.
@@ -60,7 +60,7 @@ body.passport-page-theme {
   padding: 20px 14px 20px 20px; border-radius: 12px;
   height: 48px;
   background: none; border: none; border-radius: 12px;
-  font-family: 'Nunito', sans-serif; font-size: 16.7px; font-weight: 700;
+  font-family: 'Nunito', 'Noto Sans Thai', sans-serif; font-size: 16.7px; font-weight: 700;
   color: var(--t2); white-space: nowrap; cursor: pointer; text-align: left;
   transition: color .18s, background .15s;
 }
@@ -240,7 +240,7 @@ body.passport-page-theme {
   .bnav-pill .bnav-btn {
     flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center;
     justify-content: center; gap: 3px;
-    font-family: 'Nunito', sans-serif; font-size: 11.5px; font-weight: 700;
+    font-family: 'Nunito', 'Noto Sans Thai', sans-serif; font-size: 11.5px; font-weight: 700;
     color: var(--t3); transition: color .2s, background .2s;
     padding: 7px 4px; border-radius: 30px;
   }

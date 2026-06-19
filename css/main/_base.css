@@ -1,7 +1,7 @@
 /* css/main.css */
 
 /* ══════════════════════════════════════
-   THEME VARIABLES — default: Ocean
+   THEME VARIABLES — default: Teal
 ══════════════════════════════════════ */
 :root {
   /* New theme palette */
@@ -13,20 +13,21 @@
   --t2: #7a6a58;
   --t3: #b3a494;
 
-  --pri: #2d6a8a;   --pri-s: #d8eef8;  --pri-m: #5898b8;
-  --sec: #48a89e;   --sec-s: #d8f4f2;  --sec-m: #78c8c0;
+  /* "Teal" (name kept) now uses the Spruce palette. */
+  --pri: #0f5e63;   --pri-s: #cde8e9;  --pri-m: #4a9398;
+  --sec: #2bbfb0;   --sec-s: #ddf5f2;  --sec-m: #74d6cb;
 
   --amber: #c47d0a; --amber-s: #fef0d0; --amber-m: #f0b84a;
   --rose: #c44a6e;  --rose-s: #fde8ef;  --rose-m: #e88aaa;
   --violet: #6b4fc8;--violet-s: #eeebfa;--violet-m: #a998e8;
   --coral: #d4603a; --coral-s: #fde8e0; --coral-m: #f0957a;
 
-  --land-a: #d8eef8; --land-b: #d8f4f2; --land-c: #e4f4f8;
+  --land-a: #cde8e9; --land-b: #ddf5f2; --land-c: #e3f4f1;
 
   --grad: linear-gradient(135deg, var(--pri), var(--sec));
   --grad-btn: linear-gradient(120deg, var(--pri), var(--sec));
-  --shadow-pri: rgba(45,106,138,.35);
-  --shadow-pri2: rgba(45,106,138,.18);
+  --shadow-pri: rgba(15,94,99,.35);
+  --shadow-pri2: rgba(15,94,99,.18);
 
   --nav-h: 72px;
   --r: 14px;
@@ -49,8 +50,8 @@
   --glass-shadow: 0 8px 32px rgba(14,165,233,0.18);
   --panel-bg: rgba(255,255,255,0.95);
   --border-radius: 16px;
-  --font-heading: 'Prompt', 'Nunito', sans-serif;
-  --font-body: 'Noto Sans Thai', 'Nunito', sans-serif;
+  --font-heading: 'Nunito', 'Noto Sans Thai', sans-serif;
+  --font-body: 'Nunito', 'Noto Sans Thai', sans-serif;
   --passport-navy: #1B3F6B;
   --passport-page: #FFFEF7;
 }

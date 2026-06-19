@@ -282,3 +282,36 @@ used `bottom: 5dvh` (dynamic) while the shell used `svh` (static) — mismatched
 **Fix:** add `min-height: 0` to the mobile `body.passport-page-theme` rule so `height: 100svh`
 takes effect, and change the nav to `bottom: 5svh` so its anchor matches the shell's unit (stable
 through the toolbar animation). Lives in `css/passport/_shell.css` (mobile block).
+
+## drop-shadow on a masked element gets clipped away (stamp tiles)
+**Symptom:** the scalloped stamp tiles (`.stamp-emoji`, Stamps tab) had `filter: drop-shadow(...)`
+but showed **no shadow**.
+**Cause:** the same element carries a `mask` (the scalloped postage-stamp shape). In the CSS
+rendering order **mask is applied AFTER filter**, so the mask clips the freshly-generated
+drop-shadow — and the mask only covers the tile's own outline, so everything outside (i.e. the
+shadow) is erased.
+**Fix:** put the shadow on a **wrapper** that is *not* masked. `js/dashboard.js` wraps each
+`.stamp-emoji` in a `.stamp-wrap`, and `css/passport/_stamps.css` puts the `drop-shadow` on
+`.stamp-wrap` (its alpha = the masked child's scalloped shape, so the shadow traces the notches).
+
+## se-* colour classes are shared by stamps AND flight-log icons
+**Symptom:** restyling stamp fills by editing `.se-teal { background: … }` also changed the
+flight-log row icons (`.fl-item-icon`), which reuse the same `STAMP_COLORS` classes.
+**Cause:** `STAMP_COLORS` (`js/dashboard.js`) is applied to both `.stamp-emoji` and
+`.fl-item-icon`; the `se-*` classes set the icon's coloured disc background.
+**Fix:** keep `se-*` setting `background` + `color` (for the log icons) and override the stamp
+fill with a **grid-scoped** selector `.stamps-grid .stamp-emoji { background: … }` (higher
+specificity, stamps-only). Lives in `css/passport/_stamps.css`.
+
+## Passport `button` reset silently strips single-class button styles (specificity)
+**Symptom:** styled buttons in the dashboard (memory-modal Save/View/Download/Edit) rendered as
+bare dark text — no background, padding, or white colour — even though their `.modal-save-btn` /
+`.cert-*-btn` rules set all of that.
+**Cause:** `css/passport/_base.css` has a reset `body.passport-page-theme button { background:
+transparent; padding:0; color:inherit; … }` to stop main.css's orange button style leaking in.
+Its specificity is **(0,1,2)** — higher than a single class like `.modal-save-btn` **(0,1,0)** — so
+the reset's `background`/`padding`/`color` win and the button looks unstyled. (Only props the reset
+doesn't set, or ones marked `!important`, survive — which is why `.cert-view-btn`'s `!important`
+border showed but its fill didn't.)
+**Fix:** scope button rules under the same ancestor so they outrank the reset, e.g.
+`body.passport-page-theme .modal-save-btn { … }` (0,1,1+class). Lives in `css/passport/_modal.css`.

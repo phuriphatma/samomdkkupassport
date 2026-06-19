@@ -137,9 +137,14 @@ function renderStampGrid() {
             img.src = fixGoogleDriveUrl(a.badge_url);
             img.alt = a.badge_name || a.name;
             emojiDiv.appendChild(img);
+            emojiDiv.classList.add('filled');  // enables the grain overlay over the image
         } else {
             emojiDiv.textContent = '✅';
         }
+        // shadow lives on this wrapper (the stamp itself is masked, which would clip a shadow)
+        const stampWrap = document.createElement('div');
+        stampWrap.className = 'stamp-wrap';
+        stampWrap.appendChild(emojiDiv);
 
         const name = document.createElement('div');
         name.className = 'stamp-name';
@@ -157,7 +162,7 @@ function renderStampGrid() {
             card.appendChild(ribbon);
         }
 
-        card.append(emojiDiv, name, count);
+        card.append(stampWrap, name, count);
         card.addEventListener('click', () => openMemoryModal(a, scan));
         grid.appendChild(card);
     });
@@ -309,9 +314,9 @@ function openMemoryModal(activity, scan) {
     // Badge
     const wrap = document.getElementById('modal-badge-wrap');
     if (activity.badge_url) {
-        wrap.innerHTML = `<img src="${fixGoogleDriveUrl(activity.badge_url)}" alt="${activity.name}">`;
+        wrap.innerHTML = `<div class="stamp-wrap"><div class="stamp-emoji se-blue filled"><img src="${fixGoogleDriveUrl(activity.badge_url)}" alt="${activity.name}"></div></div>`;
     } else {
-        wrap.innerHTML = `<span class="modal-badge-placeholder">🏅</span>`;
+        wrap.innerHTML = `<div class="stamp-wrap"><div class="stamp-emoji se-blue"><span class="modal-badge-placeholder">🏅</span></div></div>`;
     }
 
     document.getElementById('modal-locked').style.display = 'none';
@@ -366,9 +371,15 @@ function populateCerts(activityId) {
         dlBtn.textContent = '⬇️ Download';
         dlBtn.addEventListener('click', () => generateAndDownloadCert(cert, dlBtn));
 
+        // Keep View + Download together as one unit so they never split across lines
+        // (on narrow mobile the row wraps the whole pair below the label, not apart).
+        const actions = document.createElement('div');
+        actions.className = 'cert-row-actions';
+        actions.appendChild(viewBtn);
+        actions.appendChild(dlBtn);
+
         row.appendChild(label);
-        row.appendChild(viewBtn);
-        row.appendChild(dlBtn);
+        row.appendChild(actions);
         list.appendChild(row);
     });
     section.style.display = '';

@@ -30,7 +30,7 @@
 
   <script>
   function setAppTheme(name) {
-    document.documentElement.setAttribute('data-theme', name === 'ocean' ? '' : name);
+    document.documentElement.setAttribute('data-theme', name === 'teal' ? '' : name);
     localStorage.setItem('wp-theme', name);
     document.querySelectorAll('.tp-swatch').forEach(el => el.classList.toggle('active', el.dataset.t === name));
   }
@@ -52,10 +52,10 @@
       document.getElementById('bnav-settings')?.setAttribute('aria-expanded', 'false');
     }
   });
-  const _appTheme = localStorage.getItem('wp-theme') || 'ocean';
-  if (_appTheme && _appTheme !== 'ocean') document.documentElement.setAttribute('data-theme', _appTheme);
+  const _appTheme = localStorage.getItem('wp-theme') || 'teal';
+  if (_appTheme && _appTheme !== 'teal') document.documentElement.setAttribute('data-theme', _appTheme);
   document.addEventListener('DOMContentLoaded', () => {
-    document.querySelectorAll('.tp-swatch').forEach(el => el.classList.toggle('active', el.dataset.t === (_appTheme || 'ocean')));
+    document.querySelectorAll('.tp-swatch').forEach(el => el.classList.toggle('active', el.dataset.t === (_appTheme || 'teal')));
   });
 
   // switchTab lives in js/dashboard.js (exposed as window.switchTab) so it can

@@ -9,3 +9,4 @@
 @import "./admin/_leaderboard.css";  /* leaderboard */
 @import "./admin/_upload.css";  /* image upload row */
 @import "./admin/_seasons.css";  /* seasons form */
+@import "./passport/_stamps.css";  /* shared stamp visuals — drives the badge stamp preview */

@@ -15,7 +15,7 @@
 
 .fl-selectors { display: flex; flex-wrap: nowrap; gap: 6px; }
 .fl-year-select, .fl-season-select, .lb-year-select, .lb-season-select, .seg-select {
-  font-family: 'Nunito', sans-serif; font-size: 0.851rem; font-weight: 700;
+  font-family: 'Nunito', 'Noto Sans Thai', sans-serif; font-size: 0.851rem; font-weight: 700;
   margin: 0; padding: 7px 20px 7px 12px; border-radius: 10px; cursor: pointer;
   border: 1.5px solid var(--border); background: var(--surface); color: var(--text);
   -webkit-appearance: none; appearance: none; flex: 1 1 0; min-width: 0;
