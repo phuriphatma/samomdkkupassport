@@ -37,33 +37,22 @@ let lbYear = undefined;   // selected วาระสโม key on the Leaderboa
 let lbSeason = 'all';     // selected season key ('all' | 'none' | season id)
 let lbFiltersCollapsed = false; // mobile-only: hide the Leaderboard Filter card body
 
-// ─── Tab navigation ──────────────────────────────────────
-function switchTab(id) {
-    document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
-    document.querySelectorAll('.bnav-btn, .tnav-btn').forEach(b => b.classList.remove('active'));
-    const pane = document.getElementById('tab-' + id);
-    if (pane) pane.classList.add('active');
-    const bb = document.getElementById('bnav-' + id);
-    const tb = document.getElementById('tnav-' + id);
-    if (bb) bb.classList.add('active');
-    if (tb) tb.classList.add('active');
-    const crumb = document.getElementById('tb-crumb');
-    if (crumb) crumb.textContent = ({
-        passport: 'My Passport', stamps: 'Stamps',
-        log: 'Flight Log', leaderboard: 'Leaderboard',
-    })[id] || 'My Passport';
-    const body = document.getElementById('app-body');
-    if (body) body.scrollTop = 0;
-    window.scrollTo({ top: 0, behavior: 'instant' });
-    document.getElementById('themePanel')?.classList.remove('open');
-    document.getElementById('profileMenu')?.classList.remove('open');
-    // Render the data-heavy tabs on each visit (cheap, and keeps them fresh).
-    if (id === 'leaderboard') renderLeaderboardPage();
-    if (id === 'log') renderFlightLogPage();
-    if (id === 'passport') fitMrz(); // refit now that the pane has a real width
+// ─── Tab navigation: data-render hook ─────────────────────
+// switchTab itself (the pure-DOM pane swap) lives in the classic inline <script> in
+// dashboard.html, NOT here — that script runs at parse time, so the nav buttons work
+// the instant the page is interactive, even before this deferred module finishes
+// downloading (the "nav button does nothing on a slow/cold load, esp. iPad" race).
+// Here we only expose the data-heavy renders the active tab needs; the inline
+// switchTab calls window.__dashRenderTab(id), and init() calls it for whatever tab is
+// active once scans finish loading. Keep this the ONLY copy of the render dispatch.
+function renderTab(id) {
+    try {
+        if (id === 'leaderboard') renderLeaderboardPage();
+        else if (id === 'log') renderFlightLogPage();
+        else if (id === 'passport') fitMrz(); // refit now that the pane has a real width
+    } catch (err) { console.error('renderTab failed:', err); }
 }
-// Exposed for the inline onclick handlers in dashboard.html.
-window.switchTab = switchTab;
+window.__dashRenderTab = renderTab;
 
 // ─── Stamp grid (flat, all activities) ───────────────────
 const STAMP_COLORS = ['se-teal','se-blue','se-amber','se-rose','se-violet','se-coral'];
@@ -907,7 +896,7 @@ function goToStamp(activity) {
     search.value = '';
     search.blur();
     hideSearchResults();
-    switchTab('stamps');
+    window.switchTab('stamps');
     flashStamp(activity.id);
 }
 
@@ -1590,6 +1579,11 @@ async function init() {
         setStatusTier(0);
         buildStampPages([], []);
     }
+
+    // If the user tapped a data-heavy tab (Log/Leaderboard) before scans finished
+    // loading, the parse-time switchTab already swapped the pane but the module
+    // wasn't ready to render it. Render the now-active tab once data is in.
+    renderTab(window.__getActiveTab ? window.__getActiveTab() : 'passport');
 }
 
 init();

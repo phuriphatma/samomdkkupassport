@@ -1,7 +1,7 @@
 # STATE.md — project state
 
 Snapshot of what's built, what's pending, and required config. Update as things land.
-Last updated: 2026-06-20. **Tagged release: v1.0.0.**
+Last updated: 2026-06-21. **Tagged release: v1.0.0.**
 
 ## Working
 
@@ -14,7 +14,10 @@ Last updated: 2026-06-20. **Tagged release: v1.0.0.**
   breadcrumb) + left sidebar (Menu nav + pinned user card) + wide content; the
   Passport tab shows the passport book and boarding pass **side-by-side** (`.pp-cols`).
   **Mobile:** static header + floating bottom nav. Four tabs (`switchTab`): My Passport,
-  Stamps, Flight Log, Leaderboard — each with a `.page-head` (title + subtitle).
+  Stamps, Flight Log, Leaderboard — each with a `.page-head` (title + subtitle). `switchTab`
+  is defined in the **parse-time inline `<script>`** (not the deferred module) so the nav
+  works before `dashboard.js` loads; the module exposes only the data-render dispatch
+  (`window.__dashRenderTab`). See MISTAKES.md.
 - **Stamps tab** — a flat `.stamps-grid` of cards (earned = badge image; locked = greyed) with
   a stats strip + search + department filter chips; tapping a stamp opens its memory modal.
 - **Flight Log tab** — a **2×2 grid** (`css/passport/_responsive.css`): teal stat banner +
@@ -74,8 +77,10 @@ Last updated: 2026-06-20. **Tagged release: v1.0.0.**
   name placement) with live preview; students generate + download a PNG with their
   name drawn on the background. The chosen font is loaded **on demand** at render time
   (`certificate.js` `ensureCertFonts`) so the name never falls back to a system font on
-  devices that lack it — fixes the device-dependent "misaligned name" reports. **Needs DB
-  migration (below).**
+  devices that lack it — fixes the device-dependent "misaligned name" reports. The loader
+  now **waits for the @font-face to actually register** (no blind 3s timeout that drew a
+  fallback when a slow link — Thai fonts especially — lost the race). **Needs DB migration
+  (below).**
 
 ## Recently added (2026-06)
 

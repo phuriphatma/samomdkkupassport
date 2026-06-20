@@ -91,25 +91,52 @@ export function loadCertImage(url) {
 // / wrong-size on devices that happen to lack the font locally (the "works for some
 // friends, not others" misalignment). See MISTAKES.md.
 const _fontCssInjected = new Set();
+// Resolves true once the stylesheet has actually loaded (so its @font-face rules are
+// registered), false on error / a slow-link safety timeout. Crucially we DON'T resolve
+// on a short blind timeout and then draw — doing so painted a system fallback whenever
+// the CSS lost the race (Thai fonts/stylesheets are larger ⇒ slower ⇒ lost it most),
+// and the fallback's metrics shifted the name off-centre. See MISTAKES.md.
 function injectFontStylesheet(family) {
     return new Promise((resolve) => {
-        if (!family || _fontCssInjected.has(family)) { resolve(); return; }
+        if (!family) { resolve(false); return; }
+        if (_fontCssInjected.has(family)) { resolve(true); return; }
         _fontCssInjected.add(family);
         const link = document.createElement('link');
         link.rel = 'stylesheet';
         link.href = `https://fonts.googleapis.com/css2?family=${family.trim().replace(/\s+/g, '+')}&display=swap`;
-        link.addEventListener('load', resolve);
-        link.addEventListener('error', resolve);   // fall back silently
+        link.addEventListener('load', () => resolve(true));
+        link.addEventListener('error', () => resolve(false));   // fall back silently
         document.head.appendChild(link);
-        setTimeout(resolve, 3000);                 // never block forever on a slow/blocked font CSS
+        setTimeout(() => resolve(false), 10000);   // safety net only — never hang forever
     });
 }
 
+// Is an @font-face for `family` registered yet? document.fonts.load() is a silent
+// no-op (resolves instantly, loads nothing) until the injected stylesheet has parsed,
+// so we confirm the face exists before asking for its glyphs.
+function faceRegistered(family) {
+    const want = family.toLowerCase();
+    for (const f of document.fonts) {
+        if (f.family.replace(/^['"]|['"]$/g, '').toLowerCase() === want) return true;
+    }
+    return false;
+}
+
 // Ensure the chosen family + the Thai fallback are fully downloaded for the glyphs
-// we're about to draw, so the very first canvas paint uses the real font.
+// we're about to draw, so the very first canvas paint uses the real font (not a system
+// fallback whose metrics move the name). Bounded so a blocked/slow font can't hang the
+// render — but generous enough that a real (even slow) fetch wins.
 async function ensureCertFonts(chosen, fontPx, sample) {
-    await injectFontStylesheet(chosen);
+    const cssOk = await injectFontStylesheet(chosen);
     if (!(document.fonts && document.fonts.load)) return;
+    // If the stylesheet loaded but its @font-face hasn't registered in this tick yet,
+    // wait (bounded) for it before loading glyphs.
+    if (cssOk) {
+        const deadline = Date.now() + 4000;
+        while (Date.now() < deadline && !faceRegistered(chosen)) {
+            await new Promise(r => setTimeout(r, 80));
+        }
+    }
     try {
         await Promise.all([
             document.fonts.load(`${fontPx}px "${chosen}"`, sample),
@@ -133,7 +160,7 @@ export async function renderCertificate(canvas, cert, name, preloadedImg) {
     const ctx = canvas.getContext('2d');
     ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
-    const fontPx = (Number(cert.font_size) / 100) * canvas.width;
+    const fontPx = (Number(cert.font_size ?? 6) / 100) * canvas.width;
     const chosen = cert.font_family || 'Sarabun';
     const family = `"${chosen}", "Noto Sans Thai", sans-serif`;
 
@@ -146,8 +173,8 @@ export async function renderCertificate(canvas, cert, name, preloadedImg) {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
 
-    const x = (Number(cert.name_x) / 100) * canvas.width;
-    const y = (Number(cert.name_y) / 100) * canvas.height;
+    const x = (Number(cert.name_x ?? 50) / 100) * canvas.width;
+    const y = (Number(cert.name_y ?? 52) / 100) * canvas.height;
     ctx.fillText(name || '', x, y);
 
     return canvas;

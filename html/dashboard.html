@@ -58,8 +58,40 @@
     document.querySelectorAll('.tp-swatch').forEach(el => el.classList.toggle('active', el.dataset.t === (_appTheme || 'teal')));
   });
 
-  // switchTab lives in js/dashboard.js (exposed as window.switchTab) so it can
-  // call the module's render functions directly.
+  // Tab navigation. Defined HERE (classic, parse-time script) — not in the deferred
+  // ES module — so the sidebar / bottom-nav buttons work the instant the page is
+  // interactive, even before js/dashboard.js finishes downloading (fixes the "nav
+  // button does nothing on a slow/cold load, esp. iPad" race). This is the pure-DOM
+  // pane swap; the data-heavy panes (Flight Log / Leaderboard / MRZ refit) are
+  // rendered by the module via window.__dashRenderTab once it has loaded, and again
+  // by init() for whatever tab is active when scans finish loading.
+  let __activeTab = 'passport';
+  window.__getActiveTab = () => __activeTab;
+  function switchTab(id) {
+    __activeTab = id;
+    document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.bnav-btn, .tnav-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('tab-' + id)?.classList.add('active');
+    document.getElementById('bnav-' + id)?.classList.add('active');
+    document.getElementById('tnav-' + id)?.classList.add('active');
+    const crumb = document.getElementById('tb-crumb');
+    if (crumb) crumb.textContent = ({
+      passport: 'My Passport', stamps: 'Stamps',
+      log: 'Flight Log', leaderboard: 'Leaderboard',
+    })[id] || 'My Passport';
+    const body = document.getElementById('app-body');
+    if (body) body.scrollTop = 0;
+    window.scrollTo({ top: 0, behavior: 'instant' });
+    // Close the Settings popover (and its inner panels) on any tab change.
+    document.getElementById('settingsPanel')?.classList.remove('open');
+    document.getElementById('themePanel')?.classList.remove('open');
+    document.getElementById('profileMenu')?.classList.remove('open');
+    document.getElementById('side-user')?.setAttribute('aria-expanded', 'false');
+    document.getElementById('bnav-settings')?.setAttribute('aria-expanded', 'false');
+    // Render the data-heavy tabs if the module is ready (it owns the data).
+    if (window.__dashRenderTab) window.__dashRenderTab(id);
+  }
+  window.switchTab = switchTab;
 
   let _planeOn = false;
   function togglePlane() {

@@ -182,10 +182,29 @@ nothing (or two copies of it drift apart).
 module-scoped, **not** global — inline `onclick` can't see them. The page also has a *classic*
 `<script>` block whose functions *are* global. It's tempting to define a handler in both; they
 then diverge (we had two `switchTab`s — the module copy missed panel-close + lazy render).
-**Fix:** One definition. Tab/data handlers that need module state live in `dashboard.js` and are
-exposed once via `window.fnName = fnName` (see `window.switchTab`). Pure-DOM helpers
-(`togglePlane`, theme/profile menus) stay in the classic inline `<script>`. Don't define the same
-handler in both places.
+**Fix:** One definition. Pure-DOM handlers (`switchTab`, `togglePlane`, `toggleSettings`,
+`setAppTheme`) live in the classic inline `<script>` (parse-time). Handlers that genuinely need
+module state are exposed once via `window.fnName = fnName`. Don't define the same handler in both
+places. **Update (2026-06-21):** `switchTab` **moved to the inline script** — see the next entry;
+the module now exposes only `window.__dashRenderTab` for the data-heavy renders.
+
+## Sidebar / bottom-nav buttons dead on a slow or cold load (esp. iPad)
+**Symptom:** on iPad the nav buttons (My Passport / Stamps / Flight Log / Leaderboard) "sometimes
+work, sometimes not" — tapping does nothing, then after a moment they work for the rest of the session.
+**Cause:** `switchTab` was defined **only in `js/dashboard.js`**, a `<script type="module">` (deferred).
+The nav buttons call it via inline `onclick="switchTab(...)"`, which resolves against **global** scope.
+Between the page becoming interactive and the module finishing download+execute (its big Supabase import
+included), `window.switchTab` doesn't exist yet → an early tap throws `switchTab is not defined` and does
+nothing. iPad (slower CPU / cold cache / flaky wifi) widens that window; once loaded it always works — so
+it looks intermittent. Every **other** inline handler (`toggleSettings`, `togglePlane`, `setAppTheme`) was
+already defined in the parse-time inline `<script>`, so only `switchTab` was affected.
+**Fix:** `switchTab` (the pure-DOM pane swap) now lives in the **inline classic `<script>`** in
+`html/dashboard.html`, defined at parse time — available the instant the buttons are. It calls
+`window.__dashRenderTab?.(id)` for the data-heavy renders; the module defines `renderTab` and assigns
+`window.__dashRenderTab = renderTab` at top level, and `init()` calls `renderTab(window.__getActiveTab())`
+once scans load (so a tab tapped *during* load still renders). **Don't move `switchTab` back into the
+module** — it must exist before the module loads. (Also fixed here: `switchTab` now closes `settingsPanel`,
+not just the stale `themePanel`/`profileMenu` ids, so the Settings popover closes on a tab change.)
 
 ## HTML partials & CSS @import indexes (modular build)
 **How it works:** `html/dashboard.html` is a skeleton of `<include src="partials/…">` tags
@@ -332,6 +351,18 @@ cert font.
 `document.fonts.load(px "Family", text)` for the exact glyphs, **and** awaits
 `document.fonts.ready`. Don't make certs depend on a static font `<link>`; the renderer is
 self-sufficient. Lives in `js/certificate.js`.
+**Follow-up (2026-06-21) — the first fix still failed on slow links / Thai:** `injectFontStylesheet`
+resolved on a **blind 3s timeout**, then `ensureCertFonts` called `document.fonts.load` regardless.
+`document.fonts.load(px "Family")` is a **silent no-op** until that family's `@font-face` has actually
+been parsed/registered — so when the stylesheet lost the 3s race (Thai stylesheets/fonts are larger ⇒
+slower ⇒ lost it most often), it loaded nothing, the canvas drew a **system fallback**, and
+`textBaseline:'middle'` placed the name at a font-metric-dependent offset. (Admin never saw it:
+`admin.html` preloads **all** ~60 cert fonts, so its preview always has the real font — that's why
+"works for me, misaligned for some students.") **Fix:** `injectFontStylesheet` now resolves
+true-on-load / false-on-error+10s-safety (no early blind timeout); `ensureCertFonts` then waits
+(bounded) for `faceRegistered(family)` — scans `document.fonts` for the `@font-face` — **before**
+calling `document.fonts.load`. Also `renderCertificate` now defaults `font_size/name_x/name_y`
+(`?? 6 / ?? 50 / ?? 52`) so a cert row with null fields can't render at 0px or in the corner.
 
 ## Letting a user delete their OWN scan is allowed (mis-scan recovery)
 **Note:** "Scans are immutable" means we don't *rewrite* history on activity edits and never
