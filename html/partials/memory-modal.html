@@ -41,5 +41,11 @@
       </div>
       <button class="modal-save-btn" id="modal-save">Save Memory ✓</button>
     </div>
+    <!-- Self-service removal — shown only for an earned activity (a real scan), so a
+         student who scanned the wrong QR can take it off their passport. -->
+    <div class="modal-danger" id="modal-danger" style="display:none;">
+      <button class="modal-remove-btn" id="modal-remove" type="button">🗑 ลบกิจกรรมนี้ / Remove from passport</button>
+      <p class="modal-remove-hint">สแกนผิดใช่ไหม? ลบสแตมป์นี้ออก แล้วสแกนใหม่ได้เลย</p>
+    </div>
   </div>
 </div>

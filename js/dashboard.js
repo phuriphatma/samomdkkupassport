@@ -71,11 +71,6 @@ const STAMP_COLORS = ['se-teal','se-blue','se-amber','se-rose','se-violet','se-c
 function buildStampPages(allActivities, userScans) {
     _allActivitiesCache = allActivities;
 
-    // Boarding pass shows the all-time distinct stamp count — independent of the
-    // period the user is browsing on this tab.
-    const bpStamps = document.getElementById('bp-stamps');
-    if (bpStamps) bpStamps.textContent = new Set(userScans.map(s => s.activity_id)).size;
-
     // Resolve the selected วาระ (default = current), then build the controls and
     // render the grid for that period.
     const yearKeys = flYearKeys();
@@ -334,7 +329,45 @@ function openMemoryModal(activity, scan) {
         showMemoryWrite(activity.id);
     }
 
+    // Self-service removal is offered only for an earned activity (a real scan).
+    const danger = document.getElementById('modal-danger');
+    if (danger) danger.style.display = scan?.id ? '' : 'none';
+
     showModal();
+}
+
+// Let a student remove an activity they scanned by mistake. Deletes only their OWN
+// scan (id + user_id scoped); RLS already permits this. We reload afterwards so every
+// view (km, stamps, flight log, leaderboard, boarding pass) reflects it without
+// partial-cache bookkeeping. Scans stay immutable to *edits*; a user pruning their own
+// mis-scan is a deliberate exception (see MISTAKES.md).
+async function removeOwnScan() {
+    const scan = currentModalScan;
+    const activity = currentModalActivity;
+    if (!scan?.id) { showToast('Nothing to remove'); return; }
+    const name = activity?.name || 'this activity';
+    if (!window.confirm(`Remove "${name}" from your passport?\n\nThis deletes the stamp and its km. You can scan it again later.`)) return;
+
+    const btn = document.getElementById('modal-remove');
+    const original = btn ? btn.textContent : '';
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Removing…'; }
+    try {
+        const { error } = await supabase.from('scans').delete()
+            .eq('id', scan.id).eq('user_id', currentUserId);
+        if (error) throw error;
+        // On-device memory/photos for this activity are no longer reachable — clean up.
+        try {
+            localStorage.removeItem(`mem_${currentUserId}_${activity.id}`);
+            localStorage.removeItem(`photos_${currentUserId}_${activity.id}`);
+        } catch { /* localStorage may be unavailable */ }
+        showToast('Removed from your passport ✓');
+        closeModal();
+        setTimeout(() => location.reload(), 600);
+    } catch (err) {
+        console.error('Failed to remove scan', err);
+        showToast('Could not remove — please try again');
+        if (btn) { btn.disabled = false; btn.textContent = original; }
+    }
 }
 
 
@@ -1371,6 +1404,8 @@ async function init() {
         closeModal();
     });
 
+    document.getElementById('modal-remove')?.addEventListener('click', removeOwnScan);
+
     // Edit name
     document.getElementById('edit-name-btn').addEventListener('click', editName);
 
@@ -1447,7 +1482,6 @@ async function init() {
     }
 
     // ── Activities & scans ──────────────────────────────────
-    const pKm = document.getElementById('p-km');
     try {
         const [
             { data: scans, error: scansError },
@@ -1490,16 +1524,17 @@ async function init() {
             certsByActivity.get(c.activity_id).push(c);
         });
 
-        // Headline KM = SamoYear total; the label shows the current season's points.
-        // Falls back to the legacy calendar-วาระ window if no year is declared yet.
-        const wlabel = document.getElementById('km-window-label');
+        // Headline KM = SamoYear total; the Log-tab banner label shows the current
+        // season's points. Falls back to the legacy calendar-วาระ window if no year
+        // is declared yet.
         let yearKm = 0;
+        let windowLabelText = 'Distance traveled';
         if (currentYear) {
             yearKm = scans.filter(s => s.samo_year_id === currentYear.id).reduce((t, s) => t + pointsOfScan(s), 0);
             const seasonKm = currentSeason
                 ? scans.filter(s => s.season_id === currentSeason.id).reduce((t, s) => t + pointsOfScan(s), 0)
                 : 0;
-            if (wlabel) wlabel.textContent = currentSeason
+            windowLabelText = currentSeason
                 ? `${upFlight(currentYear.name)} · ${currentSeason.name}: ${seasonKm} km`
                 : upFlight(currentYear.name);
         } else {
@@ -1508,9 +1543,8 @@ async function init() {
                 const d = (s.scanned_at || '').slice(0, 10);
                 if (d >= win.start && d <= win.end) yearKm += pointsOfScan(s);
             });
-            if (wlabel) wlabel.textContent = upFlight(win.name);
+            windowLabelText = upFlight(win.name);
         }
-        if (pKm) { pKm.textContent = yearKm; pKm.classList.remove('skeleton'); }
         const sideKm = document.getElementById('side-km');
         if (sideKm) sideKm.textContent = yearKm.toLocaleString();
 
@@ -1529,10 +1563,7 @@ async function init() {
         const seasonKmEl = document.getElementById('log-season-km');
 
         if (totalKmEl) totalKmEl.textContent = yearKm;
-        if (windowLabelEl) {
-            const wl = document.getElementById('km-window-label');
-            windowLabelEl.textContent = wl ? wl.textContent || 'Distance traveled' : 'Distance traveled';
-        }
+        if (windowLabelEl) windowLabelEl.textContent = windowLabelText;
         // Bar + "Km to next" mini-stat track progress to the next status: the bar
         // fills with km earned in the current 2,000 km tier; the mini-stat shows
         // km remaining (lifetime journey to the status goal).
@@ -1554,7 +1585,8 @@ async function init() {
         console.error('Failed to load activities:', err);
         const flc = document.getElementById('flightlog-list');
         if (flc) flc.innerHTML = `<div style="color:var(--accent-danger);font-size:0.85rem;padding:12px;">Error loading activities.</div>`;
-        if (pKm) { pKm.textContent = '0'; pKm.classList.remove('skeleton'); }
+        const sideKm = document.getElementById('side-km');
+        if (sideKm) sideKm.textContent = '0';
         setStatusTier(0);
         buildStampPages([], []);
     }

@@ -1,7 +1,7 @@
 # STATE.md — project state
 
 Snapshot of what's built, what's pending, and required config. Update as things land.
-Last updated: 2026-06-09. **Tagged release: v1.0.0.**
+Last updated: 2026-06-20. **Tagged release: v1.0.0.**
 
 ## Working
 
@@ -62,6 +62,9 @@ Last updated: 2026-06-09. **Tagged release: v1.0.0.**
   legacy sky/orange aliases → the theme palette + overrides bg/buttons/headings/inputs to the
   themed, Nunito look. Edit/delete keep semantic colors (`--accent-danger` untouched).
 - **Memory modal** — per-activity note + photos, stored in `localStorage` (per device).
+  Also offers **"Remove from passport"** for an earned activity: a student who scanned the
+  wrong QR can delete their **own** scan (`removeOwnScan`, scoped by `id`+`user_id`, then a
+  reload). See MISTAKES.md ("delete your own scan").
 - **Profile photo** — `localStorage`, per device.
 - **Data backup** — Export/Import all on-device user content as a JSON file.
 - **Admin** — create/edit/delete activities; department + sub-department filters;
@@ -69,7 +72,10 @@ Last updated: 2026-06-09. **Tagged release: v1.0.0.**
 - **Scan flow** — static token validated in `scanning.js`; records a scan.
 - **Certificates** — admin manages templates per activity (label + background +
   name placement) with live preview; students generate + download a PNG with their
-  name drawn on the background. **Needs DB migration (below).**
+  name drawn on the background. The chosen font is loaded **on demand** at render time
+  (`certificate.js` `ensureCertFonts`) so the name never falls back to a system font on
+  devices that lack it — fixes the device-dependent "misaligned name" reports. **Needs DB
+  migration (below).**
 
 ## Recently added (2026-06)
 

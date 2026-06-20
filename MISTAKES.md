@@ -315,3 +315,29 @@ doesn't set, or ones marked `!important`, survive — which is why `.cert-view-b
 border showed but its fill didn't.)
 **Fix:** scope button rules under the same ancestor so they outrank the reset, e.g.
 `body.passport-page-theme .modal-save-btn { … }` (0,1,1+class). Lives in `css/passport/_modal.css`.
+
+## Certificate name "misaligned" on some devices but not others
+**Symptom:** the admin places the name dead-centre and it looks right on the admin's own
+phone/iPad/desktop, but some students report the name off-position / wrong-size; other students
+see it fine. Device-dependent, not reproducible on the admin's hardware.
+**Cause:** the canvas renderer (`certificate.js`) uses `textAlign:center` + `textBaseline:middle`
+and **percentage** coords, so position is mathematically device-independent — *as long as the
+chosen font is actually used*. If the cert's web font isn't downloaded when `ctx.fillText` runs,
+the canvas silently falls back to a **system** font; whether that fallback exists, and its
+metrics, varies per device, so the name's width/ascent — and thus its placement — differs. The
+dashboard's slim `head.html` (only Nunito + Noto Sans Thai) made this guaranteed for any *other*
+cert font.
+**Fix:** `renderCertificate` loads the chosen family **on demand** before drawing —
+`ensureCertFonts()` injects that family's Google-Fonts stylesheet once, runs
+`document.fonts.load(px "Family", text)` for the exact glyphs, **and** awaits
+`document.fonts.ready`. Don't make certs depend on a static font `<link>`; the renderer is
+self-sufficient. Lives in `js/certificate.js`.
+
+## Letting a user delete their OWN scan is allowed (mis-scan recovery)
+**Note:** "Scans are immutable" means we don't *rewrite* history on activity edits and never
+touch *other* users' scans — but a student removing their **own** mis-scan is a deliberate
+exception. `removeOwnScan` (`js/dashboard.js`, from the memory modal) runs
+`scans.delete().eq('id', scan.id).eq('user_id', currentUserId)` then `location.reload()` (so km /
+stamps / flight log / leaderboard / boarding pass all re-derive cleanly — no partial cache
+fixups). RLS already permits it (`scans_delete using(true)`, db/0009); the `user_id` filter is
+the real guard. The modal's `#modal-danger` block is shown only when a real `scan.id` is present.

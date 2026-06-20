@@ -167,6 +167,22 @@ body.passport-page-theme .modal-save-btn {
 body.passport-page-theme .modal-save-btn:hover { box-shadow: 0 6px 20px var(--shadow-pri); transform: translateY(-2px); }
 body.passport-page-theme .modal-save-btn:active { transform: translateY(0); }
 
+/* ════════════════ REMOVE (mis-scan) ════════════════ */
+.modal-danger { margin-top: 18px; padding-top: 14px; border-top: 1px dashed var(--border); text-align: center; }
+.modal-remove-hint { font-size: 0.85rem; opacity: .7; margin: 8px 0 0; }
+/* Outline-danger button, scoped under body.passport-page-theme to outrank the bare
+   `button` reset in _base.css (same trick as .modal-save-btn). Secondary to Save. */
+body.passport-page-theme .modal-remove-btn {
+  display: block; width: 100%;
+  padding: 11px 16px; border: 1.5px solid var(--rose); border-radius: 12px;
+  background: transparent; color: var(--rose); cursor: pointer;
+  font-family: 'Nunito', 'Noto Sans Thai', sans-serif; font-size: 0.94rem; font-weight: 800;
+  transition: background .15s, transform .15s;
+}
+body.passport-page-theme .modal-remove-btn:hover { background: var(--rose-s); transform: translateY(-1px); }
+body.passport-page-theme .modal-remove-btn:active { transform: translateY(0); }
+body.passport-page-theme .modal-remove-btn:disabled { opacity: .6; cursor: default; transform: none; }
+
 /* ════════════════ TOAST ════════════════ */
 .toast {
   position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);

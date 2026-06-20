@@ -82,6 +82,43 @@ export function loadCertImage(url) {
     });
 }
 
+// ── On-demand web-font loading ──────────────────────────────────────────────
+// A cert may use ANY family in CERT_FONTS. Rather than make every host page
+// preload ~60 font <link>s (the dashboard intentionally ships only its UI fonts),
+// we inject the chosen family's Google Fonts stylesheet once, on demand, then wait
+// for the exact glyphs to download BEFORE drawing. Otherwise the canvas silently
+// paints a *system fallback* whose metrics differ — so the name lands off-position
+// / wrong-size on devices that happen to lack the font locally (the "works for some
+// friends, not others" misalignment). See MISTAKES.md.
+const _fontCssInjected = new Set();
+function injectFontStylesheet(family) {
+    return new Promise((resolve) => {
+        if (!family || _fontCssInjected.has(family)) { resolve(); return; }
+        _fontCssInjected.add(family);
+        const link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.href = `https://fonts.googleapis.com/css2?family=${family.trim().replace(/\s+/g, '+')}&display=swap`;
+        link.addEventListener('load', resolve);
+        link.addEventListener('error', resolve);   // fall back silently
+        document.head.appendChild(link);
+        setTimeout(resolve, 3000);                 // never block forever on a slow/blocked font CSS
+    });
+}
+
+// Ensure the chosen family + the Thai fallback are fully downloaded for the glyphs
+// we're about to draw, so the very first canvas paint uses the real font.
+async function ensureCertFonts(chosen, fontPx, sample) {
+    await injectFontStylesheet(chosen);
+    if (!(document.fonts && document.fonts.load)) return;
+    try {
+        await Promise.all([
+            document.fonts.load(`${fontPx}px "${chosen}"`, sample),
+            document.fonts.load(`${fontPx}px "Noto Sans Thai"`, sample),
+        ]);
+        await document.fonts.ready;
+    } catch { /* fall back to whatever's available */ }
+}
+
 /**
  * Render a certificate onto the given canvas.
  * @param {HTMLCanvasElement} canvas
@@ -100,18 +137,9 @@ export async function renderCertificate(canvas, cert, name, preloadedImg) {
     const chosen = cert.font_family || 'Sarabun';
     const family = `"${chosen}", "Noto Sans Thai", sans-serif`;
 
-    // Make sure the web fonts are ready, otherwise the canvas falls back to a
-    // default font (and Thai text may not render correctly). We load/draw at the
-    // family's regular weight — guaranteed present for every font in the picker,
-    // including the single-weight script/display fonts.
-    if (document.fonts && document.fonts.load) {
-        try {
-            await Promise.all([
-                document.fonts.load(`${fontPx}px "${chosen}"`, name),
-                document.fonts.load(`${fontPx}px "Noto Sans Thai"`, name),
-            ]);
-        } catch { /* fall back to default font */ }
-    }
+    // Download + register the chosen font (regular weight — guaranteed present for
+    // every picker font, including single-weight script/display ones) before drawing.
+    await ensureCertFonts(chosen, fontPx, name || '');
 
     ctx.font = `${fontPx}px ${family}`;
     ctx.fillStyle = cert.font_color || '#1f2d3d';
