@@ -8,8 +8,6 @@ import { getCurrentContext } from './samo.js';
 import { DEPARTMENTS, SUBDEPARTMENTS } from './constants.js';
 
 // ─── State ───────────────────────────────────────────────
-let currentPageIndex = 0;
-let totalPages = 2; // cover + info (stamp pages added dynamically)
 let currentUserId = null;
 let currentUserName = '';
 let currentModalActivity = null;
@@ -18,227 +16,253 @@ const certsByActivity = new Map(); // activity_id -> [certificate, ...]
 const allStamps = []; // flat registry for search: { activity, isActive, scan }
 let userScansCache = [];
 const activityById = new Map();
+let _allActivitiesCache = [];
+// Stamps tab: which วาระ/quartile period the view is scoped to (like the Flight
+// Log / Leaderboard), plus the department show/hide chip filter.
+let stampYear = undefined;   // selected วาระสโม key ('none' = unassigned)
+let stampSeason = undefined; // selected quartile key ('all' | 'none' | season id)
+let stampDeptFilter = null;  // dept id (string) or null = all departments
 
 // ── SamoYear / Season (new immutable model) ──
 let currentYear = null;          // open samo_year
 let currentSeason = null;        // open samo_season
 const seasonNameById = new Map(); // season_id -> name (for labels)
 const yearNameById = new Map();   // samo_year_id -> name (for flight-log grouping)
-let flightLogPageIndex = -1;
-let leaderboardPageIndex = -1;
 let flFilter = { type: 'all', id: null };  // all | dept | sub
 let flYear = undefined;   // selected วาระสโม key in the Flight Log ('none' = unassigned)
 let flSeason = undefined; // selected season key ('all' | 'none' | season id)
-let lbpView = 'season';                     // 'season' | 'year'
+let flFiltersCollapsed = false; // mobile-only: hide the Filter card body when true
 let lbpFilter = { type: 'all', id: null };  // all | dept | sub
+let lbYear = undefined;   // selected วาระสโม key on the Leaderboard ('none' = unassigned)
+let lbSeason = 'all';     // selected season key ('all' | 'none' | season id)
+let lbFiltersCollapsed = false; // mobile-only: hide the Leaderboard Filter card body
 
-const STAMPS_PER_PAGE = 12; // 3-col × 4-row grid
-
-// ─── Page navigation ─────────────────────────────────────
-function goToPage(idx) {
-    const pages = document.querySelectorAll('.passport-page');
-    pages.forEach((p, i) => {
-        p.style.display = i === idx ? '' : 'none';
-    });
-    currentPageIndex = idx;
-
-    document.getElementById('prev-page').disabled = idx === 0;
-    document.getElementById('next-page').disabled = idx === totalPages - 1;
-
-    document.querySelectorAll('.page-dot').forEach((dot, i) => {
-        dot.classList.toggle('active', i === idx);
-    });
+// ─── Tab navigation ──────────────────────────────────────
+function switchTab(id) {
+    document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.bnav-btn, .tnav-btn').forEach(b => b.classList.remove('active'));
+    const pane = document.getElementById('tab-' + id);
+    if (pane) pane.classList.add('active');
+    const bb = document.getElementById('bnav-' + id);
+    const tb = document.getElementById('tnav-' + id);
+    if (bb) bb.classList.add('active');
+    if (tb) tb.classList.add('active');
+    const crumb = document.getElementById('tb-crumb');
+    if (crumb) crumb.textContent = ({
+        passport: 'My Passport', stamps: 'Stamps',
+        log: 'Flight Log', leaderboard: 'Leaderboard',
+    })[id] || 'My Passport';
+    const body = document.getElementById('app-body');
+    if (body) body.scrollTop = 0;
+    window.scrollTo({ top: 0, behavior: 'instant' });
+    document.getElementById('themePanel')?.classList.remove('open');
+    document.getElementById('profileMenu')?.classList.remove('open');
+    // Render the data-heavy tabs on each visit (cheap, and keeps them fresh).
+    if (id === 'leaderboard') renderLeaderboardPage();
+    if (id === 'log') renderFlightLogPage();
+    if (id === 'passport') fitMrz(); // refit now that the pane has a real width
 }
+// Exposed for the inline onclick handlers in dashboard.html.
+window.switchTab = switchTab;
 
-function buildPageDots() {
-    const row = document.getElementById('page-dots');
-    row.innerHTML = '';
-    for (let i = 0; i < totalPages; i++) {
-        const dot = document.createElement('button');
-        dot.className = 'page-dot' + (i === 0 ? ' active' : '');
-        dot.setAttribute('aria-label', `Page ${i + 1}`);
-        dot.addEventListener('click', () => goToPage(i));
-        row.appendChild(dot);
-    }
-}
+// ─── Stamp grid (flat, all activities) ───────────────────
+const STAMP_COLORS = ['se-teal','se-blue','se-amber','se-rose','se-violet','se-coral'];
 
-// ─── Stamp pages ──────────────────────────────────────────
 function buildStampPages(allActivities, userScans) {
-    const scannedIds = new Set(userScans.map(s => s.activity_id));
-    const scanByActivity = new Map(userScans.map(s => [s.activity_id, s]));
-    const book = document.getElementById('page-1').parentElement; // passport-container
+    _allActivitiesCache = allActivities;
 
-    // Build one stamp cell (earned activity, or a blank filler when none).
-    const makeStampSlot = (activity) => {
-        const slot = document.createElement('div');
-        if (!activity) {
-            slot.className = 'stamp-slot blank';
-            slot.innerHTML = `<div class="stamp-circle"></div><div class="stamp-name"></div>`;
-            return slot;
-        }
-        const scan = scanByActivity.get(activity.id);
-        slot.className = 'stamp-slot active';
-        slot.setAttribute('data-activity-id', activity.id);
+    // Resolve the selected วาระ (default = current), then build the controls and
+    // render the grid for that period.
+    const yearKeys = flYearKeys();
+    if (stampYear === undefined || (stampYear !== 'all' && !yearKeys.includes(stampYear))) {
+        stampYear = (currentYear && yearKeys.includes(currentYear.id)) ? currentYear.id : (yearKeys[0] ?? 'none');
+    }
+    stampDeptFilter = null;
+    buildStampPeriodSelectors();
+    buildDeptFilterChips(allActivities);
+    renderStampGrid();
 
-        const circle = document.createElement('div');
-        circle.className = 'stamp-circle';
-        if (activity.badge_url) {
+    renderFlightLogPage();
+}
+
+// Render the stamp grid + info strip for the selected วาระ/quartile. An activity
+// counts as "earned" only if it was scanned within that period; everything else
+// shows locked. Re-runs whenever the period selectors change.
+function renderStampGrid() {
+    const grid = document.getElementById('stamps-grid');
+    if (!grid) return;
+    const allActivities = _allActivitiesCache;
+
+    const scope = userScansCache.filter(s =>
+        (stampYear === 'all' || (s.samo_year_id ?? 'none') === stampYear) &&
+        (stampSeason === 'all' || (s.season_id ?? 'none') === stampSeason));
+    const scannedIds = new Set(scope.map(s => s.activity_id));
+    const scanByActivity = new Map(scope.map(s => [s.activity_id, s]));
+
+    grid.innerHTML = '';
+    allStamps.length = 0;
+
+    // Only earned stamps are shown (newest-first); not-yet-achieved ones are hidden.
+    const earned = allActivities
+        .filter(a => scannedIds.has(a.id))
+        .sort((a, b) => (scanByActivity.get(b.id)?.scanned_at || '').localeCompare(scanByActivity.get(a.id)?.scanned_at || ''));
+
+    earned.forEach(a => allStamps.push({ activity: a, isActive: true, scan: scanByActivity.get(a.id) }));
+
+    if (earned.length === 0) {
+        grid.innerHTML = '<div class="fl-empty">No stamps earned in this period yet 🗺️</div>';
+    }
+
+    earned.forEach((a, idx) => {
+        const scan = scanByActivity.get(a.id);
+        const card = document.createElement('div');
+        card.className = 'stamp-card';
+        card.setAttribute('data-activity-id', a.id);
+        card.setAttribute('data-dept-id', a.department_id ?? '');
+
+        const check = document.createElement('div');
+        check.className = 'stamp-check';
+        check.textContent = '✓';
+        card.appendChild(check);
+
+        const emojiDiv = document.createElement('div');
+        emojiDiv.className = 'stamp-emoji ' + STAMP_COLORS[idx % STAMP_COLORS.length];
+        if (a.badge_url) {
             const img = document.createElement('img');
-            img.src = fixGoogleDriveUrl(activity.badge_url);
-            img.className = 'stamp-img';
-            img.alt = activity.badge_name || activity.name;
-            circle.appendChild(img);
+            img.src = fixGoogleDriveUrl(a.badge_url);
+            img.alt = a.badge_name || a.name;
+            emojiDiv.appendChild(img);
+            emojiDiv.classList.add('filled');  // enables the grain overlay over the image
         } else {
-            const emoji = document.createElement('span');
-            emoji.className = 'stamp-emoji-placeholder';
-            emoji.textContent = '✅';
-            circle.appendChild(emoji);
+            emojiDiv.textContent = '✅';
         }
+        // shadow lives on this wrapper (the stamp itself is masked, which would clip a shadow)
+        const stampWrap = document.createElement('div');
+        stampWrap.className = 'stamp-wrap';
+        stampWrap.appendChild(emojiDiv);
 
-        const label = document.createElement('div');
-        label.className = 'stamp-name';
-        label.textContent = activity.badge_name || activity.name;
+        const name = document.createElement('div');
+        name.className = 'stamp-name';
+        name.textContent = a.badge_name || a.name;
 
-        slot.appendChild(circle);
-        slot.appendChild(label);
+        const count = document.createElement('div');
+        count.className = 'stamp-count';
+        count.textContent = `+${scan?.points_awarded || a.base_points_km || 0} km`;
 
-        // Certificate indicator — a small ribbon on stamps that have a cert to claim.
-        if ((certsByActivity.get(activity.id) || []).length > 0) {
-            slot.classList.add('has-cert');
+        if ((certsByActivity.get(a.id) || []).length > 0) {
             const ribbon = document.createElement('span');
             ribbon.className = 'stamp-cert-badge';
             ribbon.textContent = '🎓';
             ribbon.title = 'Certificate available';
-            slot.appendChild(ribbon);
+            card.appendChild(ribbon);
         }
 
-        slot.addEventListener('click', () => openMemoryModal(activity, scan));
-        return slot;
+        card.append(stampWrap, name, count);
+        card.addEventListener('click', () => openMemoryModal(a, scan));
+        grid.appendChild(card);
+    });
+
+    // Info strip. Collected, Total KM, "Km to status" and Completion all follow the
+    // selected period (progress toward the status goal within that period).
+    const periodKm = scope.reduce((t, s) => t + (s.points_awarded || 0), 0);
+    const toNext = kmToNextStatus(periodKm);
+    const set = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
+    set('stamps-collected', earned.length);
+    set('stamps-next', toNext > 0 ? toNext.toLocaleString() : 'Max');
+    set('stamps-pct', kmCompletionPct(periodKm) + '%');
+    set('stamps-km', periodKm.toLocaleString());
+
+    // Re-apply the department show/hide filter on the freshly-rendered cards.
+    applyStampFilters();
+}
+
+// วาระสโม + Quartile selectors for the stamps view (same model as the Flight Log
+// / Leaderboard). Hidden when the user has no scans (nothing to scope).
+function buildStampPeriodSelectors() {
+    const row = document.getElementById('stamps-period-row');
+    if (!row) return;
+    const yearKeys = flYearKeys();
+    if (yearKeys.length === 0) { row.style.display = 'none'; row.innerHTML = ''; return; }
+    row.style.display = '';
+
+    // "ทุกวาระสโม" (all วาระ / all-time): quartiles are year-specific, so the
+    // quartile dropdown is hidden and the scope spans every วาระ.
+    const allYears = stampYear === 'all';
+    const seasonKeys = allYears ? [] : flSeasonKeys(stampYear);
+    if (allYears) {
+        stampSeason = 'all';
+    } else if (stampSeason === undefined || (stampSeason !== 'all' && !seasonKeys.includes(stampSeason))) {
+        stampSeason = 'all'; // default = the whole วาระ
+    }
+    const yearOpts = [`<option value="all"${allYears ? ' selected' : ''}>${escapeHtmlText(yearKeyName('all'))}</option>`]
+        .concat(yearKeys.map(k =>
+            `<option value="${k}"${k === stampYear ? ' selected' : ''}>${escapeHtmlText(yearKeyName(k))}</option>`)).join('');
+    const seasonSelect = allYears ? '' :
+        `<select class="fl-season-select" aria-label="Quartile">`
+        + [`<option value="all"${stampSeason === 'all' ? ' selected' : ''}>${escapeHtmlText(seasonKeyName('all'))}</option>`]
+            .concat(seasonKeys.map(k =>
+                `<option value="${k}"${k === stampSeason ? ' selected' : ''}>${escapeHtmlText(seasonKeyName(k))}</option>`)).join('')
+        + `</select>`;
+    row.innerHTML = `
+      <span class="filter-lbl">View</span>
+      <select class="fl-year-select" aria-label="วาระสโม">${yearOpts}</select>
+      ${seasonSelect}`;
+
+    row.querySelector('.fl-year-select').addEventListener('change', e => {
+        stampYear = e.target.value;
+        stampSeason = 'all';            // reset quartile when the วาระ changes
+        buildStampPeriodSelectors();    // refresh quartile options for the new วาระ
+        renderStampGrid();
+    });
+    row.querySelector('.fl-season-select')?.addEventListener('change', e => {
+        stampSeason = e.target.value;
+        renderStampGrid();
+    });
+}
+
+// Shared chip-row builder: a leading label, an "All" chip, then one chip per
+// value. `onPick(value)` runs with null for "All" or the value's key otherwise.
+function buildFilterChips(row, label, items, isActive, onPick) {
+    row.innerHTML = '';
+    const lbl = document.createElement('span');
+    lbl.className = 'filter-lbl';
+    lbl.textContent = label;
+    row.appendChild(lbl);
+
+    const mkChip = (text, value) => {
+        const chip = document.createElement('div');
+        chip.className = 'fchip' + (isActive(value) ? ' active' : '');
+        chip.textContent = text;
+        chip.addEventListener('click', () => {
+            row.querySelectorAll('.fchip').forEach(c => c.classList.remove('active'));
+            chip.classList.add('active');
+            onPick(value);
+        });
+        row.appendChild(chip);
     };
+    mkChip('All', null);
+    items.forEach(({ text, value }) => mkChip(text, value));
+}
 
-    // Split the stamp collection into per-section pages, grouped วาระสโม → season
-    // (newest first, by scan time); activities within a section are newest-first.
-    const recent = a => scanByActivity.get(a.id)?.scanned_at || '';
-    const groupsMap = new Map(); // key -> { yearId, seasonId, acts: [] }
-    allActivities.filter(a => scannedIds.has(a.id)).forEach(a => {
-        const sc = scanByActivity.get(a.id);
-        const key = `${sc?.samo_year_id ?? '∅'}|${sc?.season_id ?? '∅'}`;
-        if (!groupsMap.has(key)) groupsMap.set(key, { yearId: sc?.samo_year_id ?? null, seasonId: sc?.season_id ?? null, acts: [] });
-        groupsMap.get(key).acts.push(a);
+function buildDeptFilterChips(allActivities) {
+    const row = document.getElementById('dept-filter-row');
+    if (!row) return;
+    const deptIds = [...new Set(allActivities.map(a => a.department_id).filter(Boolean))];
+    const items = deptIds.map(id => ({ text: DEPARTMENTS[id] || ('ฝ่าย ' + id), value: String(id) }));
+    buildFilterChips(row, 'Dept', items, v => v === stampDeptFilter, v => {
+        stampDeptFilter = v;
+        applyStampFilters();
     });
-    const maxOf = acts => acts.reduce((m, a) => recent(a) > m ? recent(a) : m, '');
-    const groups = [...groupsMap.values()].sort((x, y) => maxOf(y.acts).localeCompare(maxOf(x.acts)));
-    groups.forEach(g => g.acts.sort((a, b) => recent(b).localeCompare(recent(a))));
+}
 
-    // Flat registry so users can search across all (earned) stamp pages.
-    allStamps.length = 0;
-
-    let pageIdx = 2; // running global page index (cover + info = 0,1)
-    groups.forEach(g => {
-        const yName = g.yearId ? (yearNameById.get(g.yearId) || 'วาระสโม') : 'ไม่ระบุวาระสโม';
-        const seName = g.seasonId ? (seasonNameById.get(g.seasonId) || 'ซีซั่น') : 'ไม่ระบุซีซั่น';
-        const isCur = currentYear && g.yearId === currentYear.id && currentSeason && g.seasonId === currentSeason.id;
-        const nPages = Math.max(1, Math.ceil(g.acts.length / STAMPS_PER_PAGE));
-        for (let p = 0; p < nPages; p++) {
-            const pageActs = g.acts.slice(p * STAMPS_PER_PAGE, (p + 1) * STAMPS_PER_PAGE);
-            const globalPageIdx = pageIdx;
-
-            pageActs.forEach(a => allStamps.push({ activity: a, isActive: true, scan: scanByActivity.get(a.id), pageIndex: globalPageIdx }));
-
-            const page = document.createElement('div');
-            page.className = 'passport-page page-inner';
-            page.id = `page-${globalPageIdx}`;
-            page.style.display = 'none';
-            page.innerHTML = `
-                <div class="inner-page-watermark">🏅</div>
-                <div class="inner-page-header stamp-section-header">
-                    <span class="inner-page-label">${escapeHtmlText(yName)} · ${escapeHtmlText(seName)}${nPages > 1 ? ` (${p + 1}/${nPages})` : ''}${isCur ? ' <span class="fl-now">ปัจจุบัน</span>' : ''}</span>
-                    <span class="inner-page-num">${String(globalPageIdx).padStart(2, '0')}</span>
-                </div>
-                <div class="stamp-page-grid"></div>
-                <div class="inner-page-footer"><div class="barcode-lines"></div></div>`;
-            book.appendChild(page);
-
-            const grid = page.querySelector('.stamp-page-grid');
-            for (let s = 0; s < STAMPS_PER_PAGE; s++) grid.appendChild(makeStampSlot(pageActs[s]));
-            pageIdx++;
-        }
+// Department show/hide filter on the currently-rendered cards (วาระ/quartile
+// scoping is handled upstream in renderStampGrid).
+function applyStampFilters() {
+    const grid = document.getElementById('stamps-grid');
+    if (!grid) return;
+    grid.querySelectorAll('.stamp-card').forEach(card => {
+        card.style.display = (!stampDeptFilter || card.dataset.deptId === stampDeptFilter) ? '' : 'none';
     });
-    const numStampPages = pageIdx - 2;
-
-    // ── Flight Log page (current วาระสโม + season, with dept/sub-dept filters) ──
-    flightLogPageIndex = 2 + numStampPages;
-    const flPage = document.createElement('div');
-    flPage.className = 'passport-page page-inner';
-    flPage.id = 'page-flightlog';
-    flPage.style.display = 'none';
-    flPage.innerHTML = `
-        <div class="inner-page-header">
-            <span class="inner-page-label">FLIGHT LOG</span>
-            <span class="inner-page-num" id="fl-window">—</span>
-        </div>
-        <div id="flightlog-content" class="fl-content"></div>
-        <div class="inner-page-footer"><div class="barcode-lines"></div></div>`;
-    book.appendChild(flPage);
-
-    // ── Leaderboard page (current วาระสโม ↔ season, dept/sub-dept filters) ──
-    leaderboardPageIndex = 2 + numStampPages + 1;
-    const lbPage = document.createElement('div');
-    lbPage.className = 'passport-page page-inner';
-    lbPage.id = 'page-leaderboard';
-    lbPage.style.display = 'none';
-    lbPage.innerHTML = `
-        <div class="inner-page-header">
-            <span class="inner-page-label">LEADERBOARD</span>
-            <span class="inner-page-num" id="lbp-window">—</span>
-        </div>
-        <div id="leaderboard-content" class="lbp-content"></div>
-        <div class="inner-page-footer"><div class="barcode-lines"></div></div>`;
-    book.appendChild(lbPage);
-
-    // Future stamps page — always present
-    const futureIdx = 2 + numStampPages + 2;
-    const futurePage = document.createElement('div');
-    futurePage.className = 'passport-page page-inner';
-    futurePage.id = `page-${futureIdx}`;
-    futurePage.style.display = 'none';
-    const futureGrid = Array(STAMPS_PER_PAGE)
-        .fill('<div class="stamp-slot blank"><div class="stamp-circle"></div><div class="stamp-name"></div></div>')
-        .join('');
-    futurePage.innerHTML = `
-        <div class="inner-page-watermark">⭐</div>
-        <div class="inner-page-header">
-            <span class="inner-page-label">FUTURE STAMPS</span>
-            <span class="inner-page-num">—</span>
-        </div>
-        <div class="stamp-page-grid">${futureGrid}</div>
-        <div class="inner-page-footer"><div class="barcode-lines"></div></div>
-    `;
-    book.appendChild(futurePage);
-
-    // Back cover — always last
-    const backIdx = 2 + numStampPages + 3;
-    const backCover = document.createElement('div');
-    backCover.className = 'passport-page page-back-cover';
-    backCover.id = `page-${backIdx}`;
-    backCover.style.display = 'none';
-    backCover.innerHTML = `
-        <div class="page-cover-inner">
-            <div class="cover-top-bar"></div>
-            <div class="cover-emblem" style="opacity:0.3;">🌏</div>
-            <div class="cover-title" style="opacity:0.2;font-size:1rem;letter-spacing:6px;">SAMO</div>
-            <div class="cover-bottom-bar"></div>
-        </div>
-    `;
-    book.appendChild(backCover);
-
-    totalPages = 2 + numStampPages + 4; // +flightlog +leaderboard +future +back cover
-    buildPageDots();
-    document.getElementById('next-page').disabled = totalPages <= 1;
-
-    // Fill the two new pages now that they exist in the DOM.
-    renderFlightLogPage();
-    renderLeaderboardPage();
 }
 
 // ─── Profile photo ─────────────────────────────────────────
@@ -285,9 +309,9 @@ function openMemoryModal(activity, scan) {
     // Badge
     const wrap = document.getElementById('modal-badge-wrap');
     if (activity.badge_url) {
-        wrap.innerHTML = `<img src="${fixGoogleDriveUrl(activity.badge_url)}" alt="${activity.name}">`;
+        wrap.innerHTML = `<div class="stamp-wrap"><div class="stamp-emoji se-blue filled"><img src="${fixGoogleDriveUrl(activity.badge_url)}" alt="${activity.name}"></div></div>`;
     } else {
-        wrap.innerHTML = `<span class="modal-badge-placeholder">🏅</span>`;
+        wrap.innerHTML = `<div class="stamp-wrap"><div class="stamp-emoji se-blue"><span class="modal-badge-placeholder">🏅</span></div></div>`;
     }
 
     document.getElementById('modal-locked').style.display = 'none';
@@ -305,7 +329,45 @@ function openMemoryModal(activity, scan) {
         showMemoryWrite(activity.id);
     }
 
+    // Self-service removal is offered only for an earned activity (a real scan).
+    const danger = document.getElementById('modal-danger');
+    if (danger) danger.style.display = scan?.id ? '' : 'none';
+
     showModal();
+}
+
+// Let a student remove an activity they scanned by mistake. Deletes only their OWN
+// scan (id + user_id scoped); RLS already permits this. We reload afterwards so every
+// view (km, stamps, flight log, leaderboard, boarding pass) reflects it without
+// partial-cache bookkeeping. Scans stay immutable to *edits*; a user pruning their own
+// mis-scan is a deliberate exception (see MISTAKES.md).
+async function removeOwnScan() {
+    const scan = currentModalScan;
+    const activity = currentModalActivity;
+    if (!scan?.id) { showToast('Nothing to remove'); return; }
+    const name = activity?.name || 'this activity';
+    if (!window.confirm(`Remove "${name}" from your passport?\n\nThis deletes the stamp and its km. You can scan it again later.`)) return;
+
+    const btn = document.getElementById('modal-remove');
+    const original = btn ? btn.textContent : '';
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Removing…'; }
+    try {
+        const { error } = await supabase.from('scans').delete()
+            .eq('id', scan.id).eq('user_id', currentUserId);
+        if (error) throw error;
+        // On-device memory/photos for this activity are no longer reachable — clean up.
+        try {
+            localStorage.removeItem(`mem_${currentUserId}_${activity.id}`);
+            localStorage.removeItem(`photos_${currentUserId}_${activity.id}`);
+        } catch { /* localStorage may be unavailable */ }
+        showToast('Removed from your passport ✓');
+        closeModal();
+        setTimeout(() => location.reload(), 600);
+    } catch (err) {
+        console.error('Failed to remove scan', err);
+        showToast('Could not remove — please try again');
+        if (btn) { btn.disabled = false; btn.textContent = original; }
+    }
 }
 
 
@@ -342,9 +404,15 @@ function populateCerts(activityId) {
         dlBtn.textContent = '⬇️ Download';
         dlBtn.addEventListener('click', () => generateAndDownloadCert(cert, dlBtn));
 
+        // Keep View + Download together as one unit so they never split across lines
+        // (on narrow mobile the row wraps the whole pair below the label, not apart).
+        const actions = document.createElement('div');
+        actions.className = 'cert-row-actions';
+        actions.appendChild(viewBtn);
+        actions.appendChild(dlBtn);
+
         row.appendChild(label);
-        row.appendChild(viewBtn);
-        row.appendChild(dlBtn);
+        row.appendChild(actions);
         list.appendChild(row);
     });
     section.style.display = '';
@@ -646,6 +714,46 @@ function pointsOfScan(s) {
     return s.points_awarded || activityById.get(s.activity_id)?.base_points_km || 0;
 }
 
+// Status ladder: named tiers, one upgrade per 2,000 km. The top tier is reached
+// at the goal (last rung × 2,000 km); progress and "km to next" track that goal.
+const KM_PER_STATUS = 2000;
+const STATUS_TIERS = ['Explorer', 'Adventurer', 'Pathfinder', 'Voyager', 'Pioneer'];
+const KM_STATUS_GOAL = (STATUS_TIERS.length - 1) * KM_PER_STATUS;  // 8,000 km (Pioneer)
+// Tier name for a lifetime km total (index = km / 2,000, capped at the top tier).
+function statusTierName(km) {
+    return STATUS_TIERS[Math.min(STATUS_TIERS.length - 1, Math.floor(Math.max(0, km) / KM_PER_STATUS))];
+}
+// km left to reach the next status (0 once the goal / top tier is reached).
+function kmToNextStatus(km) {
+    if (km >= KM_STATUS_GOAL) return 0;
+    return (Math.floor(km / KM_PER_STATUS) + 1) * KM_PER_STATUS - km;
+}
+// Progress toward the status goal as a clamped integer percent.
+function kmCompletionPct(km) {
+    return Math.max(0, Math.min(100, Math.round(km / KM_STATUS_GOAL * 100)));
+}
+// Progress through the current 2,000 km tier toward the next status (0–100%),
+// i.e. km earned since the last status / km required for the next one. Full once
+// the goal / top tier is reached.
+function kmStatusProgressPct(km) {
+    if (km >= KM_STATUS_GOAL) return 100;
+    return Math.round((km % KM_PER_STATUS) / KM_PER_STATUS * 100);
+}
+// Set the displayed Status (passport + sidebar) from a lifetime km total.
+function setStatusTier(km) {
+    const name = statusTierName(km);
+    const pTier = document.getElementById('p-tier');
+    if (pTier) { pTier.textContent = name; pTier.classList.remove('skeleton'); }
+    const sideTier = document.getElementById('side-tier');
+    if (sideTier) sideTier.textContent = name;
+    // Boarding-pass Group + Seat track the Status tier. Set here (not in
+    // renderPassportMeta, which runs before km loads) so they fill once the tier is known.
+    const grp = document.getElementById('bp-group');
+    if (grp) grp.textContent = name.replace(/^the\s+/i, '').replace(/[^A-Za-z]/g, '').slice(0, 5).toUpperCase() || '—';
+    const seat = document.getElementById('bp-seat');
+    if (seat) seat.textContent = seatCode(currentUserId, name);
+}
+
 // Fallback window used for the headline only when no SamoYear is declared yet:
 // the current calendar year.
 function currentVaraWindow() {
@@ -655,6 +763,92 @@ function currentVaraWindow() {
 
 function escapeHtmlText(s) {
     return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+}
+
+// ─── Passport identity block ──────────────────────────────
+// One full name is stored; the passport shows it split as Given (first word) +
+// Surname (the rest), plus a derived passport no., the วาระสโม dates, and an MRZ strip.
+function splitFullName(full) {
+    const parts = (full || '').trim().split(/\s+/).filter(Boolean);
+    if (parts.length === 0) return { given: '—', surname: '—' };
+    if (parts.length === 1) return { given: parts[0], surname: '—' };
+    return { given: parts[0], surname: parts.slice(1).join(' ') };
+}
+
+function setPassportName(full) {
+    const { given, surname } = splitFullName(full);
+    const g = document.getElementById('p-given');
+    const s = document.getElementById('p-surname');
+    if (g) { g.textContent = given; g.classList.remove('skeleton'); }
+    if (s) { s.textContent = surname; s.classList.remove('skeleton'); }
+    const sn = document.getElementById('side-name');
+    if (sn) { sn.textContent = full || '—'; sn.querySelector('.skeleton')?.remove(); }
+}
+
+function fmtPassportDate(iso) {
+    if (!iso) return '—';
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return '—';
+    const M = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'][d.getMonth()];
+    return `${String(d.getDate()).padStart(2, '0')} ${M} ${d.getFullYear()}`;
+}
+
+function passportNumber(userId, startedAt) {
+    let h = 0; const s = String(userId || '');
+    for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+    const yr = startedAt && !isNaN(new Date(startedAt)) ? new Date(startedAt).getFullYear() : new Date().getFullYear();
+    return `MP-${yr}-${String(h % 10000).padStart(4, '0')}`;
+}
+
+function buildMrz(surname, given, passportNo, issuedIso, expiresIso) {
+    const up = s => (s || '').toUpperCase().replace(/\s+/g, '<');
+    const pad = s => (s + '<'.repeat(44)).slice(0, 44);
+    const ymd = iso => { const d = iso ? new Date(iso) : null; return (d && !isNaN(d))
+        ? `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}` : ''; };
+    const l1 = pad(`PMDKS${up(surname)}<<${up(given)}`);
+    const l2 = pad(`${(passportNo || '').replace(/-/g, '')}<<<THA<<${ymd(issuedIso)}<${ymd(expiresIso)}`);
+    return [l1, l2];
+}
+
+// Stretch each MRZ <text> to span the full SVG width. Percentage textLength is
+// honored inconsistently (Safari ignores it), so set it in px from the rendered
+// width. Re-run on resize/orientation change so it stays edge-to-edge everywhere.
+function fitMrz() {
+    ['p-mrz1', 'p-mrz2'].forEach(id => {
+        const t = document.getElementById(id);
+        if (!t) return;
+        const w = t.closest('svg')?.clientWidth || 0;
+        if (w > 0) t.setAttribute('textLength', w);
+    });
+}
+if (!window.__mrzFitBound) {
+    window.__mrzFitBound = true;
+    window.addEventListener('resize', fitMrz);
+}
+
+// Fills passport no., Issued/Expires and the MRZ — needs currentYear + currentUserName,
+// so it runs after those load (and again after a name edit).
+function renderPassportMeta() {
+    const startedAt = currentYear?.started_at || null;
+    let expiresIso = currentYear?.ended_at || null;
+    if (!expiresIso && startedAt) {
+        const d = new Date(startedAt);
+        if (!isNaN(d)) { d.setFullYear(d.getFullYear() + 1); expiresIso = d.toISOString(); }
+    }
+    const passNo = passportNumber(currentUserId, startedAt);
+    const set = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
+    set('p-passport-no', passNo);
+    set('p-issued', fmtPassportDate(startedAt));
+    set('p-expires', fmtPassportDate(expiresIso));
+    const { given, surname } = splitFullName(currentUserName);
+    const [m1, m2] = buildMrz(surname, given, passNo, startedAt, expiresIso);
+    set('p-mrz1', m1); set('p-mrz2', m2);
+    fitMrz();
+
+    // Boarding pass
+    set('bp-pax', currentUserName || '—');
+    set('bp-flight', currentYear ? upFlight(currentYear.name) : 'MD-2027');
+    // Group + Seat are filled by setStatusTier (they need the loaded km/tier).
 }
 
 // ─── Edit name ────────────────────────────────────────────
@@ -674,20 +868,21 @@ async function editName() {
         return;
     }
     currentUserName = next;
-    document.getElementById('p-name').textContent = next;
+    setPassportName(next);
+    renderPassportMeta();
     showToast('Name updated ✓');
 }
 
-// Briefly highlight + scroll to a stamp on its page (used after search).
+// Briefly highlight + scroll to a stamp in the stamps grid.
 function flashStamp(activityId) {
     requestAnimationFrame(() => {
-        const slot = document.querySelector(`.stamp-slot[data-activity-id="${activityId}"]`);
-        if (!slot) return;
-        slot.scrollIntoView({ block: 'center', behavior: 'smooth' });
-        slot.classList.remove('flash');
-        void slot.offsetWidth; // restart the animation
-        slot.classList.add('flash');
-        setTimeout(() => slot.classList.remove('flash'), 1700);
+        const card = document.querySelector(`.stamp-card[data-activity-id="${activityId}"]`);
+        if (!card) return;
+        card.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        card.classList.remove('flash');
+        void card.offsetWidth;
+        card.classList.add('flash');
+        setTimeout(() => card.classList.remove('flash'), 1700);
     });
 }
 
@@ -706,16 +901,14 @@ function hideSearchResults() {
     box.innerHTML = '';
 }
 
-// Navigate to a stamp's page and highlight it — no popup.
-function goToStamp(activity, pageIndex) {
+// Navigate to a stamp in the grid (switch to stamps tab) and highlight it.
+function goToStamp(activity) {
     const search = document.getElementById('stamp-search');
     search.value = '';
     search.blur();
     hideSearchResults();
-    if (typeof pageIndex === 'number' && pageIndex < totalPages) {
-        goToPage(pageIndex);
-        flashStamp(activity.id);
-    }
+    switchTab('stamps');
+    flashStamp(activity.id);
 }
 
 // Live dropdown of matching stamps as the user types.
@@ -732,7 +925,7 @@ function renderStampSearch(term) {
     }
 
     box.innerHTML = '';
-    matches.forEach(({ activity, pageIndex }) => {
+    matches.forEach(({ activity }) => {
         const row = document.createElement('button');
         row.type = 'button';
         row.className = 'stamp-search-item';
@@ -754,10 +947,10 @@ function renderStampSearch(term) {
 
         const go = document.createElement('span');
         go.className = 'ss-go';
-        go.textContent = `Page ${pageIndex + 1} ›`;
+        go.textContent = 'View ›';
 
         row.append(thumb, name, go);
-        row.addEventListener('click', () => goToStamp(activity, pageIndex));
+        row.addEventListener('click', () => goToStamp(activity));
         box.appendChild(row);
     });
     box.style.display = '';
@@ -767,7 +960,7 @@ function renderStampSearch(term) {
 function jumpToSearch(term) {
     const matches = searchMatches(term);
     if (matches.length === 0) { showToast('No matching stamp'); return; }
-    goToStamp(matches[0].activity, matches[0].pageIndex);
+    goToStamp(matches[0].activity);
 }
 
 // ─── Flight Log + Leaderboard pages (SamoYear / Season model) ─────────────
@@ -819,18 +1012,21 @@ function flSeasonKeys(yearKey) {
     });
     return [...m.entries()].sort((a, b) => b[1].localeCompare(a[1])).map(([k]) => k);
 }
-const yearKeyName = k => k === 'none' ? 'ไม่ระบุวาระสโม' : (yearNameById.get(k) || 'วาระสโม');
+// Flight (วาระสโม) names/numbers are always shown uppercased. Thai labels are
+// unaffected by toUpperCase(), so it only caps latin names like "samo71".
+const upFlight = s => (s || '').toUpperCase();
+const yearKeyName = k => upFlight(k === 'all' ? 'ทุกวาระสโม' : k === 'none' ? 'ไม่ระบุวาระสโม' : (yearNameById.get(k) || 'วาระสโม'));
 const seasonKeyName = k => k === 'all' ? 'ทุกซีซั่น' : k === 'none' ? 'ไม่ระบุซีซั่น' : (seasonNameById.get(k) || 'ซีซั่น');
 
 function renderFlightLogPage() {
-    const box = document.getElementById('flightlog-content');
-    if (!box) return;
+    const listBox = document.getElementById('flightlog-list');
+    const sideBox = document.getElementById('flightlog-side');
+    if (!listBox || !sideBox) return;
 
     // No scans yet → just the empty state (no point showing empty dropdowns).
     if (userScansCache.length === 0) {
-        const winEl0 = document.getElementById('fl-window');
-        if (winEl0) winEl0.textContent = '—';
-        box.innerHTML = '<div class="fl-empty">No flights logged here yet ✈️</div>';
+        listBox.innerHTML = '<div class="fl-empty">No flights logged here yet ✈️</div>';
+        sideBox.innerHTML = '';
         return;
     }
 
@@ -843,9 +1039,6 @@ function renderFlightLogPage() {
     if (flSeason === undefined || (flSeason !== 'all' && !seasonKeys.includes(flSeason))) {
         flSeason = (currentSeason && seasonKeys.includes(currentSeason.id)) ? currentSeason.id : 'all';
     }
-
-    const winEl = document.getElementById('fl-window');
-    if (winEl) winEl.textContent = yearKeys.length ? yearKeyName(flYear) : '—';
 
     // Scope = scans in the selected วาระสโม (+ season unless "all").
     const scope = userScansCache.filter(s =>
@@ -867,39 +1060,77 @@ function renderFlightLogPage() {
     const seasonOpts = [`<option value="all"${flSeason === 'all' ? ' selected' : ''}>${escapeHtmlText(seasonKeyName('all'))}</option>`]
         .concat(seasonKeys.map(k => `<option value="${k}"${k === flSeason ? ' selected' : ''}>${escapeHtmlText(seasonKeyName(k))}</option>`)).join('');
 
-    let html = `
-      <div class="fl-selectors">
-        <select class="fl-year-select" aria-label="วาระสโม">${yearOpts}</select>
-        <select class="fl-season-select" aria-label="Season">${seasonOpts}</select>
-        ${deptSelectHtml(scope, flFilter)}
+    // ── Side cards: filters card + a separate summary card below it ──
+    const sideHtml = `
+      <div class="ls-card filter-card${flFiltersCollapsed ? ' filters-collapsed' : ''}">
+        <button type="button" class="ls-title filter-toggle" aria-expanded="${!flFiltersCollapsed}">
+          <span>🧭 Filter</span><span class="filter-chevron">▾</span>
+        </button>
+        <div class="fl-selectors">
+          <select class="fl-year-select" aria-label="วาระสโม">${yearOpts}</select>
+          <select class="fl-season-select" aria-label="Season">${seasonOpts}</select>
+          ${deptSelectHtml(scope, flFilter)}
+        </div>
       </div>
-      <div class="seg-totals">
-        <div class="seg-total"><span>${escapeHtmlText(yearKeyName(flYear))} · ${escapeHtmlText(seasonKeyName(flSeason))}</span><strong>${total}<small>km</small></strong></div>
-      </div>
-      <div class="fl-list">`;
+      <div class="ls-card totals-card">
+        <div class="ls-title">📊 Totals</div>
+        <div class="ls-summary">
+          <div class="ls-row"><span class="ls-lbl">วาระสโม</span><span class="ls-val">${escapeHtmlText(yearKeyName(flYear))}</span></div>
+          <div class="ls-row"><span class="ls-lbl">Quartile</span><span class="ls-val">${escapeHtmlText(seasonKeyName(flSeason))}</span></div>
+          <div class="ls-row ls-total"><span class="ls-lbl">Total</span><span class="ls-val">${total}<small>km</small></span></div>
+        </div>
+      </div>`;
+
+    // ── Flight list (left column) ──
+    let html = '';
     if (filtered.length === 0) {
         html += '<div class="fl-empty">No flights logged here yet ✈️</div>';
     } else {
         filtered.forEach(s => {
             const seTag = flSeason === 'all' && s.season_id ? ` <small class="fl-season">${escapeHtmlText(seasonNameById.get(s.season_id) || '')}</small>` : '';
+            // Meta line: when it was earned · ฝ่ายอุปนายก · sub-department
+            const deptId = scanDept(s), subId = scanSubDept(s);
+            const meta = [
+                fmtPassportDate(s.scanned_at),
+                deptId != null ? (DEPARTMENTS[deptId] || ('ฝ่าย ' + deptId)) : '',
+                subId != null ? (SUBDEPARTMENTS[subId] || ('ย่อย ' + subId)) : '',
+            ].filter(Boolean).map(escapeHtmlText).join(' · ');
+            // Icon: reuse the activity's stamp badge (image, or ✈️ fallback).
+            const act = activityById.get(s.activity_id);
+            const colorCls = STAMP_COLORS[(Number(deptId) || 0) % STAMP_COLORS.length];
+            const iconInner = act?.badge_url
+                ? `<img src="${fixGoogleDriveUrl(act.badge_url)}" alt="${escapeHtmlText(act.badge_name || scanDisplayName(s))}">`
+                : '✈️';
             html += `<div class="fl-item">
-                <span class="fl-item-name">✈️ ${escapeHtmlText(scanDisplayName(s))}${seTag}</span>
+                <div class="fl-item-icon ${colorCls}">${iconInner}</div>
+                <div class="fl-item-main">
+                  <span class="fl-item-name">${escapeHtmlText(scanDisplayName(s))}${seTag}</span>
+                  <span class="fl-item-meta">${meta}</span>
+                </div>
                 <span class="fl-item-km">+${pointsOfScan(s)} km</span>
               </div>`;
         });
     }
-    html += '</div>';
-    box.innerHTML = html;
+    listBox.innerHTML = html;
+    sideBox.innerHTML = sideHtml;
 
-    box.querySelector('.fl-year-select')?.addEventListener('change', e => {
+    sideBox.querySelector('.fl-year-select')?.addEventListener('change', e => {
         flYear = e.target.value; flSeason = undefined; // re-default the season for the new year
         renderFlightLogPage();
     });
-    box.querySelector('.fl-season-select')?.addEventListener('change', e => {
+    sideBox.querySelector('.fl-season-select')?.addEventListener('change', e => {
         flSeason = e.target.value; renderFlightLogPage();
     });
-    box.querySelector('.seg-select')?.addEventListener('change', e => {
+    sideBox.querySelector('.seg-select')?.addEventListener('change', e => {
         flFilter = parseDeptValue(e.target.value); renderFlightLogPage();
+    });
+    // Mobile: collapse/expand the Filter card body. Toggle the class live (no
+    // re-render) and remember the state so it survives a later re-render.
+    sideBox.querySelector('.filter-toggle')?.addEventListener('click', e => {
+        flFiltersCollapsed = !flFiltersCollapsed;
+        const card = e.currentTarget.closest('.filter-card');
+        card.classList.toggle('filters-collapsed', flFiltersCollapsed);
+        e.currentTarget.setAttribute('aria-expanded', String(!flFiltersCollapsed));
     });
 }
 
@@ -910,7 +1141,7 @@ let lbPageNames = null;
 async function ensureLbPageData() {
     if (lbPageScans) return true;
     const [{ data: scans, error: e1 }, { data: profiles, error: e2 }] = await Promise.all([
-        supabase.from('scans').select('user_id, activity_id, points_awarded, samo_year_id, season_id, department_id, sub_department_id'),
+        supabase.from('scans').select('user_id, activity_id, points_awarded, samo_year_id, season_id, department_id, sub_department_id, scanned_at'),
         supabase.from('profiles').select('id, full_name'),
     ]);
     if (e1 || e2) return false;
@@ -919,80 +1150,221 @@ async function ensureLbPageData() {
     return true;
 }
 
+// Distinct วาระสโม / season keys present across ALL scans, newest-first (mirrors the
+// Flight Log helpers but global, not just the current user's scans).
+function lbYearKeys() {
+    const m = new Map();
+    (lbPageScans || []).forEach(s => {
+        const k = s.samo_year_id ?? 'none', t = s.scanned_at || '';
+        if (!m.has(k) || t > m.get(k)) m.set(k, t);
+    });
+    return [...m.entries()].sort((a, b) => b[1].localeCompare(a[1])).map(([k]) => k);
+}
+function lbSeasonKeys(yearKey) {
+    const m = new Map();
+    (lbPageScans || []).forEach(s => {
+        if ((s.samo_year_id ?? 'none') !== yearKey) return;
+        const k = s.season_id ?? 'none', t = s.scanned_at || '';
+        if (!m.has(k) || t > m.get(k)) m.set(k, t);
+    });
+    return [...m.entries()].sort((a, b) => b[1].localeCompare(a[1])).map(([k]) => k);
+}
+
 function lbPageRanking() {
     const totals = new Map();
     (lbPageScans || []).forEach(s => {
-        if (currentYear && s.samo_year_id !== currentYear.id) return;
-        if (lbpView === 'season' && (!currentSeason || s.season_id !== currentSeason.id)) return;
+        if ((s.samo_year_id ?? 'none') !== lbYear) return;
+        if (lbSeason !== 'all' && (s.season_id ?? 'none') !== lbSeason) return;
         if (lbpFilter.type === 'dept' && (s.department_id ?? null) !== lbpFilter.id) return;
         if (lbpFilter.type === 'sub' && (s.sub_department_id ?? null) !== lbpFilter.id) return;
         totals.set(s.user_id, (totals.get(s.user_id) || 0) + (s.points_awarded || 0));
     });
+    // Status tier reflects the km earned in the selected period (the row's pts).
     return [...totals.entries()]
-        .map(([uid, pts]) => ({ uid, pts, name: lbPageNames.get(uid) || 'Traveler' }))
+        .map(([uid, pts]) => ({ uid, pts, name: lbPageNames.get(uid) || 'Traveler', tier: statusTierName(pts) }))
         .sort((a, b) => b.pts - a.pts);
+}
+
+// Cabin layout per Status tier, laid out like a real aircraft: First (Pioneer) is a
+// roomy 4-abreast at the nose, Business (Pathfinder/Voyager) 8-abreast in the middle,
+// Economy (Explorer/Adventurer + default) 10-abreast toward the back. "I" is skipped the
+// way airlines do. `rows` is the cabin's row count starting at `rowMin`. First/Business
+// are fixed cabins; Economy `grows` — `rows` is a realistic *minimum* that expands when
+// the crowd outgrows it, so the plane gains rows instead of running out of seats.
+function cabinLayout(tier) {
+    if (tier === 'Pioneer')                              // First — 4/row, 4 rows
+        return { letters: ['A', 'C', 'D', 'F'], rowMin: 1, rows: 4, grows: false };
+    if (tier === 'Pathfinder' || tier === 'Voyager')     // Business — 8/row, 10 rows
+        return { letters: ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'], rowMin: 5, rows: 10, grows: false };
+    return { letters: ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'J', 'K'], rowMin: 20, rows: 39, grows: true }; // Economy — 10/row, 39+ rows
+}
+
+// Decorative but stable boarding-pass seat (e.g. "12C"), derived from the user id so it
+// never changes per reload. The cabin (rows + seats/row) follows the Status tier. Row and
+// letter use different bits of the hash so they don't correlate. `population` is the head
+// count in this cabin: Economy adds rows so the plane is at least as big as the crowd
+// (10/row), keeping a realistic minimum; First/Business are fixed and ignore it.
+function seatCode(uid, tier, population = 0) {
+    let h = 0; const s = String(uid || '');
+    for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+    const { letters, rowMin, rows, grows } = cabinLayout(tier);
+    const rowSpan = grows ? Math.max(rows, Math.ceil(population / letters.length)) : rows;
+    const row = rowMin + (h % rowSpan);
+    const letter = letters[(h >>> 8) % letters.length];
+    return `${row}${letter}`;
 }
 
 async function renderLeaderboardPage() {
     const box = document.getElementById('leaderboard-content');
     if (!box) return;
     const winEl = document.getElementById('lbp-window');
-    if (winEl) winEl.textContent = currentYear ? currentYear.name : '—';
-
-    // With no open season, the season view is always empty — default to the year.
-    if (!currentSeason) lbpView = 'year';
+    if (winEl) winEl.textContent = currentYear ? upFlight(currentYear.name) : '—';
 
     box.innerHTML = '<p class="lb-loading">Loading…</p>';
     if (!(await ensureLbPageData())) { box.innerHTML = '<p class="lb-loading">Could not load leaderboard.</p>'; return; }
 
-    const chipScans = (lbPageScans || []).filter(s => !currentYear || s.samo_year_id === currentYear.id);
+    // Resolve the selected วาระสโม / season (default to the current ones), mirroring
+    // the Flight Log filter resolution.
+    const yearKeys = lbYearKeys();
+    if (lbYear === undefined || !yearKeys.includes(lbYear)) {
+        lbYear = (currentYear && yearKeys.includes(currentYear.id)) ? currentYear.id : (yearKeys[0] ?? 'none');
+    }
+    const seasonKeys = lbSeasonKeys(lbYear);
+    if (lbSeason !== 'all' && !seasonKeys.includes(lbSeason)) lbSeason = 'all';
+
+    // Keep the dept filter in scope: if the chosen dept/sub isn't present in the
+    // selected period, fall back to "all" (avoids an empty board on a stale value).
+    const scopeScans = (lbPageScans || []).filter(s =>
+        (s.samo_year_id ?? 'none') === lbYear &&
+        (lbSeason === 'all' || (s.season_id ?? 'none') === lbSeason));
+    const inScope = (key, id) => scopeScans.some(s => (s[key] ?? null) === id);
+    if ((lbpFilter.type === 'dept' && !inScope('department_id', lbpFilter.id)) ||
+        (lbpFilter.type === 'sub' && !inScope('sub_department_id', lbpFilter.id))) {
+        lbpFilter = { type: 'all', id: null };
+    }
+
     const rows = lbPageRanking();
     const medals = ['🥇', '🥈', '🥉'];
-    const order = [1, 0, 2];
 
-    // The Season button only exists when there's an open season — otherwise the
-    // view is forced to 'year' above and a Season toggle would be a dead, but
-    // still-highlightable, button (the source of the toggle colour glitch).
-    const seasonBtn = currentSeason
-        ? `<button class="seg-tg${lbpView === 'season' ? ' on' : ''}" data-v="season">${escapeHtmlText(currentSeason.name)}</button>`
-        : '';
-    let html = `
-      <div class="seg-toggle">
-        ${seasonBtn}
-        <button class="seg-tg${lbpView === 'year' ? ' on' : ''}" data-v="year">${currentYear ? escapeHtmlText(currentYear.name) : 'วาระ'}</button>
-      </div>
-      <div class="seg-filter">${deptSelectHtml(chipScans, lbpFilter)}</div>`;
+    // ── Filter card (year / quartile / dept — same controls as the Flight Log) ──
+    const yearOpts = yearKeys.map(k => `<option value="${k}"${k === lbYear ? ' selected' : ''}>${escapeHtmlText(yearKeyName(k))}</option>`).join('');
+    const seasonOpts = [`<option value="all"${lbSeason === 'all' ? ' selected' : ''}>${escapeHtmlText(seasonKeyName('all'))}</option>`]
+        .concat(seasonKeys.map(k => `<option value="${k}"${k === lbSeason ? ' selected' : ''}>${escapeHtmlText(seasonKeyName(k))}</option>`)).join('');
+    const filterCard = `
+      <div class="ls-card filter-card${lbFiltersCollapsed ? ' filters-collapsed' : ''}">
+        <button type="button" class="ls-title filter-toggle" aria-expanded="${!lbFiltersCollapsed}">
+          <span>🧭 Filter</span><span class="filter-chevron">▾</span>
+        </button>
+        <div class="fl-selectors">
+          <select class="lb-year-select" aria-label="วาระสโม">${yearOpts}</select>
+          <select class="lb-season-select" aria-label="Season">${seasonOpts}</select>
+          ${deptSelectHtml(scopeScans, lbpFilter)}
+        </div>
+      </div>`;
 
-    if (rows.length === 0) {
-        html += '<p class="lb-loading">No rankings yet.</p>';
-    } else {
-        html += '<div class="lb-podium-row">' + order.filter(i => rows[i]).map(i => {
-            const r = rows[i];
-            return `<div class="lb-podium-spot lb-podium-${i + 1}${r.uid === currentUserId ? ' lb-me' : ''}">
-                <div class="lb-podium-medal">${medals[i]}</div>
-                <div class="lb-podium-name">${escapeHtmlText(r.name)}</div>
-                <div class="lb-podium-pts">${r.pts}<small>km</small></div>
+    // ── Your Stats card ──
+    const myIdx = rows.findIndex(r => r.uid === currentUserId);
+    const myRow = myIdx >= 0 ? rows[myIdx] : null;
+    // Distinct stamps the current user earned within the selected filter period.
+    const periodStamps = new Set((lbPageScans || []).filter(s =>
+        s.user_id === currentUserId &&
+        (s.samo_year_id ?? 'none') === lbYear &&
+        (lbSeason === 'all' || (s.season_id ?? 'none') === lbSeason) &&
+        (lbpFilter.type !== 'dept' || (s.department_id ?? null) === lbpFilter.id) &&
+        (lbpFilter.type !== 'sub' || (s.sub_department_id ?? null) === lbpFilter.id)
+    ).map(s => s.activity_id)).size;
+    // Status mirrors the period total shown in this card (myRow.pts).
+    const statusTier = statusTierName(myRow ? myRow.pts : 0);
+    const statsCard = `
+      <div class="ls-card lb-stats-card">
+        <div class="ls-title">📊 Your Stats</div>
+        <div class="ls-summary">
+          <div class="ls-row"><span class="ls-lbl">Rank</span><span class="ls-val">${myRow ? `#${myIdx + 1} of ${rows.length}` : '—'}</span></div>
+          <div class="ls-row"><span class="ls-lbl">Total km</span><span class="ls-val">${myRow ? myRow.pts.toLocaleString() : 0} km</span></div>
+          <div class="ls-row"><span class="ls-lbl">Total Stamps</span><span class="ls-val">${periodStamps}</span></div>
+          <div class="ls-row"><span class="ls-lbl">Status</span><span class="ls-val">${escapeHtmlText(statusTier)}</span></div>
+        </div>
+      </div>`;
+
+    // ── Top 3 Podium card (2nd · 1st · 3rd bar chart) ──
+    const top3 = rows.slice(0, 3);
+    let podiumCard = '';
+    if (top3.length) {
+        const maxPts = Math.max(...top3.map(r => r.pts), 1);
+        const podOrder = [1, 0, 2]; // render 2nd, 1st, 3rd
+        const bars = podOrder.filter(i => top3[i]).map(i => {
+            const r = top3[i];
+            const h = 34 + Math.round((r.pts / maxPts) * 46); // 34–80px
+            const place = ['1st', '2nd', '3rd'][i];
+            return `<div class="lb-pod-col lb-pod-${i + 1}${r.uid === currentUserId ? ' lb-me' : ''}" title="${escapeHtmlText(r.name)} · ${r.pts} km">
+                <div class="lb-pod-name">${escapeHtmlText(r.name.split(/\s+/)[0] || r.name)}</div>
+                <div class="lb-pod-bar" style="height:${h}px">${medals[i]}</div>
+                <div class="lb-pod-place">${place}</div>
               </div>`;
-        }).join('') + '</div>';
-        html += '<div class="lbp-list">';
-        rows.slice(3, 100).forEach((r, i) => {
-            html += `<div class="lb-row${r.uid === currentUserId ? ' lb-me' : ''}">
-                <span class="lb-rank">${i + 4}</span>
-                <span class="lb-row-name">${escapeHtmlText(r.name)}</span>
-                <span class="lb-row-pts">${r.pts} km</span>
-              </div>`;
-        });
-        html += '</div>';
+        }).join('');
+        podiumCard = `
+          <div class="ls-card lb-podium-card">
+            <div class="ls-title">🏆 Top 3 Podium</div>
+            <div class="lb-podium">${bars}</div>
+          </div>`;
     }
-    box.innerHTML = html;
 
-    box.querySelectorAll('.seg-tg').forEach(btn => btn.addEventListener('click', () => {
-        lbpView = btn.getAttribute('data-v');
+    // ── Top Passengers list (top 10) ──
+    const scopeName = `${yearKeyName(lbYear)} · ${lbSeason === 'all' ? 'All time' : seasonKeyName(lbSeason)}`.toUpperCase();
+    let listHtml;
+    if (rows.length === 0) {
+        listHtml = '<div class="lb-empty">No rankings yet ✈️</div>';
+    } else {
+        // Economy cabin grows with its crowd, so the seat needs the cabin head count.
+        const econPop = rows.filter(r => cabinLayout(r.tier).grows).length;
+        listHtml = rows.slice(0, 10).map((r, i) => {
+            const rk = i + 1;
+            const initial = escapeHtmlText((r.name.trim()[0] || '?').toUpperCase());
+            const medal = rk <= 3 ? `<span class="lb-medal">${medals[rk - 1]}</span>` : '';
+            const youPill = r.uid === currentUserId ? '<span class="lb-you">🪪 you</span>' : '';
+            return `<div class="lb-row${r.uid === currentUserId ? ' lb-me' : ''}">
+                <span class="lb-rank r${rk}">${rk}</span>
+                <div class="lb-av">${initial}${medal}</div>
+                <div class="lb-info">
+                  <div class="lb-name">${escapeHtmlText(r.name)}${youPill}</div>
+                  <div class="lb-badge">${escapeHtmlText(r.tier)} · ${seatCode(r.uid, r.tier, econPop)}</div>
+                </div>
+                <div class="lb-km-wrap"><div class="lb-km">${r.pts.toLocaleString()}</div><div class="lb-kmu">km</div></div>
+              </div>`;
+        }).join('');
+    }
+
+    box.innerHTML = `
+      <div class="lb-grid">
+        <div class="lb-card lb-main">
+          <div class="lb-head">
+            <span class="lb-head-title">Top Passengers ✈️</span>
+            <span class="lb-head-sub">${escapeHtmlText(scopeName)}</span>
+          </div>
+          <div class="lb-list">${listHtml}</div>
+        </div>
+        <aside class="lb-side">
+          ${filterCard}
+          ${statsCard}
+          ${podiumCard}
+        </aside>
+      </div>`;
+
+    box.querySelector('.lb-year-select')?.addEventListener('change', e => {
+        lbYear = e.target.value; lbSeason = 'all'; // re-default the season for the new year
         renderLeaderboardPage();
-    }));
+    });
+    box.querySelector('.lb-season-select')?.addEventListener('change', e => {
+        lbSeason = e.target.value; renderLeaderboardPage();
+    });
     box.querySelector('.seg-select')?.addEventListener('change', e => {
-        lbpFilter = parseDeptValue(e.target.value);
-        renderLeaderboardPage();
+        lbpFilter = parseDeptValue(e.target.value); renderLeaderboardPage();
+    });
+    box.querySelector('.filter-toggle')?.addEventListener('click', e => {
+        lbFiltersCollapsed = !lbFiltersCollapsed;
+        const card = e.currentTarget.closest('.filter-card');
+        card.classList.toggle('filters-collapsed', lbFiltersCollapsed);
+        e.currentTarget.setAttribute('aria-expanded', String(!lbFiltersCollapsed));
     });
 }
 
@@ -1002,34 +1374,8 @@ async function init() {
         e.preventDefault();
         await logout();
     });
-
-    document.getElementById('prev-page').addEventListener('click', () => {
-        if (currentPageIndex > 0) goToPage(currentPageIndex - 1);
-    });
-
-    document.getElementById('next-page').addEventListener('click', () => {
-        if (currentPageIndex < totalPages - 1) goToPage(currentPageIndex + 1);
-    });
-
-    // Tap the cover to open the passport (it says "Open to view →")
-    const cover = document.getElementById('page-0');
-    if (cover) cover.addEventListener('click', () => { if (currentPageIndex === 0) goToPage(1); });
-
-    // Swipe left/right to turn pages (horizontal gestures only — vertical scrolls)
-    const book = document.querySelector('.passport-container');
-    let sx = 0, sy = 0;
-    book.addEventListener('touchstart', (e) => {
-        const t = e.changedTouches[0];
-        sx = t.clientX; sy = t.clientY;
-    }, { passive: true });
-    book.addEventListener('touchend', (e) => {
-        const t = e.changedTouches[0];
-        const dx = t.clientX - sx, dy = t.clientY - sy;
-        if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.4) {
-            if (dx < 0 && currentPageIndex < totalPages - 1) goToPage(currentPageIndex + 1);
-            else if (dx > 0 && currentPageIndex > 0) goToPage(currentPageIndex - 1);
-        }
-    }, { passive: true });
+    const pmLogout = document.getElementById('pm-logout');
+    if (pmLogout) pmLogout.addEventListener('click', async () => { await logout(); });
 
     // Modal close
     document.getElementById('modal-close').addEventListener('click', closeModal);
@@ -1058,21 +1404,12 @@ async function init() {
         closeModal();
     });
 
-    // Topbar 🏆 → Leaderboard page; 📜 → Flight Log page (the new swipeable pages)
-    document.getElementById('leaderboard-btn').addEventListener('click', (e) => {
-        e.preventDefault();
-        if (leaderboardPageIndex >= 0) { goToPage(leaderboardPageIndex); renderLeaderboardPage(); }
-    });
-    document.getElementById('history-btn').addEventListener('click', (e) => {
-        e.preventDefault();
-        if (flightLogPageIndex >= 0) { goToPage(flightLogPageIndex); renderFlightLogPage(); }
-    });
+    document.getElementById('modal-remove')?.addEventListener('click', removeOwnScan);
 
     // Edit name
     document.getElementById('edit-name-btn').addEventListener('click', editName);
 
-    // Stamp search — live dropdown; click an item (or press Enter) to jump to
-    // that stamp's page and highlight it (no popup).
+    // Stamp search
     const stampSearch = document.getElementById('stamp-search');
     stampSearch.addEventListener('input', function () { renderStampSearch(this.value); });
     stampSearch.addEventListener('keydown', (e) => {
@@ -1089,8 +1426,6 @@ async function init() {
         window.visualViewport.addEventListener('resize', syncModalViewport);
         window.visualViewport.addEventListener('scroll', syncModalViewport);
     }
-    // When the memory textarea is focused, make sure it scrolls into view above
-    // the keyboard once the layout settles.
     document.getElementById('modal-memory-text').addEventListener('focus', () => {
         setTimeout(() => {
             document.getElementById('modal-memory-text')
@@ -1098,12 +1433,10 @@ async function init() {
         }, 300);
     });
 
-    // "My data" info icon — explains what the backup covers
-    document.getElementById('backup-info-btn').addEventListener('click', () => {
+    // Data backup
+    document.getElementById('backup-info-btn')?.addEventListener('click', () => {
         showToast('Backup saves your profile photo, activity memories & notes (kept only on this device) to a file.', 4200);
     });
-
-    // Data backup (export / import)
     document.getElementById('export-data-btn').addEventListener('click', exportUserData);
     document.getElementById('import-data-btn').addEventListener('click', () => {
         document.getElementById('import-data-input').click();
@@ -1129,13 +1462,12 @@ async function init() {
         || user.email?.split('@')[0]
         || 'Traveler';
 
-    const pName = document.getElementById('p-name');
-    pName.textContent = displayName;
-    pName.classList.remove('skeleton');
+    setPassportName(displayName);
     currentUserName = displayName;
 
-    // ── Profile / tier ──────────────────────────────────────
-    const pTier = document.getElementById('p-tier');
+    // ── Profile ──────────────────────────────────────────────
+    // Status (tier) is derived from total km after scans load (setStatusTier);
+    // user_tiers still supplies the stored name + travel-visa flag.
     const { data: profileTier, error: profileError } = await supabase
         .from('user_tiers')
         .select('*')
@@ -1143,18 +1475,13 @@ async function init() {
         .single();
 
     if (!profileError && profileTier) {
-        if (profileTier.full_name) { pName.textContent = profileTier.full_name; currentUserName = profileTier.full_name; }
-        pTier.textContent = profileTier.final_tier || 'Novice';
+        if (profileTier.full_name) { setPassportName(profileTier.full_name); currentUserName = profileTier.full_name; }
         if (profileTier.has_travel_visa) {
             document.getElementById('visa-visa').style.display = '';
         }
-    } else {
-        pTier.textContent = 'Novice';
     }
-    pTier.classList.remove('skeleton');
 
     // ── Activities & scans ──────────────────────────────────
-    const pKm = document.getElementById('p-km');
     try {
         const [
             { data: scans, error: scansError },
@@ -1187,6 +1514,9 @@ async function init() {
         yearNameById.clear();
         (samoYearRows || []).forEach(y => yearNameById.set(y.id, y.name));
 
+        // Passport identity meta (no., issued/expires, MRZ) now that the วาระสโม is loaded.
+        renderPassportMeta();
+
         // Group certificate templates by activity (ignore errors — certs are optional)
         certsByActivity.clear();
         (allCerts || []).forEach(c => {
@@ -1194,66 +1524,72 @@ async function init() {
             certsByActivity.get(c.activity_id).push(c);
         });
 
-        // Headline KM = SamoYear total; the label shows the current season's points.
-        // Falls back to the legacy calendar-วาระ window if no year is declared yet.
-        const wlabel = document.getElementById('km-window-label');
+        // Headline KM = SamoYear total; the Log-tab banner label shows the current
+        // season's points. Falls back to the legacy calendar-วาระ window if no year
+        // is declared yet.
         let yearKm = 0;
+        let windowLabelText = 'Distance traveled';
         if (currentYear) {
             yearKm = scans.filter(s => s.samo_year_id === currentYear.id).reduce((t, s) => t + pointsOfScan(s), 0);
             const seasonKm = currentSeason
                 ? scans.filter(s => s.season_id === currentSeason.id).reduce((t, s) => t + pointsOfScan(s), 0)
                 : 0;
-            if (wlabel) wlabel.textContent = currentSeason
-                ? `${currentYear.name} · ${currentSeason.name}: ${seasonKm} km`
-                : currentYear.name;
+            windowLabelText = currentSeason
+                ? `${upFlight(currentYear.name)} · ${currentSeason.name}: ${seasonKm} km`
+                : upFlight(currentYear.name);
         } else {
             const win = currentVaraWindow();
             scans.forEach(s => {
                 const d = (s.scanned_at || '').slice(0, 10);
                 if (d >= win.start && d <= win.end) yearKm += pointsOfScan(s);
             });
-            if (wlabel) wlabel.textContent = win.name;
+            windowLabelText = upFlight(win.name);
         }
-        pKm.textContent = yearKm;
-        pKm.classList.remove('skeleton');
+        const sideKm = document.getElementById('side-km');
+        if (sideKm) sideKm.textContent = yearKm.toLocaleString();
 
-        // ── Activity log (page 2) ────────────────────────────
-        const logList = document.getElementById('activity-list');
-        logList.innerHTML = '';
-        if (scans.length === 0) {
-            logList.innerHTML = '<div style="opacity:0.5;font-size:0.85rem;text-align:center;padding-top:20px;">No activities yet — start scanning! ✈️</div>';
-        } else {
-            // Most recent first (scans already ordered by scanned_at desc).
-            // Prefer the immutable snapshot name so deleted activities still show.
-            scans.forEach(scan => {
-                const pts = pointsOfScan(scan);
-                const name = scan.activity_name || activityById.get(scan.activity_id)?.name || 'Activity';
-                const item = document.createElement('div');
-                item.className = 'flight-log-item';
-                const nameEl = document.createElement('span');
-                nameEl.textContent = `✈️ ${name}`;
-                const kmEl = document.createElement('span');
-                kmEl.className = 'log-km';
-                kmEl.textContent = `+${pts} km`;
-                item.append(nameEl, kmEl);
-                logList.appendChild(item);
-            });
-        }
+        // ── Top bar flight chip ──────────────────────────────
+        const tbChip = document.getElementById('tb-flight-chip');
+        if (tbChip && currentYear) tbChip.textContent = `✈ ${upFlight(currentYear.name)}`;
+        const pageFlight = document.getElementById('page-flight-label');
+        if (pageFlight && currentYear) pageFlight.textContent = `Flight ${upFlight(currentYear.name)}`;
 
-        // ── Stamp pages (always builds future + back cover too) ─
+        // ── Stat banner (Log tab) ─────────────────────────────
+        const totalKmEl = document.getElementById('log-total-km');
+        const windowLabelEl = document.getElementById('log-window-label');
+        const barFillEl = document.getElementById('log-bar-fill');
+        const activitiesEl = document.getElementById('log-activities');
+        const stampsCountEl = document.getElementById('log-stamps-count');
+        const seasonKmEl = document.getElementById('log-season-km');
+
+        if (totalKmEl) totalKmEl.textContent = yearKm;
+        if (windowLabelEl) windowLabelEl.textContent = windowLabelText;
+        // Bar + "Km to next" mini-stat track progress to the next status: the bar
+        // fills with km earned in the current 2,000 km tier; the mini-stat shows
+        // km remaining (lifetime journey to the status goal).
+        const lifetimeKm = scans.reduce((t, s) => t + pointsOfScan(s), 0);
+        setStatusTier(lifetimeKm);
+        const toNextStatus = kmToNextStatus(lifetimeKm);
+        if (barFillEl) barFillEl.style.width = kmStatusProgressPct(lifetimeKm) + '%';
+        if (activitiesEl) activitiesEl.textContent = scans.length;
+        if (stampsCountEl) stampsCountEl.textContent = toNextStatus > 0 ? toNextStatus.toLocaleString() : 'Max';
+        const seasonKmVal = currentSeason
+            ? scans.filter(s => s.season_id === currentSeason.id).reduce((t, s) => t + pointsOfScan(s), 0)
+            : 0;
+        if (seasonKmEl) seasonKmEl.textContent = seasonKmVal;
+
+        // ── Stamp pages ──────────────────────────────────────
         buildStampPages(allActivities, scans);
 
     } catch (err) {
         console.error('Failed to load activities:', err);
-        document.getElementById('activity-list').innerHTML =
-            `<div style="color:var(--accent-danger);font-size:0.85rem;">Error loading activities.</div>`;
-        pKm.textContent = '0';
-        pKm.classList.remove('skeleton');
-        buildStampPages([], []); // still shows future stamps + back cover
+        const flc = document.getElementById('flightlog-list');
+        if (flc) flc.innerHTML = `<div style="color:var(--accent-danger);font-size:0.85rem;padding:12px;">Error loading activities.</div>`;
+        const sideKm = document.getElementById('side-km');
+        if (sideKm) sideKm.textContent = '0';
+        setStatusTier(0);
+        buildStampPages([], []);
     }
-
-    // Initial render
-    goToPage(0);
 }
 
 init();

@@ -1,0 +1,16 @@
+/* Leaderboard */
+.lb-controls { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 8px; }
+.lb-controls select { width: auto; flex: 1 1 140px; min-width: 0; margin-bottom: 0; }
+.lb-scope-label { font-size: 0.85rem; color: var(--text-muted); margin: 4px 0 12px; }
+
+.lb-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+.lb-table th, .lb-table td {
+    text-align: left;
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--glass-border, rgba(0,0,0,0.08));
+}
+.lb-table th { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); }
+.lb-table tbody tr:hover { background: rgba(0,0,0,0.03); }
+.lb-email { color: var(--text-muted); word-break: break-all; }
+.lb-points { font-weight: 700; text-align: right; color: var(--accent-primary); }
+.lb-table th:last-child { text-align: right; }

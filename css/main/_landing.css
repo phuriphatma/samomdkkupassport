@@ -1,0 +1,136 @@
+/* ════════════════ LANDING PAGE ════════════════ */
+body.landing {
+  font-family: 'Nunito', 'Noto Sans Thai', system-ui, sans-serif;
+  background: linear-gradient(145deg, var(--land-a) 0%, var(--land-b) 50%, var(--land-c) 100%);
+  color: var(--text);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  /* `safe center` keeps the card centred when it fits, but falls back to top-aligned
+     when it's taller than the viewport so the theme picker below it isn't clipped. */
+  justify-content: safe center;
+  min-height: 100dvh;
+  padding: 40px 20px;
+  position: relative;
+  /* Only hide horizontal overflow (floating emoji); allow vertical scroll to the picker. */
+  overflow-x: hidden;
+}
+
+/* Floating emoji decorations */
+.sc {
+  position: absolute; pointer-events: none; opacity: .18;
+  animation: scFloat var(--d, 6s) ease-in-out infinite;
+  animation-delay: var(--dl, 0s);
+}
+@keyframes scFloat {
+  0%,100% { transform: translateY(0) rotate(var(--r, 0deg)); }
+  50%      { transform: translateY(-12px) rotate(calc(var(--r, 0deg) + 4deg)); }
+}
+
+.lp-center {
+  display: flex; flex-direction: column; align-items: center;
+  width: 100%; max-width: 400px; position: relative; z-index: 2;
+}
+
+/* ── Boarding pass card ── */
+.lp-card {
+  width: 100%; background: #fff;
+  border-radius: 28px;
+  box-shadow: 0 16px 48px var(--shadow-pri2), 0 4px 12px rgba(0,0,0,.06);
+  overflow: hidden;
+}
+
+.lpc-top {
+  background: var(--grad);
+  padding: 32px 28px 24px;
+  text-align: center;
+  position: relative;
+  transition: background .4s;
+}
+.lpc-top::after {
+  content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 24px;
+  background: #fff; border-radius: 24px 24px 0 0;
+}
+.lpc-logo-row {
+  display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 6px;
+}
+.lpc-brand { font-weight: 900; font-size: 26px; color: #fff; letter-spacing: 1px; }
+.lpc-sub   { font-size: 11px; letter-spacing: 3px; text-transform: uppercase; color: rgba(255,255,255,.7); font-weight: 600; }
+
+.lpc-body { padding: 24px 28px 28px; }
+
+.lpc-route { display: flex; align-items: center; gap: 0; margin-bottom: 20px; }
+.lpc-city  { flex: 1; text-align: center; }
+.lpc-iata  { font-weight: 900; font-size: 28px; color: var(--text); line-height: 1; }
+.lpc-city-name { font-size: 10px; color: var(--t3); letter-spacing: 1px; margin-top: 2px; }
+.lpc-arrow { font-size: 20px; color: var(--t3); flex-shrink: 0; padding: 0 8px; }
+.lpc-dash  { border-top: 2px dashed var(--border); margin-bottom: 20px; }
+
+.lpc-fields {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 18px;
+}
+.lpc-field { background: var(--s2); border-radius: 14px; padding: 10px 14px; }
+.lpc-fl { font-size: 9px; letter-spacing: 2px; text-transform: uppercase; color: var(--t3); margin-bottom: 3px; font-weight: 700; }
+.lpc-fv { font-size: 14px; font-weight: 800; color: var(--text); }
+
+.lpc-loading {
+  font-size: 13px; color: var(--t2); font-weight: 600;
+  margin: 0 0 14px; text-align: center;
+}
+
+.lpc-welcome {
+  background: var(--pri-s); border-radius: 14px; padding: 10px 14px; margin-bottom: 16px;
+}
+
+.btn-board {
+  width: 100%; padding: 16px;
+  background: var(--grad-btn);
+  border: none; border-radius: 18px; cursor: pointer;
+  font-family: 'Nunito', 'Noto Sans Thai', sans-serif; font-weight: 900; font-size: 17px;
+  color: #fff; letter-spacing: .5px; transition: all .25s;
+  box-shadow: 0 6px 20px var(--shadow-pri);
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+}
+.btn-board:hover { transform: translateY(-2px); box-shadow: 0 8px 24px var(--shadow-pri); }
+.btn-board:active { transform: scale(.98); }
+
+.lpc-sub-links {
+  display: flex; justify-content: center; margin-top: 12px;
+}
+.lpc-admin-link {
+  text-align: center; margin-top: 14px;
+}
+
+/* ── Theme picker (landing) ── */
+.theme-picker {
+  display: flex; align-items: center; gap: 8px;
+  justify-content: center; margin-top: 20px; position: relative; z-index: 3;
+}
+.theme-picker-label {
+  font-size: 10px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase;
+  color: var(--t2); margin-right: 2px; font-family: 'Nunito', 'Noto Sans Thai', sans-serif;
+}
+.theme-swatch {
+  width: 26px; height: 26px; border-radius: 50%; cursor: pointer;
+  border: 2.5px solid transparent;
+  transition: transform .2s, border-color .2s;
+  box-shadow: 0 2px 8px rgba(0,0,0,.12);
+  position: relative;
+}
+.theme-swatch:hover { transform: scale(1.18); }
+.theme-swatch.active { border-color: #fff; box-shadow: 0 0 0 2px var(--pri), 0 2px 8px rgba(0,0,0,.18); }
+/* Swatch colours mirror the dashboard theme dots (css/passport/_panels.css). */
+.theme-swatch[data-t="teal"]     { background: linear-gradient(135deg, #1f8189, #2f9aa0); }
+.theme-swatch[data-t="skycandy"] { background: linear-gradient(135deg, #72b2e2, #aebfe8); }
+.theme-swatch[data-t="navy"]     { background: linear-gradient(135deg, #1f3a68, #3060a0); }
+.theme-swatch[data-t="lilac"]    { background: linear-gradient(135deg, #9b8ad6, #b59ad8); }
+.theme-swatch[data-t="blush"]    { background: linear-gradient(135deg, #ea8fa0, #eccb68); }
+.theme-swatch::after {
+  content: attr(data-label);
+  position: absolute; bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%);
+  background: var(--text); color: #fff; font-size: 9px; font-weight: 700;
+  padding: 3px 8px; border-radius: 8px; white-space: nowrap;
+  opacity: 0; pointer-events: none; transition: opacity .15s;
+  font-family: 'Nunito', 'Noto Sans Thai', sans-serif;
+}
+.theme-swatch:hover::after { opacity: 1; }

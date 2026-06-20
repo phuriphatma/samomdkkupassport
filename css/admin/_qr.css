@@ -1,0 +1,20 @@
+/* QR Section layout */
+.qr-display-row {
+    display: flex;
+    gap: 30px;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-bottom: 30px;
+}
+
+.qr-box {
+    background: white;
+    padding: 10px;
+    border-radius: 10px;
+    display: inline-block;
+}
+
+.qr-close-btn {
+    max-width: 300px;
+    margin: 0 auto;
+}

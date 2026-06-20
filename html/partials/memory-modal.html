@@ -1,0 +1,51 @@
+<!-- ══ MEMORY MODAL ══ -->
+<div class="memory-modal" id="memory-modal" style="display:none;" aria-modal="true" role="dialog">
+  <div class="modal-backdrop" id="modal-backdrop"></div>
+  <div class="modal-card">
+    <button class="modal-close-btn" id="modal-close" aria-label="Close">✕</button>
+    <div class="modal-hero">
+      <div class="modal-badge-wrap" id="modal-badge-wrap">
+        <span class="modal-badge-placeholder">🏅</span>
+      </div>
+      <div class="modal-hero-info">
+        <h3 class="modal-title" id="modal-title">Activity Name</h3>
+        <span class="modal-km-chip" id="modal-km">+0 km</span>
+      </div>
+    </div>
+    <div class="modal-certs" id="modal-certs" style="display:none;">
+      <span class="modal-section-label">🎓 Your Certificates</span>
+      <div class="modal-certs-list" id="modal-certs-list"></div>
+    </div>
+    <div class="modal-locked" id="modal-locked" style="display:none;">
+      <p>You haven't earned this stamp yet.</p>
+      <p class="modal-locked-hint">Attend this activity to unlock your memory page!</p>
+    </div>
+    <div class="modal-view-section" id="modal-view" style="display:none;">
+      <div class="memory-view-topbar">
+        <span class="modal-section-label">📝 Your Memory</span>
+        <button class="modal-edit-sign" id="modal-edit">Edit ✏️</button>
+      </div>
+      <div class="memory-view-card" id="memory-view-text"></div>
+      <div class="photo-preview-grid" id="memory-view-photos"></div>
+    </div>
+    <div class="modal-body-section" id="modal-body">
+      <label class="modal-section-label">📝 Your Memory</label>
+      <textarea id="modal-memory-text" class="modal-textarea" placeholder="Write about this activity…" rows="4"></textarea>
+      <label class="modal-section-label" style="margin-top:14px;">📷 Photos</label>
+      <div class="modal-photo-zone" id="photo-zone">
+        <input type="file" id="photo-input" accept="image/*" multiple style="display:none;">
+        <div class="photo-upload-hint" id="upload-hint">
+          <span>📷</span><span>Tap to add photos</span>
+        </div>
+        <div class="photo-preview-grid" id="photo-preview-grid"></div>
+      </div>
+      <button class="modal-save-btn" id="modal-save">Save Memory ✓</button>
+    </div>
+    <!-- Self-service removal — shown only for an earned activity (a real scan), so a
+         student who scanned the wrong QR can take it off their passport. -->
+    <div class="modal-danger" id="modal-danger" style="display:none;">
+      <button class="modal-remove-btn" id="modal-remove" type="button">🗑 ลบกิจกรรมนี้ / Remove from passport</button>
+      <p class="modal-remove-hint">สแกนผิดใช่ไหม? ลบสแตมป์นี้ออก แล้วสแกนใหม่ได้เลย</p>
+    </div>
+  </div>
+</div>

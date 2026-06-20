@@ -1,0 +1,93 @@
+/* ════════════════ THEME PANEL ════════════════ */
+.theme-panel {
+  position: fixed; top: var(--tb-h); right: 16px; z-index: 200;
+  background: #fff; border-radius: var(--rl); padding: 14px 16px;
+  box-shadow: 0 8px 32px rgba(0,0,0,.14);
+  display: none; animation: fadeUp .2s ease; width: 300px;
+}
+.theme-panel.open { display: block; }
+@media (max-width: 767px) {
+  .theme-panel {
+    right: auto; left: 50%; transform: translateX(-50%);
+    width: calc(100% - 32px); max-width: 388px; top: 52px;
+  }
+}
+.tp-label {
+  font-size: 11.5px; font-weight: 800; letter-spacing: 1.5px;
+  text-transform: uppercase; color: var(--t2); margin-bottom: 10px;
+}
+.tp-swatches { display: flex; gap: 10px; justify-content: center; }
+.tp-swatch {
+  display: flex; flex-direction: column; align-items: center; gap: 5px; cursor: pointer;
+}
+.tp-swatch-dot {
+  width: 36px; height: 36px; border-radius: 50%; border: 2.5px solid transparent;
+  transition: transform .2s, border-color .2s; box-shadow: 0 2px 8px rgba(0,0,0,.12);
+}
+.tp-swatch:hover .tp-swatch-dot { transform: scale(1.12); }
+.tp-swatch.active .tp-swatch-dot { border-color: var(--pri); }
+.tp-swatch[data-t="teal"]     .tp-swatch-dot { background: linear-gradient(135deg,#1f8189,#2f9aa0); }
+.tp-swatch[data-t="skycandy"] .tp-swatch-dot { background: linear-gradient(135deg,#72b2e2,#aebfe8); }
+.tp-swatch[data-t="navy"]     .tp-swatch-dot { background: linear-gradient(135deg,#1f3a68,#3060a0); }
+.tp-swatch[data-t="lilac"]    .tp-swatch-dot { background: linear-gradient(135deg,#9b8ad6,#b59ad8); }
+.tp-swatch[data-t="blush"]    .tp-swatch-dot { background: linear-gradient(135deg,#ea8fa0,#eccb68); }
+.tp-swatch-name { font-size: 10.3px; font-weight: 700; color: var(--t3); letter-spacing: .5px; }
+
+/* ════════════════ PROFILE MENU ════════════════ */
+.profile-menu {
+  position: fixed; top: var(--tb-h); right: 16px; z-index: 200;
+  background: #fff; border-radius: var(--rl); padding: 8px;
+  box-shadow: 0 8px 32px rgba(0,0,0,.14);
+  display: none; animation: fadeUp .2s ease; min-width: 190px;
+}
+.profile-menu.open { display: block; }
+
+/* ════════════════ SETTINGS POPOVER ════════════════
+   One combined popover wrapping the theme panel + the account menu. Opened from the
+   sidebar user card on desktop and the bottom-nav ⚙️ Settings button on mobile.
+   Placement differs per viewport (below), but the unified-card look is shared. */
+.settings-popover {
+  display: none; position: fixed; z-index: 200;
+  flex-direction: column; gap: 10px;
+  background: #fff; border-radius: var(--rl); padding: 6px;
+  box-shadow: 0 8px 32px rgba(0,0,0,.16);
+}
+.settings-popover.open { display: flex; animation: fadeUp .2s ease; }
+/* The two panels become plain stacked cards inside the popover — drop their own
+   fixed positioning / visibility / shadow (the wrapper gates all of that). */
+.settings-popover .theme-panel,
+.settings-popover .profile-menu {
+  display: block; position: static; inset: auto; transform: none;
+  width: 100%; max-width: none; animation: none; box-shadow: none;
+}
+.settings-popover .profile-menu { border-top: 1px solid var(--border); border-radius: 0; padding-top: 6px; }
+
+/* Desktop: anchored beside the sidebar user card (bottom-left). */
+@media (min-width: 768px) {
+  .settings-popover { bottom: 14px; left: calc(var(--sidebar-w) + 12px); width: 280px; }
+}
+/* Mobile: a centred sheet floating just above the bottom-nav pill; scrolls if tall.
+   Centred via left/right + margin-auto (not translateX) so it doesn't fight the
+   fadeUp animation's translateY. */
+@media (max-width: 767px) {
+  .settings-popover {
+    left: 12px; right: 12px; margin-inline: auto;
+    width: auto; max-width: 420px;
+    bottom: calc(var(--bnav-h) + env(safe-area-inset-bottom) + 16px);
+    max-height: calc(100svh - var(--bnav-h) - 120px); overflow-y: auto;
+  }
+}
+/* Scoped under .profile-menu (0,2,0) so it outranks the `body.passport-page-theme
+   button` reset (0,1,2) — otherwise <button> rows lose their padding/font/width and
+   end up cramped next to the <a> "Back to Home". */
+.profile-menu .pm-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 14px; border-radius: 10px; border: none; background: none;
+  cursor: pointer; font-family: 'Nunito', 'Noto Sans Thai', sans-serif; font-size: 16.1px; font-weight: 700;
+  color: var(--text); width: 100%; text-align: left; text-decoration: none;
+  transition: background .15s;
+}
+.profile-menu .pm-item:hover { background: var(--s2); color: var(--text); }
+.pm-divider { border: none; border-top: 1px solid var(--border); margin: 4px 0; }
+.pm-danger { color: var(--rose) !important; }
+.pm-danger:hover { background: var(--rose-s) !important; }

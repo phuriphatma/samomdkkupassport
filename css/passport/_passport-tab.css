@@ -1,0 +1,138 @@
+/* ════════════════ PASSPORT TAB ════════════════ */
+.passport-book {
+  background: var(--surface); border-radius: var(--rl);
+  overflow: hidden; margin-bottom: 12px;
+  box-shadow: 0 4px 20px rgba(0,0,0,.07);
+}
+.pb-cover {
+  background: var(--grad); padding: 22px 18px 18px;
+  display: flex; justify-content: space-between; align-items: flex-start;
+}
+.pbc-left { color: #fff; }
+.pbc-series { font-size: 11.5px; letter-spacing: 2px; text-transform: uppercase; opacity: .7; margin-bottom: 6px; }
+.pbc-title  { font-size: 24.1px; font-weight: 900; line-height: 1.1; }
+.pbc-sub    { font-size: 12.6px; opacity: .6; margin-top: 3px; }
+.pbc-globe  { font-size: 59.8px; opacity: .3; line-height: 1; animation: spin 18s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.pb-body { padding: 18px; }
+.pb-photo-row { display: flex; gap: 13px; margin-bottom: 16px; }
+.pb-photo {
+  width: 70px; height: 88px; border-radius: 10px;
+  background: var(--pri-s); display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  font-size: 41.4px; flex-shrink: 0; border: 1.5px solid var(--border);
+  cursor: pointer; overflow: hidden; position: relative;
+  transition: border-color .2s; gap: 4px;
+}
+.pb-photo:hover { border-color: var(--pri-m); }
+.info-photo-placeholder { font-size: 2.53rem; }
+.info-photo-hint { font-size: 0.632rem; color: var(--t3); letter-spacing: .5px; }
+
+.pb-data { flex: 1; display: flex; flex-direction: column; gap: 9px; }
+.pb-lbl  { font-size: 10.3px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase; color: var(--t3); margin-bottom: 2px; }
+.pb-val  { font-size: 16.1px; font-weight: 700; color: var(--text); }
+.pb-mono { font-family: monospace; letter-spacing: 1px; font-size: 12.6px; }
+.field-value-row { display: flex; align-items: center; gap: 6px; }
+.name-edit-btn {
+  border: none; background: transparent; cursor: pointer; font-size: 0.92rem;
+  line-height: 1; padding: 2px; opacity: .6; width: auto; box-shadow: none;
+}
+.name-edit-btn:hover { opacity: 1; transform: none; box-shadow: none; background: none; }
+
+.rank-val  { color: var(--pri); }
+.km-window-label { font-weight: 600; opacity: .7; font-size: .82em; text-transform: none; letter-spacing: 0; }
+
+.visa-stamp-block { text-align: center; margin-bottom: 10px; }
+.visa-stamp-badge {
+  display: inline-block; border: 2px solid #22C55E; color: #22C55E;
+  padding: 5px 8px; font-size: 0.69rem; font-weight: 800; letter-spacing: 1px;
+  border-radius: 6px; text-transform: uppercase; transform: rotate(-8deg);
+  animation: stampIn .5s cubic-bezier(.175,.885,.32,1.275);
+}
+.visa-stamp-block small { display: block; font-size: 0.69rem; color: var(--t2); margin-top: 4px; }
+@keyframes stampIn {
+  0%   { transform: scale(2.5) rotate(-30deg); opacity: 0; }
+  100% { transform: scale(1) rotate(-8deg); opacity: 1; }
+}
+
+.pb-rule { border: none; border-top: 1.5px dashed var(--border); margin: 0 0 14px; }
+.pb-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 14px; }
+.pb-cell { background: var(--s2); border-radius: 11px; padding: 9px 12px; }
+
+/* Machine-readable zone — decorative passport footer */
+.pb-mrz {
+  margin-top: 4px; padding: 11px 13px;
+  background: var(--s2); border-radius: 10px;
+  font-family: ui-monospace, 'SF Mono', 'Courier New', monospace;
+  font-size: 12.6px; line-height: 1.6;
+  color: var(--t3); overflow: hidden;
+}
+/* Each line is an SVG so the 44-char string stretches to span the full
+   container width (textLength) on any screen — mobile or web — without
+   overflowing or leaving a gap. Two equal-length lines stay grid-aligned. */
+.pb-mrz-svg { display: block; height: 1.5em; }
+.pb-mrz-svg + .pb-mrz-svg { margin-top: 2px; }
+.pb-mrz-line { fill: currentColor; font: inherit; }
+
+/* Profile-menu sub note (Export/Import explainer) */
+.pm-item.pm-sub { font-size: 12.6px; color: var(--t3); font-weight: 600; }
+
+/* ════════════════ BOARDING PASS ════════════════ */
+.bp-card {
+  background: var(--surface); border-radius: var(--rl);
+  overflow: hidden; margin-bottom: 12px;
+  box-shadow: 0 4px 20px rgba(0,0,0,.07);
+}
+.bp-top {
+  background: var(--pri-s); padding: 15px 18px;
+  display: flex; justify-content: space-between; align-items: center;
+  border-bottom: 1px dashed var(--border);
+}
+.bp-top-l    { font-size: 14.9px; font-weight: 800; color: var(--pri); }
+.bp-pax      { font-size: 18.4px; font-weight: 900; color: var(--text); text-transform: uppercase; }
+/* Name fields shown in ALL CAPS */
+#p-given, #p-surname { text-transform: uppercase; }
+.bp-airline  { font-size: 13.8px; color: var(--t2); font-weight: 700; }
+.bp-flight-no{ font-size: 14.9px; font-weight: 800; color: var(--text); }
+.bp-route { display: flex; align-items: center; gap: 6px; padding: 16px 18px 0; }
+.bp-iata { font-size: 34.5px; font-weight: 900; color: var(--text); line-height: 1; }
+.bp-city { font-size: 11.5px; color: var(--t3); margin-top: 2px; font-weight: 700; }
+.bp-mid  { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 7px; }
+
+.plane-toggle {
+  width: 100%; height: 46px; border-radius: 30px;
+  background: var(--s2); border: 1.5px solid var(--border);
+  position: relative; cursor: pointer; overflow: hidden;
+  transition: background .4s, border-color .4s;
+}
+.plane-toggle.sky { background: var(--pri-s); border-color: var(--pri-m); }
+.pt-track-lines {
+  position: absolute; top: 50%; left: 18px; right: 18px;
+  display: flex; justify-content: space-between; transform: translateY(-50%);
+  pointer-events: none; transition: opacity .3s;
+}
+.plane-toggle.sky .pt-track-lines { opacity: 0; }
+.pt-stripe { width: 24px; height: 2px; background: var(--border); border-radius: 2px; }
+.pt-clouds {
+  position: absolute; top: 8px; left: 16px; font-size: 14.9px;
+  pointer-events: none; opacity: 0; transition: opacity .3s; display: flex; gap: 8px;
+}
+.plane-toggle.sky .pt-clouds { opacity: 1; }
+.pt-knob {
+  position: absolute; top: 4px; left: 4px;
+  width: 38px; height: 38px; border-radius: 50%;
+  background: #fff; box-shadow: 0 3px 10px rgba(0,0,0,.14);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 23px; transition: left .4s cubic-bezier(.34,1.4,.64,1); pointer-events: none;
+}
+.pt-label { font-size: 11.5px; color: var(--t3); font-weight: 700; letter-spacing: .3px; text-align: center; }
+
+.bp-tear { display: flex; align-items: center; margin: 14px 0 0; }
+.bp-tc { width: 16px; height: 16px; border-radius: 50%; background: var(--bg); flex-shrink: 0; }
+.bp-tc:first-child { margin-left: -8px; }
+.bp-tc:last-child  { margin-right: -8px; }
+.bp-tline { flex: 1; border-top: 1.5px dashed var(--border); }
+.bp-fields { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 0; padding: 12px 18px 16px; }
+.bp-fl { font-size: 10.3px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; color: var(--t3); margin-bottom: 3px; }
+.bp-fv { font-size: 14.9px; font-weight: 800; color: var(--text); }

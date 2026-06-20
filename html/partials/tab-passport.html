@@ -1,0 +1,113 @@
+<!-- ── PASSPORT TAB ── -->
+<div id="tab-passport" class="tab-pane active">
+
+  <div class="page-head">
+    <h1 class="page-title">My Passport <span class="page-emoji">🛂</span></h1>
+    <p class="page-sub">MDKKU Air · <span id="page-flight-label">Flight MD-2027</span></p>
+  </div>
+
+  <div class="pp-cols">
+  <div class="passport-book">
+    <div class="pb-cover">
+      <div class="pbc-left">
+        <div class="pbc-series">MDKKU Air · KKU Medical</div>
+        <div class="pbc-title">MDKKU Passport</div>
+        <div class="pbc-sub">หนังสือเดินทางกิจกรรม</div>
+      </div>
+      <span class="pbc-globe">🌐</span>
+    </div>
+    <div class="pb-body">
+      <div class="pb-photo-row">
+        <div class="pb-photo" id="profile-photo-box">
+          <div class="info-photo-placeholder">👤</div>
+          <span class="info-photo-hint">📷 tap</span>
+        </div>
+        <div class="pb-data">
+          <div>
+            <div class="pb-lbl">Given Name</div>
+            <div class="field-value-row">
+              <div class="pb-val" id="p-given"><span class="skeleton" style="min-width:110px;">&nbsp;</span></div>
+              <button class="name-edit-btn" id="edit-name-btn" type="button" title="Edit name" aria-label="Edit name">✏️</button>
+            </div>
+          </div>
+          <div>
+            <div class="pb-lbl">Surname</div>
+            <div class="pb-val" id="p-surname"><span class="skeleton" style="min-width:90px;">&nbsp;</span></div>
+          </div>
+          <div>
+            <div class="pb-lbl">Passport No.</div>
+            <div class="pb-val pb-mono" id="p-passport-no">—</div>
+          </div>
+        </div>
+      </div>
+
+      <div id="visa-visa" class="visa-stamp-block" style="display:none;">
+        <div class="visa-stamp-badge">⭐ VISA ACTIVE</div>
+        <small>Streak bonus!</small>
+      </div>
+
+      <hr class="pb-rule">
+      <div class="pb-grid">
+        <div class="pb-cell"><div class="pb-lbl">Issued</div><div class="pb-val" id="p-issued">—</div></div>
+        <div class="pb-cell"><div class="pb-lbl">Expires</div><div class="pb-val" id="p-expires">—</div></div>
+        <div class="pb-cell"><div class="pb-lbl">Faculty</div><div class="pb-val">Medicine</div></div>
+        <div class="pb-cell"><div class="pb-lbl">Status</div><div class="pb-val rank-val" id="p-tier"><span class="skeleton" style="min-width:80px;">&nbsp;</span></div></div>
+      </div>
+
+      <div class="pb-mrz" aria-hidden="true">
+        <svg class="pb-mrz-svg" width="100%" role="presentation" focusable="false">
+          <text class="pb-mrz-line" id="p-mrz1" x="0" y="50%" textLength="100%" lengthAdjust="spacingAndGlyphs" dominant-baseline="central">&nbsp;</text>
+        </svg>
+        <svg class="pb-mrz-svg" width="100%" role="presentation" focusable="false">
+          <text class="pb-mrz-line" id="p-mrz2" x="0" y="50%" textLength="100%" lengthAdjust="spacingAndGlyphs" dominant-baseline="central">&nbsp;</text>
+        </svg>
+      </div>
+
+      <a href="#" id="logout-btn" style="display:none;"></a>
+    </div>
+  </div>
+
+  <div class="bp-card">
+    <div class="bp-top">
+      <div>
+        <div class="bp-top-l">🎫 Boarding Pass</div>
+        <div class="bp-pax" id="bp-pax">—</div>
+      </div>
+      <div style="text-align:right">
+        <div class="bp-airline">MDKKU Air ✈</div>
+        <div class="bp-flight-no" id="bp-flight">MD-2027</div>
+      </div>
+    </div>
+    <div class="bp-route">
+      <div>
+        <div class="bp-iata">YOU</div>
+        <div class="bp-city">Your campus</div>
+      </div>
+      <div class="bp-mid">
+        <div class="plane-toggle" id="planeToggle" onclick="togglePlane()">
+          <div class="pt-track-lines">
+            <div class="pt-stripe"></div><div class="pt-stripe"></div><div class="pt-stripe"></div>
+          </div>
+          <div class="pt-clouds">☁️ &nbsp;☁️</div>
+          <div class="pt-knob" id="planeKnob">✈️</div>
+        </div>
+        <div class="pt-label" id="planeLabel">Tap to take off! 🛫</div>
+      </div>
+      <div style="text-align:right">
+        <div class="bp-iata">MDK</div>
+        <div class="bp-city">MDKKU goal</div>
+      </div>
+    </div>
+    <div class="bp-tear">
+      <div class="bp-tc"></div><div class="bp-tline"></div><div class="bp-tc"></div>
+    </div>
+    <div class="bp-fields">
+      <div><div class="bp-fl">Gate</div><div class="bp-fv">M27</div></div>
+      <div><div class="bp-fl">Seat</div><div class="bp-fv" id="bp-seat">—</div></div>
+      <div><div class="bp-fl">Group</div><div class="bp-fv" id="bp-group">—</div></div>
+      <div><div class="bp-fl">Departs</div><div class="bp-fv">08:00</div></div>
+    </div>
+  </div>
+  </div><!-- /pp-cols -->
+
+</div><!-- /tab-passport -->

@@ -1,27 +1,55 @@
 # STATE.md — project state
 
 Snapshot of what's built, what's pending, and required config. Update as things land.
-Last updated: 2026-06-07. **Tagged release: v1.0.0.**
+Last updated: 2026-06-20. **Tagged release: v1.0.0.**
 
 ## Working
 
 - **Auth** — Google OAuth via Supabase; session handled in `auth.js` / `index.js`.
-- **Student dashboard** — passport "ebook": cover, personal info, stamp pages
-  (earned + locked), future page, back cover; page navigation with dots.
-- **Stamps & flight log** — only **earned** stamps are shown (scanned activities).
-  The stamp collection is **split into per-section pages** grouped วาระสโม → season
-  (newest first; current section tagged ปัจจุบัน); tapping a stamp opens its memory modal.
-  Stamp search flips to the stamp's page and highlights it. The **Flight Log** has
-  **วาระสโม + Season + Department dropdowns** (default = current วาระสโม/season) and lists
-  that period's flights newest-first with a km total — so past periods are viewable without
-  one giant list. Department filter is a compact `<select>` (was ~10 chips).
+- **Student dashboard** — "MDKKU Passport" redesign (Nunito, 5 themes via
+  `[data-theme]` + `wp-theme` localStorage). Brand/flavour is MDKKU Air — flight code
+  `MD-`, passport no. `MP-`, IATA `MDK`; the boarding-pass/leaderboard **seat** is a
+  stable per-user code whose cabin (First/Business/Economy) follows the Status tier
+  (`seatCode`/`cabinLayout` in `dashboard.js`). **Desktop:** fixed topbar (brand +
+  breadcrumb) + left sidebar (Menu nav + pinned user card) + wide content; the
+  Passport tab shows the passport book and boarding pass **side-by-side** (`.pp-cols`).
+  **Mobile:** static header + floating bottom nav. Four tabs (`switchTab`): My Passport,
+  Stamps, Flight Log, Leaderboard — each with a `.page-head` (title + subtitle).
+- **Stamps tab** — a flat `.stamps-grid` of cards (earned = badge image; locked = greyed) with
+  a stats strip + search + department filter chips; tapping a stamp opens its memory modal.
+- **Flight Log tab** — a **2×2 grid** (`css/passport/_responsive.css`): teal stat banner +
+  flight list on the left, a **Filter card** (วาระสโม / Season / Department dropdowns) and a
+  **Totals card** (วาระสโม · Quartile · Total km) on the right. Banner ↔ filter card are
+  equal height (row-1 `align-self:stretch`); the side `<aside id="flightlog-side">` uses
+  `display:contents` so its two cards are real grid cells. `renderFlightLogPage()` fills
+  `#flightlog-list` + `#flightlog-side` separately. Each flight row shows the activity's stamp
+  **icon**, name, and a meta line (**date · ฝ่ายอุปนายก · sub-dept** from the scan snapshot).
+  The banner's progress bar + Stamps mini-stat are **earned/total** stamps (e.g. 14/24).
+- **Container radius** is a single knob: `--rl` (14px) in `css/main/_base.css` — all dashboard
+  cards/menus point at it. Boarding-pass **Group** mirrors the Status tier (first
+  5 letters, uppercase, e.g. `EXPLO`); names render uppercase on the Passport tab.
 - **SamoYear/Season model (db/0006)** — admin declares the current วาระสโม + Season
   (`samo_years`/`samo_seasons`, "current" = `ended_at IS NULL`). Scans are **immutable
   snapshots** stamped with year/season + activity name/dept/sub-dept/points. Editing an
   activity touches only **current-season** scans; deleting an activity keeps its scans
   (FKs dropped) but DELETES its certificates. Admin: วาระสโม/Season control + period
-  leaderboard (year→season + dept/sub-dept, CSV). Customer: swipeable **Flight Log** +
-  **Leaderboard** pages (topbar 📜 / 🏆). The old date-window seasons + archive UI are retired.
+  leaderboard (year→season + dept/sub-dept, CSV). Customer: **Flight Log** +
+  **Leaderboard** tabs. The old date-window seasons + archive UI are retired.
+- **Leaderboard tab redesign (2026-06-09)** — "Top Passengers" top-10 list (main) +
+  side column: Flight-Log-style **filter card** (วาระสโม / quartile / dept dropdowns,
+  global scope), **Your Stats** (rank #N of M, total km, stamps, tier), and a
+  **Top 3 Podium** bar chart. Per-row Status (and Your Stats) is derived from the
+  **selected-period km** (the row's pts); `ensureLbPageData()` no longer loads `user_tiers`.
+  Two-column grid ≥1024px, stacks on mobile (`_leaderboard.css` + `_responsive.css`).
+  Replaced the old season/year `seg-toggle` + podium-row.
+- **Status ladder (km-derived, 2026-06-10)** — the Status/tier is computed from km, not
+  `user_tiers.final_tier` (now unused for display). The **passport + sidebar** use
+  **lifetime km**; the **leaderboard** rows/Your Stats use the **selected-period km**.
+  One named tier per 2,000 km: **Explorer** 0–1999 ·
+  **Adventurer** 2000–3999 · **Pathfinder** 4000–5999 · **Voyager** 6000–7999 ·
+  **Pioneer** 8000+. `STATUS_TIERS` + `statusTierName()` in `js/dashboard.js`; the goal
+  (`KM_STATUS_GOAL`, drives the progress bar / "km to next") is derived from the list
+  `(STATUS_TIERS.length-1)×2000` so names and goal can't drift.
 - **Certificates (NOT season-scoped, 2026-06-07)** — a cert belongs to its activity and
   always reflects its current settings; the student sees **every** cert template on an
   activity (no `season_id` matching). Stamps with a cert show a 🎓 ribbon. Deleting an
@@ -29,7 +57,14 @@ Last updated: 2026-06-07. **Tagged release: v1.0.0.**
 - **Admin activity filter by วาระสโม/Season (2026-06-07)** — dropdowns filter the activity
   list by the time window each activity was **created** in (`created_at` vs the year/season
   `started_at..ended_at`).
+- **Admin themed to match the dashboard (2026-06-09)** — admin.html now applies the user's
+  saved `wp-theme` (`data-theme` from localStorage) and `css/admin/_theme.css` remaps the
+  legacy sky/orange aliases → the theme palette + overrides bg/buttons/headings/inputs to the
+  themed, Nunito look. Edit/delete keep semantic colors (`--accent-danger` untouched).
 - **Memory modal** — per-activity note + photos, stored in `localStorage` (per device).
+  Also offers **"Remove from passport"** for an earned activity: a student who scanned the
+  wrong QR can delete their **own** scan (`removeOwnScan`, scoped by `id`+`user_id`, then a
+  reload). See MISTAKES.md ("delete your own scan").
 - **Profile photo** — `localStorage`, per device.
 - **Data backup** — Export/Import all on-device user content as a JSON file.
 - **Admin** — create/edit/delete activities; department + sub-department filters;
@@ -37,10 +72,18 @@ Last updated: 2026-06-07. **Tagged release: v1.0.0.**
 - **Scan flow** — static token validated in `scanning.js`; records a scan.
 - **Certificates** — admin manages templates per activity (label + background +
   name placement) with live preview; students generate + download a PNG with their
-  name drawn on the background. **Needs DB migration (below).**
+  name drawn on the background. The chosen font is loaded **on demand** at render time
+  (`certificate.js` `ensureCertFonts`) so the name never falls back to a system font on
+  devices that lack it — fixes the device-dependent "misaligned name" reports. **Needs DB
+  migration (below).**
 
 ## Recently added (2026-06)
 
+- Build/structure: dashboard is now `html/dashboard.html` (skeleton) + `html/partials/*`,
+  stitched by the in-repo `vite-plugin-html-includes.js` (`<include src="…">`). CSS
+  `css/{main,passport,admin}.css` became `@import` indexes over `css/<name>/_*.css` partials.
+  Verified byte-identical bundles (brace counts + unchanged dist hashes). Edit partials, not the
+  index/bundle — see CLAUDE.md + MISTAKES.md. (admin.html itself not yet split into partials.)
 - User: change name (`profiles.full_name`), search stamps, leaderboard, history.
 - Admin: leaderboard (total + per dept/sub-dept, + per season), season management,
   drag-drop image upload to the SAMO Drive (via GAS), certificate font + drag-to-place.

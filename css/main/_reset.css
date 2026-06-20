@@ -1,0 +1,28 @@
+/* ════════════════ RESET ════════════════ */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { min-height: 100vh; }
+html { background: var(--sky-top); }
+
+body {
+  font-family: var(--font-body);
+  background: linear-gradient(175deg, #29ABE2 0%, #54C8F1 25%, #A8DDEF 60%, #E8F7FF 100%);
+  background-attachment: fixed;
+  color: var(--text-dark);
+  line-height: 1.6;
+  overflow-x: hidden;
+  min-height: 100dvh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-heading);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+h1 { margin-bottom: 15px; font-size: 2.5rem; }
+h2 { margin-bottom: 12px; }
+h3 { margin-bottom: 10px; }
+p { margin-bottom: 16px; color: var(--text-muted); }

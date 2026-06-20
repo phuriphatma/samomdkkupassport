@@ -1,0 +1,152 @@
+/* ════════════════ STAMPS TAB ════════════════ */
+.info-strip { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 14px; }
+.is-cell {
+  background: var(--surface); border-radius: 14px; padding: 13px 6px;
+  text-align: center; box-shadow: 0 2px 10px rgba(0,0,0,.05);
+}
+.is-val { font-size: clamp(18px, 5.2vw, 24.1px); font-weight: 900; color: var(--text); }
+.is-lbl { font-size: 11.5px; color: var(--t3); font-weight: 700; margin-top: 2px; }
+
+.stamp-search-bar { position: relative; width: 100%; margin: 0 0 10px; }
+.stamp-search-bar input {
+  width: 100%; padding: 9px 16px; border-radius: 999px;
+  border: 1.5px solid var(--border); background: var(--surface);
+  font-family: 'Nunito', 'Noto Sans Thai', sans-serif; font-size: 0.977rem; color: var(--text);
+  outline: none; margin: 0; transition: border-color .2s;
+}
+.stamp-search-bar input:focus { border-color: var(--pri-m); }
+.stamp-search-results {
+  position: absolute; top: calc(100% + 8px); left: 0; right: 0;
+  background: #fff; border: 1px solid var(--border);
+  border-radius: var(--rl); box-shadow: 0 16px 40px rgba(0,0,0,.14);
+  overflow: hidden auto; max-height: 50dvh; padding: 6px;
+  animation: searchDrop .16s ease; z-index: 50;
+}
+@keyframes searchDrop {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.stamp-search-item {
+  display: flex; align-items: center; gap: 11px; width: 100%; padding: 9px 10px;
+  border: none; border-radius: 11px; background: transparent; cursor: pointer;
+  text-align: left; font-family: 'Nunito', 'Noto Sans Thai', sans-serif; transition: background .15s;
+}
+.stamp-search-item:hover { background: var(--pri-s); }
+.stamp-search-item .ss-thumb {
+  width: 34px; height: 34px; border-radius: 50%; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center; font-size: 1.15rem;
+  overflow: hidden; background: var(--pri-s); border: 1.5px solid var(--pri-m);
+}
+.stamp-search-item .ss-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.stamp-search-item .ss-name {
+  flex: 1; font-size: 0.989rem; font-weight: 600; color: var(--text);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.stamp-search-item .ss-go {
+  flex-shrink: 0; font-size: 0.782rem; font-weight: 700; color: var(--pri);
+  background: var(--pri-s); padding: 3px 8px; border-radius: 999px;
+}
+.stamp-search-empty { padding: 14px; font-size: 0.943rem; color: var(--t2); text-align: center; }
+
+.filter-scroll { display: flex; align-items: center; gap: 7px; overflow-x: auto; margin-bottom: 14px; padding-bottom: 2px; }
+.filter-scroll::-webkit-scrollbar { display: none; }
+.filter-lbl {
+  font-size: 11.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .5px;
+  color: var(--t3); flex-shrink: 0; margin-right: 1px;
+}
+.fchip {
+  padding: 7px 15px; border-radius: 20px;
+  border: 1.5px solid var(--border); background: var(--surface);
+  font-family: 'Nunito', 'Noto Sans Thai', sans-serif; font-size: 13.8px; font-weight: 700;
+  color: var(--t2); cursor: pointer; white-space: nowrap; flex-shrink: 0; transition: all .18s;
+}
+.fchip.active, .fchip:hover { background: var(--pri); border-color: var(--pri); color: #fff; }
+
+.stamps-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; min-width: 0; }
+.stamp-card {
+  background: var(--surface); border-radius: var(--rl); padding: 18px 10px 14px;
+  text-align: center; cursor: pointer; position: relative;
+  border: 1.5px solid transparent; box-shadow: 0 2px 10px rgba(0,0,0,.05); transition: all .22s;
+  min-width: 0; overflow: hidden;
+}
+.stamp-card:hover { transform: translateY(-4px); box-shadow: 0 8px 24px rgba(0,0,0,.12); border-color: var(--pri-m); }
+.stamp-card.locked { opacity: .38; filter: grayscale(.6); pointer-events: none; }
+.stamp-emoji {
+  /* Postage-stamp tile — a solid square with semicircular notches bitten out of all
+     four edges (perforations), used as a mask so the colour fill AND any badge image
+     are clipped to the scalloped-square outline. */
+  --stamp: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20100%20100'%3E%3Cpath%20fill='black'%20fill-rule='evenodd'%20d='M0,0H100V100H0ZM-4.5,0a4.5,4.5,0,1,0,9,0a4.5,4.5,0,1,0,-9,0M6.61,0a4.5,4.5,0,1,0,9,0a4.5,4.5,0,1,0,-9,0M17.72,0a4.5,4.5,0,1,0,9,0a4.5,4.5,0,1,0,-9,0M28.83,0a4.5,4.5,0,1,0,9,0a4.5,4.5,0,1,0,-9,0M39.94,0a4.5,4.5,0,1,0,9,0a4.5,4.5,0,1,0,-9,0M51.06,0a4.5,4.5,0,1,0,9,0a4.5,4.5,0,1,0,-9,0M62.17,0a4.5,4.5,0,1,0,9,0a4.5,4.5,0,1,0,-9,0M73.28,0a4.5,4.5,0,1,0,9,0a4.5,4.5,0,1,0,-9,0M84.39,0a4.5,4.5,0,1,0,9,0a4.5,4.5,0,1,0,-9,0M95.5,0a4.5,4.5,0,1,0,9,0a4.5,4.5,0,1,0,-9,0M-4.5,100a4.5,4.5,0,1,0,9,0a4.5,4.5,0,1,0,-9,0M6.61,100a4.5,4.5,0,1,0,9,0a4.5,4.5,0,1,0,-9,0M17.72,100a4.5,4.5,0,1,0,9,0a4.5,4.5,0,1,0,-9,0M28.83,100a4.5,4.5,0,1,0,9,0a4.5,4.5,0,1,0,-9,0M39.94,100a4.5,4.5,0,1,0,9,0a4.5,4.5,0,1,0,-9,0M51.06,100a4.5,4.5,0,1,0,9,0a4.5,4.5,0,1,0,-9,0M62.17,100a4.5,4.5,0,1,0,9,0a4.5,4.5,0,1,0,-9,0M73.28,100a4.5,4.5,0,1,0,9,0a4.5,4.5,0,1,0,-9,0M84.39,100a4.5,4.5,0,1,0,9,0a4.5,4.5,0,1,0,-9,0M95.5,100a4.5,4.5,0,1,0,9,0a4.5,4.5,0,1,0,-9,0M-4.5,11.11a4.5,4.5,0,1,0,9,0a4.5,4.5,0,1,0,-9,0M-4.5,22.22a4.5,4.5,0,1,0,9,0a4.5,4.5,0,1,0,-9,0M-4.5,33.33a4.5,4.5,0,1,0,9,0a4.5,4.5,0,1,0,-9,0M-4.5,44.44a4.5,4.5,0,1,0,9,0a4.5,4.5,0,1,0,-9,0M-4.5,55.56a4.5,4.5,0,1,0,9,0a4.5,4.5,0,1,0,-9,0M-4.5,66.67a4.5,4.5,0,1,0,9,0a4.5,4.5,0,1,0,-9,0M-4.5,77.78a4.5,4.5,0,1,0,9,0a4.5,4.5,0,1,0,-9,0M-4.5,88.89a4.5,4.5,0,1,0,9,0a4.5,4.5,0,1,0,-9,0M95.5,11.11a4.5,4.5,0,1,0,9,0a4.5,4.5,0,1,0,-9,0M95.5,22.22a4.5,4.5,0,1,0,9,0a4.5,4.5,0,1,0,-9,0M95.5,33.33a4.5,4.5,0,1,0,9,0a4.5,4.5,0,1,0,-9,0M95.5,44.44a4.5,4.5,0,1,0,9,0a4.5,4.5,0,1,0,-9,0M95.5,55.56a4.5,4.5,0,1,0,9,0a4.5,4.5,0,1,0,-9,0M95.5,66.67a4.5,4.5,0,1,0,9,0a4.5,4.5,0,1,0,-9,0M95.5,77.78a4.5,4.5,0,1,0,9,0a4.5,4.5,0,1,0,-9,0M95.5,88.89a4.5,4.5,0,1,0,9,0a4.5,4.5,0,1,0,-9,0'/%3E%3C/svg%3E");
+  width: 60px; height: 60px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 29.9px; position: relative; overflow: hidden;
+  -webkit-mask: var(--stamp) center / contain no-repeat;
+          mask: var(--stamp) center / contain no-repeat;
+}
+/* Old-paper parchment fill, scoped to the stamps grid (and the admin badge preview,
+   which reuses this partial) so the shared se-* background (used by flight-log icons)
+   is overridden only here: SVG grain (multiply) over a warm cream gradient, faintly
+   tinted by the stamp's accent (currentColor). */
+.stamps-grid .stamp-emoji,
+.stamp-preview .stamp-emoji,
+.modal-badge-wrap .stamp-emoji {
+  --tint: color-mix(in srgb, currentColor 5%, transparent);
+  background:
+    linear-gradient(var(--tint), var(--tint)),
+    url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20120%20120'%3E%3Cfilter%20id='n'%3E%3CfeTurbulence%20type='fractalNoise'%20baseFrequency='0.9'%20numOctaves='2'%20stitchTiles='stitch'/%3E%3CfeColorMatrix%20type='saturate'%20values='0'/%3E%3C/filter%3E%3Crect%20width='120'%20height='120'%20filter='url(%23n)'%20opacity='0.12'/%3E%3C/svg%3E"),
+    radial-gradient(140% 120% at 25% 15%, #fffefb, #fdf9f0 60%, #faf4e6);
+  background-size: cover, 90px 90px, cover;
+  background-repeat: no-repeat, repeat, no-repeat;
+  background-blend-mode: multiply, multiply, normal;
+}
+/* shadow lives on the wrapper, NOT the masked stamp — otherwise the mask clips the
+   shadow away. drop-shadow on the wrapper traces the scalloped child's alpha. */
+.stamp-wrap {
+  width: 60px; height: 60px; margin: 0 auto 10px;
+  filter: drop-shadow(0 3px 5px rgba(60,45,20,.2)) drop-shadow(0 1px 1px rgba(40,28,8,.16));
+}
+.stamp-emoji::before {
+  /* aged-ink dashed inner frame */
+  content: ''; position: absolute; inset: 7px; border-radius: 4px;
+  border: 1.5px dashed #7a6a3f; opacity: .45;
+}
+.stamp-emoji img { width: 100%; height: 100%; object-fit: cover; object-position: center; }
+/* grain texture laid over a filled badge image for an aged look */
+.stamp-emoji.filled::after {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20120%20120'%3E%3Cfilter%20id='g'%3E%3CfeTurbulence%20type='fractalNoise'%20baseFrequency='0.4'%20numOctaves='2'%20stitchTiles='stitch'/%3E%3CfeColorMatrix%20type='saturate'%20values='0'/%3E%3C/filter%3E%3Crect%20width='120'%20height='120'%20filter='url(%23g)'/%3E%3C/svg%3E");
+  background-size: 200px 200px;
+  mix-blend-mode: overlay; opacity: .5;
+}
+/* se-* set the accent colour + a tinted disc (the disc shows on flight-log icons;
+   on stamps the parchment fill above overrides the background). */
+.se-teal   { background: var(--sec-s);    color: var(--sec); }
+.se-blue   { background: var(--pri-s);    color: var(--pri); }
+.se-amber  { background: var(--amber-s);  color: var(--amber); }
+.se-rose   { background: var(--rose-s);   color: var(--rose); }
+.se-violet { background: var(--violet-s); color: var(--violet); }
+.se-coral  { background: var(--coral-s);  color: var(--coral); }
+.stamp-name  { font-size: 13.8px; font-weight: 800; color: var(--text); margin-bottom: 2px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+.stamp-count { font-size: 11.5px; color: var(--t3); font-weight: 600; }
+.stamp-check {
+  position: absolute; top: 8px; right: 8px;
+  width: 19px; height: 19px; background: var(--sec); border-radius: 50%;
+  color: #fff; font-size: 12.6px; display: flex; align-items: center; justify-content: center; font-weight: 900;
+}
+.stamp-cert-badge {
+  position: absolute; top: 8px; left: 8px;
+  font-size: 0.897rem; line-height: 1; padding: 2px; border-radius: 50%;
+  background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,.25); pointer-events: none;
+}
+/* Admin-only: live preview of a badge image inside the real stamp treatment, shown
+   under the badge-URL field on the create/edit activity forms. The stamp visuals come
+   from the shared rules above (this partial is @imported into the admin bundle). */
+.stamp-preview { display: flex; align-items: center; justify-content: center; gap: 12px; margin: -6px 0 18px; }
+.stamp-preview .stamp-wrap { margin: 0; }
+.stamp-preview-lbl { font-size: 12px; font-weight: 700; color: var(--t3, var(--text-muted)); }
+
+.stamp-card.flash { animation: stampFlash 1.6s ease; }
+@keyframes stampFlash {
+  0%,100% { background: var(--surface); }
+  20%,60%  { background: var(--pri-s); }
+}

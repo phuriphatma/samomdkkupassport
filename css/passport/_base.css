@@ -1,0 +1,21 @@
+/*
+ * css/passport.css — Dashboard app shell
+ *
+ * Two clear layouts:
+ *   Desktop/tablet (≥768px) — fixed top navbar containing nav links
+ *   Mobile (<768px)         — static header + scrolling content + fixed bottom nav
+ */
+
+/* ── Prevent main.css orange button style leaking into the dashboard ── */
+body.passport-page-theme button {
+  background: transparent; border: none; padding: 0; margin: 0;
+  width: auto; box-shadow: none; font-family: 'Nunito', 'Noto Sans Thai', system-ui, sans-serif;
+  font-size: inherit; font-weight: inherit; color: inherit; cursor: pointer;
+}
+
+/* ── Shared variables ── */
+:root {
+  --tb-h:   54px;   /* topbar height  */
+  --bnav-h: 72px;   /* mobile bottom nav height */
+  --sidebar-w: 250px; /* desktop left sidebar width */
+}

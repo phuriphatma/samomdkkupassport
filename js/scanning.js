@@ -132,7 +132,7 @@ if (!user) {
         }
 
         // Success!
-        showStatus('Passport Stamped! ✈️', `Successfully earned ${activity.base_points_km} km for ${activity.name}!`, 'success');
+        showStampSuccess(activity);
     };
 
     document.getElementById('btn-change-account').onclick = async () => {
@@ -157,5 +157,30 @@ await supabase.auth.signInWithOAuth({
         titleEl.className = type;
         msgEl.innerText = message;
         actions.style.display = 'block';
+    }
+
+    // Themed celebratory screen shown after a passport is stamped.
+    function showStampSuccess(activity) {
+        spinner.style.display = 'none';
+        confirmSection.style.display = 'none';
+        titleEl.style.display = 'none';
+        msgEl.style.display = 'none';
+        actions.style.display = 'none';
+
+        document.getElementById('ss-activity').innerText = activity.name;
+        document.getElementById('ss-km').innerText = `+${activity.base_points_km} km`;
+
+        const stamp = document.getElementById('ss-stamp');
+        const badge = document.getElementById('ss-badge');
+        if (activity.badge_url) {
+            badge.src = fixGoogleDriveUrl(activity.badge_url);
+            badge.referrerPolicy = 'no-referrer';
+            badge.onerror = () => { stamp.classList.remove('filled'); stamp.textContent = '✈️'; };
+        } else {
+            stamp.classList.remove('filled');
+            stamp.textContent = '✈️';
+        }
+
+        document.getElementById('stamp-success').style.display = 'block';
     }
 }

@@ -1,0 +1,67 @@
+/* ════════════════ ADMIN THEME ════════════════
+   Make the admin terminal follow the user's selected dashboard theme and match the
+   passport's fonts. `data-theme` is set from localStorage in admin.html (so --pri /
+   --sec / --bg etc. resolve to the chosen palette). Here we:
+   (a) remap the legacy sky/orange alias variables → the new theme palette, so the
+       existing admin rules recolour automatically; and
+   (b) override main.css's landing chrome (blue gradient bg, orange buttons, Prompt
+       headings, blue input focus) to the themed, Nunito look used by the passport. */
+/* Drop main.css's blue `html { background: var(--sky-top) }` so it can't seep through
+   on overscroll / rubber-banding (admin.css only loads here, so this is page-scoped). */
+html { background: var(--bg); }
+
+body.admin-page-theme {
+  /* Legacy aliases → theme palette (keep --accent-danger / --accent-success as the
+     real red/green: they're semantic, not themed). */
+  --accent-primary: var(--pri);
+  --accent-secondary: var(--sec);
+  --text-dark: var(--text);
+  --text-light: var(--t2);
+  --text-muted: var(--t3);
+  --glass-bg: var(--surface);
+  --glass-border: var(--border);
+  --glass-shadow: 0 8px 32px rgba(0,0,0,.08);
+  --panel-bg: var(--surface);
+
+  /* Themed surface + passport font (Nunito, system fallback for Thai). */
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Nunito', 'Noto Sans Thai', system-ui, sans-serif;
+}
+
+/* Headings: Nunito to match the passport (was --font-heading / Prompt). */
+body.admin-page-theme h1,
+body.admin-page-theme h2,
+body.admin-page-theme h3,
+body.admin-page-theme h4 {
+  font-family: 'Nunito', 'Noto Sans Thai', system-ui, sans-serif;
+  color: var(--text);
+}
+
+/* Default buttons: themed gradient instead of orange. Kept at element-level
+   specificity so the semantic variants (.btn-edit / .btn-delete / .btn-cancel-edit)
+   still win and keep their own colours. (admin.css only loads on this page, so a
+   bare `button` selector is already admin-scoped.) */
+button {
+  background: var(--grad-btn); color: #fff;
+  box-shadow: 0 4px 15px var(--shadow-pri);
+  font-family: 'Nunito', 'Noto Sans Thai', system-ui, sans-serif;
+}
+button:hover {
+  background: var(--grad-btn); filter: brightness(1.06);
+  box-shadow: 0 6px 20px var(--shadow-pri);
+}
+
+/* Inputs: themed surface + focus ring (was white / blue). */
+body.admin-page-theme input,
+body.admin-page-theme select,
+body.admin-page-theme textarea {
+  background: var(--surface); border-color: var(--border); color: var(--text);
+  font-family: 'Nunito', 'Noto Sans Thai', system-ui, sans-serif;
+}
+body.admin-page-theme input:focus,
+body.admin-page-theme select:focus,
+body.admin-page-theme textarea:focus {
+  border-color: var(--pri); box-shadow: 0 0 0 3px var(--pri-s);
+}
+body.admin-page-theme input::placeholder { color: var(--t3); }

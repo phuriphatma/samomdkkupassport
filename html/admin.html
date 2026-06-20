@@ -7,13 +7,19 @@
   <title>Admin Passport Terminal</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Allura&family=Anuphan&family=Athiti&family=Bai+Jamjuree&family=Caveat&family=Chakra+Petch&family=Charm&family=Charmonman:wght@400;700&family=Chonburi&family=Cinzel&family=Cookie&family=Cormorant+Garamond&family=Dancing+Script&family=EB+Garamond&family=Fahkwang&family=Great+Vibes&family=IBM+Plex+Sans+Thai&family=Italianno&family=Itim&family=K2D&family=Kanit:wght@400;600;700&family=Kodchasan&family=KoHo&family=Krub&family=Lobster&family=Lora&family=Maitree&family=Mali&family=Marck+Script&family=Merriweather&family=Mitr:wght@400;600;700&family=Montserrat&family=Niramit&family=Noto+Sans+Thai:wght@300;400;500;600;700&family=Noto+Serif+Thai:wght@400;600;700&family=Oswald&family=Pacifico&family=Parisienne&family=Pattaya&family=Playfair+Display&family=Poppins&family=Pridi&family=Prompt:wght@300;400;500;600;700&family=Raleway&family=Sacramento&family=Sarabun:wght@400;600;700&family=Satisfy&family=Sriracha&family=Srisakdi&family=Tangerine&family=Taviraj&family=Thasadith&family=Trirong&family=Yellowtail&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/css/main.css" />
   <link rel="stylesheet" href="/css/admin.css" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <!-- Follow the theme the user picked on the dashboard (shared localStorage key). -->
+  <script>
+    const _adminTheme = localStorage.getItem('wp-theme') || 'teal';
+    if (_adminTheme && _adminTheme !== 'teal') document.documentElement.setAttribute('data-theme', _adminTheme);
+  </script>
 </head>
 
-<body>
+<body class="admin-page-theme">
   <div class="container">
     <div class="admin-topbar">
       <a href="/" class="text-link">&larr; Back to Home</a>

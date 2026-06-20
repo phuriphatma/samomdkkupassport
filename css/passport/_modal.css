@@ -1,0 +1,201 @@
+/* ════════════════ MEMORY MODAL ════════════════ */
+.memory-modal {
+  position: fixed; inset: 0; display: flex;
+  align-items: flex-end; justify-content: center; z-index: 100;
+}
+.memory-modal.view-mode { align-items: center; }
+.memory-modal.view-mode .modal-card {
+  width: min(300px,85vw); height: min(300px,85vw); border-radius: 20px;
+  padding: 20px; display: flex; flex-direction: column; animation: popIn .22s ease;
+}
+.memory-modal.view-mode .modal-hero { margin-bottom: 0; padding-right: 40px; gap: 10px; }
+.memory-modal.view-mode .modal-badge-wrap { width: 44px; height: 44px; }
+.memory-modal.view-mode .modal-badge-wrap .stamp-wrap { transform: scale(.72); }
+.memory-modal.view-mode .modal-title { font-size: 1.012rem; margin-bottom: 4px; }
+.memory-modal.view-mode .modal-km-chip { font-size: 0.862rem; padding: 2px 8px; }
+@keyframes popIn {
+  from { opacity: 0; transform: scale(.88); }
+  to   { opacity: 1; transform: scale(1); }
+}
+.modal-backdrop {
+  position: absolute; inset: 0;
+  background: rgba(10,25,50,.6); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+}
+.modal-card {
+  position: relative; z-index: 101; background: white; width: 100%;
+  max-width: 480px; max-height: 88%; border-radius: 24px 24px 0 0;
+  padding: 24px 22px 32px; overflow-y: auto; animation: slideUp .3s ease;
+}
+@keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+.modal-card::-webkit-scrollbar { width: 4px; }
+.modal-card::-webkit-scrollbar-thumb { background: rgba(0,0,0,.12); border-radius: 2px; }
+
+.modal-close-btn {
+  position: absolute; top: 16px; right: 16px; width: 32px; height: 32px;
+  border-radius: 50%; background: var(--s2); border: none; color: var(--t2);
+  font-size: 1.035rem; cursor: pointer; display: flex; align-items: center;
+  justify-content: center; padding: 0; box-shadow: none; flex-shrink: 0;
+}
+.modal-close-btn:hover { background: var(--rose-s); color: var(--rose); transform: none; box-shadow: none; }
+.modal-hero { display: flex; align-items: center; gap: 16px; margin-bottom: 20px; padding-right: 36px; }
+/* The badge renders as a stamp (scalloped mask + parchment, from _stamps.css) at its
+   native 60px size — identical to the stamps grid — then scaled up so the perforations,
+   dashed frame and grain texture all stay in proportion. The wrapper is just a
+   transparent sizing/centering box (no circle frame). */
+.modal-badge-wrap {
+  width: 90px; height: 90px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+}
+.modal-badge-wrap .stamp-wrap { margin: 0; transform: scale(1.5); }
+.modal-badge-placeholder { font-size: 1.87rem; }
+.modal-title { font-size: 1.208rem; font-weight: 800; color: var(--text); margin-bottom: 6px; }
+.modal-km-chip {
+  display: inline-block; background: var(--sec-s); color: var(--sec);
+  padding: 3px 10px; border-radius: 20px; font-size: 0.943rem; font-weight: 700;
+}
+.modal-locked {
+  background: var(--s2); border-radius: 12px; padding: 20px; text-align: center; margin-bottom: 10px;
+}
+.modal-locked p { color: var(--t2); margin-bottom: 6px; font-size: 1.035rem; }
+.modal-locked-hint { font-size: 0.92rem !important; opacity: .7; }
+.modal-section-label { display: block; font-size: 0.92rem; font-weight: 700; color: var(--t2); margin-bottom: 8px; }
+.modal-certs { margin: 4px 0 16px; }
+.modal-certs-list { display: flex; flex-direction: column; gap: 8px; }
+.cert-row { display: flex; align-items: center; gap: 8px; flex-wrap: nowrap; }
+.cert-row-actions { display: flex; gap: 8px; flex-shrink: 0; }
+/* flex-grow pushes the buttons to the right edge; min-width:0 + ellipsis lets a long
+   label truncate instead of shoving the buttons off the row. */
+.cert-row-label {
+  flex: 1 1 auto; min-width: 0; font-size: 0.943rem; font-weight: 600; color: var(--text);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+/* Smaller siblings of .modal-save-btn — scoped under body.passport-page-theme to
+   outrank the `button` reset in _base.css. Download = gradient block (like Save),
+   View = matching outline variant. */
+body.passport-page-theme .cert-action-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 5px;
+  width: auto; flex-shrink: 0; white-space: nowrap;
+  padding: 6px 11px; border: none; border-radius: 9px; cursor: pointer;
+  font-family: 'Nunito', 'Noto Sans Thai', sans-serif; font-size: 0.78rem; font-weight: 800;
+  box-shadow: 0 3px 10px var(--shadow-pri2);
+  transition: box-shadow .2s, transform .15s;
+}
+body.passport-page-theme .cert-action-btn:hover { box-shadow: 0 6px 20px var(--shadow-pri); transform: translateY(-2px); }
+body.passport-page-theme .cert-action-btn:active { transform: translateY(0); }
+body.passport-page-theme .cert-action-btn:disabled { opacity: .6; cursor: default; transform: none; box-shadow: none; }
+body.passport-page-theme .cert-download-btn { background: var(--grad); color: #fff; }
+body.passport-page-theme .cert-view-btn { background: #fff; color: var(--pri); border: 1.5px solid var(--pri); }
+body.passport-page-theme .cert-view-btn:hover { background: var(--pri-s); }
+
+.cert-viewer {
+  position: fixed; inset: 0; z-index: 300; display: none;
+  flex-direction: column; align-items: center; justify-content: center;
+  gap: 14px; padding: 24px;
+  background: rgba(10,25,50,.85); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+}
+.cert-viewer-img { max-width: 100%; max-height: 80%; object-fit: contain; border-radius: 6px; box-shadow: 0 12px 40px rgba(0,0,0,.5); }
+.cert-viewer-hint { color: rgba(255,255,255,.85); font-size: 0.943rem; }
+.cert-viewer-close {
+  position: absolute; top: 18px; right: 18px; width: 40px; height: 40px;
+  border-radius: 50%; border: none; background: rgba(255,255,255,.92);
+  color: var(--text); font-size: 1.15rem; cursor: pointer; box-shadow: none;
+}
+.cert-viewer-close:hover { background: #fff; transform: none; }
+
+.modal-textarea {
+  width: 100%; padding: 12px 14px; border: 1.5px solid var(--border);
+  border-radius: 10px; font-family: 'Nunito', 'Noto Sans Thai', sans-serif; font-size: 1.035rem;
+  color: var(--text); background: var(--s2); resize: vertical; margin-bottom: 0;
+  transition: border-color .2s, box-shadow .2s; line-height: 1.6;
+}
+.modal-textarea:focus { outline: none; border-color: var(--pri-m); box-shadow: 0 0 0 3px var(--pri-s); }
+
+.modal-photo-zone {
+  border: 2px dashed var(--border); border-radius: 12px; padding: 16px;
+  background: var(--s2); cursor: pointer; transition: border-color .2s, background .2s; min-height: 80px;
+}
+.modal-photo-zone:hover { border-color: var(--pri-m); background: var(--pri-s); }
+.photo-upload-hint {
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  color: var(--t2); font-size: 0.977rem; padding: 8px 0;
+}
+.photo-upload-hint span:first-child { font-size: 2.07rem; }
+.photo-preview-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.photo-thumb {
+  width: 72px; height: 72px; border-radius: 8px; object-fit: cover;
+  border: 2px solid var(--border); cursor: pointer; transition: transform .2s;
+}
+.photo-thumb:hover { transform: scale(1.05); }
+.photo-thumb-wrap { position: relative; display: inline-block; }
+.photo-thumb-remove {
+  position: absolute; top: -6px; right: -6px; width: 20px; height: 20px;
+  border-radius: 50%; background: var(--rose); color: white; border: none;
+  font-size: 0.747rem; display: flex; align-items: center; justify-content: center;
+  cursor: pointer; box-shadow: 0 2px 6px rgba(196,74,110,.4); padding: 0;
+}
+.photo-thumb-remove:hover { background: #b03060; transform: scale(1.1); box-shadow: none; }
+#memory-view-photos .photo-thumb { border: none; }
+.memory-view-card { font-size: 1.012rem; line-height: 1.7; color: var(--text); white-space: pre-wrap; word-break: break-word; margin-bottom: 12px; }
+/* Single divider above the memory area. Lives on the memory section (not the certs
+   section) so there's always exactly one line whether or not a certificate precedes it. */
+.modal-view-section, .modal-body-section { border-top: 1px solid var(--border); padding-top: 16px; }
+.memory-view-topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.memory-view-topbar .modal-section-label { margin-bottom: 0; display: flex; align-items: center; }
+/* Matches the small View/Download cert buttons (gradient block, scoped to outrank
+   the `button` reset in _base.css). */
+body.passport-page-theme .modal-edit-sign {
+  display: inline-flex; align-items: center; justify-content: center; gap: 5px;
+  width: auto; flex-shrink: 0; white-space: nowrap;
+  padding: 6px 11px; border: none; border-radius: 9px; cursor: pointer;
+  font-family: 'Nunito', 'Noto Sans Thai', sans-serif; font-size: 0.78rem; font-weight: 800;
+  background: var(--grad); color: #fff;
+  box-shadow: 0 3px 10px var(--shadow-pri2);
+  transition: box-shadow .2s, transform .15s;
+}
+body.passport-page-theme .modal-edit-sign:hover { box-shadow: 0 6px 20px var(--shadow-pri); transform: translateY(-2px); }
+body.passport-page-theme .modal-edit-sign:active { transform: translateY(0); }
+/* Scoped under body.passport-page-theme to outrank the `button` reset in _base.css
+   (which otherwise strips the padding/background/colour back to a bare text link). */
+body.passport-page-theme .modal-save-btn {
+  display: block; width: 100%; margin-top: 20px;
+  padding: 14px 20px; border: none; border-radius: 14px;
+  background: var(--grad); color: #fff; cursor: pointer;
+  font-family: 'Nunito', 'Noto Sans Thai', sans-serif; font-size: 1rem; font-weight: 800;
+  box-shadow: 0 4px 15px var(--shadow-pri2);
+  transition: box-shadow .2s, transform .15s;
+}
+body.passport-page-theme .modal-save-btn:hover { box-shadow: 0 6px 20px var(--shadow-pri); transform: translateY(-2px); }
+body.passport-page-theme .modal-save-btn:active { transform: translateY(0); }
+
+/* ════════════════ REMOVE (mis-scan) ════════════════ */
+.modal-danger { margin-top: 18px; padding-top: 14px; border-top: 1px dashed var(--border); text-align: center; }
+.modal-remove-hint { font-size: 0.85rem; opacity: .7; margin: 8px 0 0; }
+/* Outline-danger button, scoped under body.passport-page-theme to outrank the bare
+   `button` reset in _base.css (same trick as .modal-save-btn). Secondary to Save. */
+body.passport-page-theme .modal-remove-btn {
+  display: block; width: 100%;
+  padding: 11px 16px; border: 1.5px solid var(--rose); border-radius: 12px;
+  background: transparent; color: var(--rose); cursor: pointer;
+  font-family: 'Nunito', 'Noto Sans Thai', sans-serif; font-size: 0.94rem; font-weight: 800;
+  transition: background .15s, transform .15s;
+}
+body.passport-page-theme .modal-remove-btn:hover { background: var(--rose-s); transform: translateY(-1px); }
+body.passport-page-theme .modal-remove-btn:active { transform: translateY(0); }
+body.passport-page-theme .modal-remove-btn:disabled { opacity: .6; cursor: default; transform: none; }
+
+/* ════════════════ TOAST ════════════════ */
+.toast {
+  position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+  background: var(--text); color: white; padding: 12px 24px; border-radius: 24px;
+  font-size: 1.012rem; font-weight: 700; box-shadow: 0 8px 24px rgba(0,0,0,.25);
+  z-index: 200; animation: toastIn .3s ease;
+  max-width: min(90vw,420px); text-align: center; line-height: 1.4;
+  font-family: 'Nunito', 'Noto Sans Thai', sans-serif;
+}
+@media (max-width: 767px) {
+  .toast { bottom: calc(var(--bnav-h) + env(safe-area-inset-bottom, 0px) + 12px); }
+}
+@keyframes toastIn {
+  from { opacity: 0; transform: translateX(-50%) translateY(16px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}

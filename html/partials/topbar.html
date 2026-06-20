@@ -1,0 +1,37 @@
+<!-- Top bar: brand + breadcrumb | actions (nav is the left sidebar) -->
+<div class="topbar">
+  <div class="tb-left">
+    <div class="tb-brand">✈️ MDKKU Passport</div>
+    <span class="tb-crumb" id="tb-crumb">My Passport</span>
+  </div>
+  <nav class="tb-nav">
+    <div class="side-section">Menu</div>
+    <button class="tnav-btn active" id="tnav-passport" onclick="switchTab('passport')">
+      <span class="tnav-icon">🛂</span><span>My Passport</span>
+    </button>
+    <button class="tnav-btn" id="tnav-stamps" onclick="switchTab('stamps')">
+      <span class="tnav-icon">🗺️</span><span>Stamps</span>
+    </button>
+    <button class="tnav-btn" id="tnav-log" onclick="switchTab('log')">
+      <span class="tnav-icon">📋</span><span>Flight Log</span>
+    </button>
+    <button class="tnav-btn" id="tnav-leaderboard" onclick="switchTab('leaderboard')">
+      <span class="tnav-icon">🏆</span><span>Leaderboard</span>
+    </button>
+
+    <!-- Desktop: click the card to expand the Settings popover (theme + account).
+         On mobile the sidebar is hidden and the .tb-actions buttons are used. -->
+    <div class="side-user" id="side-user" role="button" tabindex="0"
+         aria-haspopup="true" aria-expanded="false" onclick="toggleSettings()" title="Settings">
+      <div class="su-av">🧑‍✈️</div>
+      <div class="su-info">
+        <div class="su-name" id="side-name"><span class="skeleton" style="min-width:80px;">&nbsp;</span></div>
+        <div class="su-sub"><span id="side-tier">—</span> · <span id="side-km">0</span> km</div>
+      </div>
+      <span class="su-gear" aria-hidden="true">⚙️</span>
+    </div>
+  </nav>
+  <div class="tb-actions">
+    <span class="tb-chip" id="tb-flight-chip">✈ SAMO</span>
+  </div>
+</div>

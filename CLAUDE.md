@@ -25,7 +25,8 @@ Admins create activities, show QR codes, and manage certificate templates.
 
 ```
 index.html            Landing / login page
-html/dashboard.html   Student passport (the "ebook")
+html/dashboard.html   Student passport — a skeleton that <include>s html/partials/*
+html/partials/        Dashboard HTML fragments (head, topbar, tab-*, memory-modal, …)
 html/admin.html       Admin terminal
 html/scan.html        QR scan landing
 js/
@@ -41,8 +42,10 @@ js/
   constants.js        Shared DEPARTMENTS / SUBDEPARTMENTS maps (admin + dashboard)
   utils.js            fixGoogleDriveUrl(), generateUUID(), pending-scan helpers
   routes.js           Central route paths (ROUTES.HOME/DASHBOARD/ADMIN/SCAN)
-css/                  main.css (global+landing), passport.css (dashboard), admin.css
+css/                  main.css / passport.css / admin.css are @import indexes;
+                      the real rules live in css/{main,passport,admin}/_*.css partials
 db/                   SQL migrations to run manually in the Supabase SQL editor
+vite-plugin-html-includes.js   In-repo Vite plugin: expands <include src="…"> at build/dev
 ```
 
 ## Run / build / deploy
@@ -71,7 +74,9 @@ npm run preview  # serve the production build locally
   activities join, so history survives activity edits/deletes.
 - `samo_years` / `samo_seasons` (db/0006) — admin-declared วาระสโม + seasons; "current"
   = the open row (`ended_at IS NULL`). See `js/samo.js` for the helpers.
-- `user_tiers` — `full_name`, `total_km`, `final_tier`, `has_travel_visa`.
+- `user_tiers` — `full_name`, `total_km`, `final_tier`, `has_travel_visa`. (`final_tier` is
+  **no longer shown** — the Status/tier is derived from lifetime km in `js/dashboard.js`
+  via `statusTierName()`; this table still supplies the stored name + travel-visa flag.)
 - `certificates` — multiple per activity (`label`, `background_url`, name placement,
   `font_family`). **NOT season-scoped** (the `season_id` column exists but is unused —
   reverted 2026-06-07): a cert belongs to its activity, always shows current settings,
@@ -93,6 +98,11 @@ DDL cannot be run from the app (anon key has no schema privileges).
 ## Conventions
 
 - Central paths live in `routes.js` — don't hardcode `/html/...` in new code.
+- **Modular HTML/CSS:** the dashboard is `html/dashboard.html` (skeleton) + `html/partials/*`,
+  stitched at build time by `vite-plugin-html-includes.js` (`<include src="partials/…">`). CSS
+  files `css/{main,passport,admin}.css` are `@import` indexes; edit the `css/<name>/_*.css`
+  partials, not the index. Partials aren't standalone pages — only the entry HTML is a Vite input.
+  Add new section partials at sensible rule boundaries so the bundle stays byte-identical.
 - Google Drive image links go through `fixGoogleDriveUrl()` (→ `lh3.googleusercontent.com`,
   which is CORS-correct — important for `<canvas>` export).
 - User-generated content (profile photo, memories, photos) is **localStorage only**,

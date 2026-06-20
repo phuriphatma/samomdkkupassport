@@ -1,34 +1,126 @@
-/* css/scan.css — Scan page specific styles */
+/* css/scan.css — Scan page specific styles (passport theme) */
+
+/* Soft passport-themed page background (overrides the global sky gradient) */
+body.scan-page {
+  background: radial-gradient(120% 90% at 50% 0%, var(--pri-s) 0%, #eef4f3 45%, #f6f4ee 100%);
+  background-attachment: fixed;
+  color: var(--text);
+}
+
 .scan-container {
-    text-align: center;
-    margin-top: 100px;
+  text-align: center;
+  margin-top: 100px;
 }
 
 /* A simple spinning animation for loading */
 .spinner {
-    border: 4px solid rgba(158, 193, 215, 0.25);
-    width: 50px;
-    height: 50px;
-    border-radius: 50%;
-    border-left-color: var(--accent-primary);
-    animation: spin 1s linear infinite;
-    margin: 0 auto 20px auto;
+  border: 4px solid var(--pri-s);
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  border-left-color: var(--pri);
+  animation: spin 1s linear infinite;
+  margin: 0 auto 20px auto;
 }
 
 @keyframes spin {
-    0% {
-        transform: rotate(0deg);
-    }
-
-    100% {
-        transform: rotate(360deg);
-    }
+  0%   { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
 
-.success {
-    color: var(--accent-success);
+.success { color: var(--pri); }
+.error   { color: var(--accent-danger); }
+
+/* ════════════════ "CONFIRM FLIGHT" CARD (before stamping) ════════════════ */
+.confirm-card { text-align: center; margin-bottom: 10px; }
+.cc-eyebrow {
+  font-size: 0.76rem; font-weight: 800; letter-spacing: 0.18em; text-transform: uppercase;
+  color: var(--pri); margin-bottom: 4px;
+}
+.cc-user { font-size: 1.15rem; font-weight: 800; color: var(--text); margin: 0 0 18px; word-break: break-word; }
+.cc-activity {
+  background: var(--s2); border: 1px solid var(--border); border-radius: 14px;
+  padding: 22px 16px; margin-bottom: 22px;
+}
+.cc-badge {
+  display: block; width: 84px; height: 84px; margin: 0 auto 10px;
+  border-radius: 12px; object-fit: cover; box-shadow: 0 4px 14px rgba(0,0,0,.12);
+}
+.cc-badge-name { color: var(--pri); font-size: 0.95rem; font-weight: 700; margin: 0 0 8px; }
+.cc-name { font-size: 1.4rem; font-weight: 800; color: var(--text); margin: 0 0 6px; line-height: 1.2; }
+.cc-km { color: var(--sec); font-weight: 800; font-size: 1.15rem; margin: 0; }
+.cc-actions { display: flex; flex-direction: column; gap: 12px; }
+.cc-change {
+  background: transparent; color: var(--t2); border: 1px solid var(--border); box-shadow: none;
+}
+.cc-change:hover { background: var(--s2); filter: none; box-shadow: none; transform: translateY(-1px); }
+
+/* ════════════════ "PASSPORT STAMPED" SUCCESS SCREEN ════════════════ */
+#stamp-success { position: relative; padding: 8px 0 4px; }
+
+.ss-eyebrow {
+  font-size: 0.8rem; font-weight: 800; letter-spacing: 0.22em; text-transform: uppercase;
+  color: var(--pri); margin-bottom: 6px;
+  animation: ssUp .5s .12s both ease-out;
 }
 
-.error {
-    color: var(--accent-danger);
+/* The scalloped stamp (same motif as the Stamps page) with a press-in animation */
+.ss-stamp-wrap {
+  position: relative; width: 96px; height: 96px; margin: 6px auto 20px;
+  filter: drop-shadow(0 6px 10px rgba(0,0,0,.22));
+  animation: ssPress .7s cubic-bezier(.2,1.1,.3,1) both;
+}
+.ss-stamp {
+  /* scalloped postage-stamp mask + warm parchment fill, faintly teal-tinted */
+  --tint: color-mix(in srgb, currentColor 6%, transparent);
+  --stamp: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20100%20100'%3E%3Cpath%20fill='black'%20fill-rule='evenodd'%20d='M0,0H100V100H0ZM-4.5,0a4.5,4.5,0,1,0,9,0a4.5,4.5,0,1,0,-9,0M6.61,0a4.5,4.5,0,1,0,9,0a4.5,4.5,0,1,0,-9,0M17.72,0a4.5,4.5,0,1,0,9,0a4.5,4.5,0,1,0,-9,0M28.83,0a4.5,4.5,0,1,0,9,0a4.5,4.5,0,1,0,-9,0M39.94,0a4.5,4.5,0,1,0,9,0a4.5,4.5,0,1,0,-9,0M51.06,0a4.5,4.5,0,1,0,9,0a4.5,4.5,0,1,0,-9,0M62.17,0a4.5,4.5,0,1,0,9,0a4.5,4.5,0,1,0,-9,0M73.28,0a4.5,4.5,0,1,0,9,0a4.5,4.5,0,1,0,-9,0M84.39,0a4.5,4.5,0,1,0,9,0a4.5,4.5,0,1,0,-9,0M95.5,0a4.5,4.5,0,1,0,9,0a4.5,4.5,0,1,0,-9,0M-4.5,100a4.5,4.5,0,1,0,9,0a4.5,4.5,0,1,0,-9,0M6.61,100a4.5,4.5,0,1,0,9,0a4.5,4.5,0,1,0,-9,0M17.72,100a4.5,4.5,0,1,0,9,0a4.5,4.5,0,1,0,-9,0M28.83,100a4.5,4.5,0,1,0,9,0a4.5,4.5,0,1,0,-9,0M39.94,100a4.5,4.5,0,1,0,9,0a4.5,4.5,0,1,0,-9,0M51.06,100a4.5,4.5,0,1,0,9,0a4.5,4.5,0,1,0,-9,0M62.17,100a4.5,4.5,0,1,0,9,0a4.5,4.5,0,1,0,-9,0M73.28,100a4.5,4.5,0,1,0,9,0a4.5,4.5,0,1,0,-9,0M84.39,100a4.5,4.5,0,1,0,9,0a4.5,4.5,0,1,0,-9,0M95.5,100a4.5,4.5,0,1,0,9,0a4.5,4.5,0,1,0,-9,0M-4.5,11.11a4.5,4.5,0,1,0,9,0a4.5,4.5,0,1,0,-9,0M-4.5,22.22a4.5,4.5,0,1,0,9,0a4.5,4.5,0,1,0,-9,0M-4.5,33.33a4.5,4.5,0,1,0,9,0a4.5,4.5,0,1,0,-9,0M-4.5,44.44a4.5,4.5,0,1,0,9,0a4.5,4.5,0,1,0,-9,0M-4.5,55.56a4.5,4.5,0,1,0,9,0a4.5,4.5,0,1,0,-9,0M-4.5,66.67a4.5,4.5,0,1,0,9,0a4.5,4.5,0,1,0,-9,0M-4.5,77.78a4.5,4.5,0,1,0,9,0a4.5,4.5,0,1,0,-9,0M-4.5,88.89a4.5,4.5,0,1,0,9,0a4.5,4.5,0,1,0,-9,0M95.5,11.11a4.5,4.5,0,1,0,9,0a4.5,4.5,0,1,0,-9,0M95.5,22.22a4.5,4.5,0,1,0,9,0a4.5,4.5,0,1,0,-9,0M95.5,33.33a4.5,4.5,0,1,0,9,0a4.5,4.5,0,1,0,-9,0M95.5,44.44a4.5,4.5,0,1,0,9,0a4.5,4.5,0,1,0,-9,0M95.5,55.56a4.5,4.5,0,1,0,9,0a4.5,4.5,0,1,0,-9,0M95.5,66.67a4.5,4.5,0,1,0,9,0a4.5,4.5,0,1,0,-9,0M95.5,77.78a4.5,4.5,0,1,0,9,0a4.5,4.5,0,1,0,-9,0M95.5,88.89a4.5,4.5,0,1,0,9,0a4.5,4.5,0,1,0,-9,0'/%3E%3C/svg%3E");
+  width: 96px; height: 96px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 46px; color: var(--pri); position: relative; overflow: hidden;
+  background:
+    linear-gradient(var(--tint), var(--tint)),
+    url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20120%20120'%3E%3Cfilter%20id='n'%3E%3CfeTurbulence%20type='fractalNoise'%20baseFrequency='0.9'%20numOctaves='2'%20stitchTiles='stitch'/%3E%3CfeColorMatrix%20type='saturate'%20values='0'/%3E%3C/filter%3E%3Crect%20width='120'%20height='120'%20filter='url(%23n)'%20opacity='0.12'/%3E%3C/svg%3E"),
+    radial-gradient(140% 120% at 25% 15%, #fffefb, #fdf9f0 60%, #faf4e6);
+  background-size: cover, 90px 90px, cover;
+  background-repeat: no-repeat, repeat, no-repeat;
+  background-blend-mode: multiply, multiply, normal;
+  -webkit-mask: var(--stamp) center / contain no-repeat;
+          mask: var(--stamp) center / contain no-repeat;
+}
+.ss-stamp::before {
+  content: ''; position: absolute; inset: 11px; border-radius: 6px;
+  border: 1.5px dashed #7a6a3f; opacity: .45;
+}
+.ss-stamp img { width: 100%; height: 100%; object-fit: cover; object-position: center; }
+
+.ss-activity {
+  font-size: 1.7rem; font-weight: 800; color: var(--text); line-height: 1.2;
+  margin: 0 0 12px; padding: 0 6px;
+  animation: ssUp .5s .26s both ease-out;
+}
+.ss-km {
+  display: inline-block; background: var(--grad-btn); color: #fff;
+  font-weight: 800; font-size: 1.15rem; padding: 7px 20px; border-radius: 999px;
+  box-shadow: 0 6px 16px var(--shadow-pri);
+  animation: ssUp .5s .36s both ease-out;
+}
+.ss-sub {
+  color: var(--t2); font-size: 0.95rem; margin: 16px 0 26px;
+  animation: ssUp .5s .46s both ease-out;
+}
+.ss-cta {
+  max-width: 320px; margin: 0 auto; display: block;
+  animation: ssUp .5s .56s both ease-out;
+}
+
+@keyframes ssPress {
+  0%   { transform: scale(2.1) rotate(-14deg); opacity: 0; }
+  55%  { transform: scale(.88) rotate(4deg);   opacity: 1; }
+  100% { transform: scale(1) rotate(0); }
+}
+@keyframes ssUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .ss-stamp-wrap,
+  .ss-eyebrow, .ss-activity, .ss-km, .ss-sub, .ss-cta { animation: none; }
 }

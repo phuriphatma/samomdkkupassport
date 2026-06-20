@@ -1,0 +1,27 @@
+/* ════════════════ THEMES ════════════════
+   Default (Teal) lives in :root — see css/main/_base.css.
+   Ordered by color theory: a hue march from Teal → blue → navy → violet → pink. */
+[data-theme="skycandy"] {
+  --pri: #72b2e2;  --pri-s: #e0f1fb;  --pri-m: #a0cdee;
+  --sec: #aebfe8;  --sec-s: #ebeffb;  --sec-m: #c8d4f0;
+  --land-a: #e0f1fb; --land-b: #ebeffb; --land-c: #ecf4fc;
+  --shadow-pri: rgba(114,178,226,.35); --shadow-pri2: rgba(114,178,226,.18);
+}
+[data-theme="navy"] {
+  --pri: #1f3a68;  --pri-s: #dde4f0;  --pri-m: #5070a8;
+  --sec: #3060a0;  --sec-s: #e0eaf6;  --sec-m: #6a92c8;
+  --land-a: #dde4f0; --land-b: #e0eaf6; --land-c: #e6ecf4;
+  --shadow-pri: rgba(31,58,104,.35); --shadow-pri2: rgba(31,58,104,.18);
+}
+[data-theme="lilac"] {  /* name kept; now uses the Twilight palette */
+  --pri: #5b3b9c;  --pri-s: #e4dcf1;  --pri-m: #9077c2;
+  --sec: #b88ad8;  --sec-s: #f3ebf9;  --sec-m: #d4b4e8;
+  --land-a: #e4dcf1; --land-b: #f3ebf9; --land-c: #ece2f5;
+  --shadow-pri: rgba(91,59,156,.35); --shadow-pri2: rgba(91,59,156,.18);
+}
+[data-theme="blush"] {
+  --pri: #ea8fa0;  --pri-s: #fdeef2;  --pri-m: #f2b0bd;
+  --sec: #eccb68;  --sec-s: #fef8e0;  --sec-m: #f2dc90;
+  --land-a: #fdeef2; --land-b: #fef8e0; --land-c: #fdf2f4;
+  --shadow-pri: rgba(234,143,160,.35); --shadow-pri2: rgba(234,143,160,.18);
+}
