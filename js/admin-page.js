@@ -39,9 +39,32 @@ const SUB_DEPT_OPTIONS = {
     '5': [{ value: '3', label: 'จิตอาสา' }, { value: '4', label: '7 คณะ' }]
 };
 
+// --- ADMIN ACCOUNTS / ROLES ---
+// Client-side gate only (the real authorization is Supabase RLS). Each account maps
+// to a department scope: `dept: null` = full access (view/edit/delete every ฝ่าย);
+// `dept: <id>` = อุปนายก scoped to one ฝ่าย — create + view ONLY (no edit/delete),
+// with the department locked to theirs in the create form + activity list.
+// The dept ids match DEPARTMENTS in js/constants.js (1=บริหารองค์กร … 10=รังสีเทคนิค).
+const ADMIN_ACCOUNTS = {
+    admin:               { pass: '1234',             dept: null },  // legacy master
+    samomdkkudev:        { pass: 'samo69dev',        dept: null },  // dev — views all
+    samomdkkuvpa:        { pass: 'samo69vpa',        dept: 1 },     // บริหารองค์กร
+    samomdkkudigital:    { pass: 'samo69digital',    dept: 2 },     // ดิจิทัลและสื่อสารองค์กร
+    samomdkkuinternal:   { pass: 'samo69internal',   dept: 3 },     // กิจการภายใน
+    samomdkkuexternal:   { pass: 'samo69external',   dept: 4 },     // กิจการภายนอก
+    samomdkkuuniversity: { pass: 'samo69university', dept: 5 },     // กิจการมหาวิทยาลัย
+    samomdkkuacademic:   { pass: 'samo69academic',   dept: 6 },     // วิชาการ
+    samomdkkustrategy:   { pass: 'samo69strategy',   dept: 7 },     // ยุทธศาสตร์และพัฒนาองค์กร
+    samomdkkuquality:    { pass: 'samo69quality',    dept: 8 },     // คุณภาพชีวิตและสิ่งแวดล้อม
+    samomdkkumdi:        { pass: 'samo69mdi',        dept: 9 },     // เวชนิทัศน์
+    samomdkkuradiology:  { pass: 'samo69radiology',  dept: 10 },    // รังสีเทคนิค
+};
+
 // --- STATE ---
 let currentActivityId = null;
 let editingActivityId = null;
+let currentRole = null; // { user, dept } — dept null = full access; set on login
+const scopedDept = () => (currentRole ? currentRole.dept : null); // null = no dept restriction
 
 // --- QR GENERATION ---
 let qrStaticGenerator = null;
@@ -68,10 +91,17 @@ async function init() {
         uncommittedUploads.forEach(url => deleteFromDriveBeacon(url));
     });
 
-    if (
+    // Restore a remembered session. New scheme stores the username; the legacy
+    // `admin_logged_in` flag is honoured as the master `admin` account.
+    const storedUser = localStorage.getItem('admin_user') || sessionStorage.getItem('admin_user');
+    if (storedUser && ADMIN_ACCOUNTS[storedUser]) {
+        currentRole = { user: storedUser, dept: ADMIN_ACCOUNTS[storedUser].dept };
+        showAdminPanel();
+    } else if (
         localStorage.getItem('admin_logged_in') === 'true' ||
         sessionStorage.getItem('admin_logged_in') === 'true'
     ) {
+        currentRole = { user: 'admin', dept: null };
         showAdminPanel();
     }
 
@@ -89,6 +119,8 @@ async function init() {
         .addEventListener('click', () => {
             localStorage.removeItem('admin_logged_in');
             sessionStorage.removeItem('admin_logged_in');
+            localStorage.removeItem('admin_user');
+            sessionStorage.removeItem('admin_user');
             window.location.reload();
         });
 
@@ -200,9 +232,53 @@ async function showAdminPanel() {
     document.getElementById('admin-login-section').style.display = 'none';
     document.getElementById('admin-content').style.display = 'block';
     document.getElementById('admin-logout').style.display = 'inline-block';
+    applyRoleScope(); // lock the create/filter department + hide global controls for scoped อุปนายก
     await loadSamoData().catch(() => {}); // for the วาระสโม/Season activity filters
     populateActivitySamoFilters();
     loadActivities();
+}
+
+// Apply the logged-in account's department scope to the UI. Full-access accounts
+// (admin/dev, dept === null) see everything unchanged. A scoped อุปนายก gets their
+// ฝ่าย locked into the create form + activity-list filter and global-only controls
+// (Manage Seasons) hidden. Edit/Delete buttons are withheld in renderActivityList().
+function applyRoleScope() {
+    const dept = scopedDept();
+    const seasonsBtn = document.querySelector('button[onclick="openSeasons()"]');
+
+    if (dept === null) {
+        // Full access — make sure nothing is left locked from a prior scoped session.
+        document.getElementById('act-department').disabled = false;
+        document.getElementById('edit-department').disabled = false;
+        document.getElementById('filter-department').disabled = false;
+        if (seasonsBtn) seasonsBtn.style.display = '';
+        return;
+    }
+
+    // Manage Seasons is a global (cross-ฝ่าย) action — dev/master only.
+    if (seasonsBtn) seasonsBtn.style.display = 'none';
+
+    // Lock the create form to their department (dispatch change so sub-dept options
+    // populate for ฝ่าย 3/5), then disable the select. A disabled <select> still
+    // reports `.value` to createActivity(), so the insert keeps the right dept.
+    const actDept = document.getElementById('act-department');
+    actDept.value = String(dept);
+    actDept.dispatchEvent(new Event('change'));
+    actDept.disabled = true;
+
+    // Lock the edit form to their department too, so an edit can't reassign an
+    // activity to another ฝ่าย. editActivity() resets the value to the row's dept
+    // (always === theirs, since they only see their own), leaving sub-dept editable.
+    const editDept = document.getElementById('edit-department');
+    editDept.value = String(dept);
+    editDept.disabled = true;
+
+    // Lock the activity-list filter to their department (renderActivityList also
+    // enforces this server-of-truth so a tampered select can't widen the view).
+    const filterDept = document.getElementById('filter-department');
+    filterDept.value = String(dept);
+    filterDept.dispatchEvent(new Event('change'));
+    filterDept.disabled = true;
 }
 
 // Fill the วาระสโม + Season dropdowns used to filter the activity list. The
@@ -225,16 +301,14 @@ function populateActivitySamoFilters() {
 
 function handleLogin(e) {
     e.preventDefault();
-    const user = document.getElementById('admin-user').value;
+    const user = document.getElementById('admin-user').value.trim();
     const pass = document.getElementById('admin-pass').value;
     const remember = document.getElementById('admin-remember').checked;
 
-    if (user === 'admin' && pass === '1234') {
-        if (remember) {
-            localStorage.setItem('admin_logged_in', 'true');
-        } else {
-            sessionStorage.setItem('admin_logged_in', 'true');
-        }
+    const acct = ADMIN_ACCOUNTS[user];
+    if (acct && acct.pass === pass) {
+        currentRole = { user, dept: acct.dept };
+        (remember ? localStorage : sessionStorage).setItem('admin_user', user);
         showAdminPanel();
     } else {
         alert('Invalid credentials!');
@@ -276,9 +350,15 @@ function renderActivityList(){
     const filterSeason = document.getElementById('filter-season')?.value || '';
     // วาระสโม/Season filter the activity list by the time window it was CREATED in.
     const win = activitySamoWindow(filterSeason || filterYear, !!filterSeason);
+    // Scoped อุปนายก only ever see their own ฝ่าย (enforced here, not just via the
+    // locked filter UI). Full-access accounts (dev/master) have scopedDept() === null.
+    const ownDept = scopedDept();
 
     activitiesCache.forEach((act) => {
         // Apply filters
+        if (ownDept !== null && act.department_id !== ownDept) {
+            return;
+        }
         if (filterDept && act.department_id !== parseInt(filterDept, 10)) {
             return;
         }
@@ -346,6 +426,13 @@ window.editActivity = async (id) => {
         alert('Could not load activity.');
         return;
     }
+    // A scoped อุปนายก may edit only within their own ฝ่าย; full access edits any.
+    const ownDept = scopedDept();
+    if (ownDept !== null && data.department_id !== ownDept) {
+        alert('Not allowed: this activity is not in your ฝ่าย.');
+        editingActivityId = null;
+        return;
+    }
 
     document.getElementById('edit-name').value = data.name;
     document.getElementById('edit-km').value = data.base_points_km;
@@ -375,6 +462,18 @@ window.cancelEdit = () => {
 };
 
 window.deleteActivity = async (id) => {
+    // A scoped อุปนายก may delete only within their own ฝ่าย; full access deletes any.
+    const { data: actRow } = await supabase
+        .from('activities')
+        .select('badge_url, department_id')
+        .eq('id', id)
+        .single();
+    const ownDept = scopedDept();
+    if (ownDept !== null && actRow?.department_id !== ownDept) {
+        alert('Not allowed: this activity is not in your ฝ่าย.');
+        return;
+    }
+
     if (
         !confirm(
             'Delete this activity?\n\nIt disappears from the admin list and can no longer be scanned. Earners KEEP their points + flight-log entry (history is immutable), but its CERTIFICATES are deleted with it — once the activity is gone, the certificate is gone (students must collect it while the activity is open).',
@@ -385,7 +484,6 @@ window.deleteActivity = async (id) => {
     // The badge image is removed from Drive. Scans are kept (immutable flight-log
     // history), but certificate templates are deleted with the activity: certs are
     // no longer season-scoped snapshots — "activity gone ⇒ cert gone".
-    const { data: actRow } = await supabase.from('activities').select('badge_url').eq('id', id).single();
 
     const { data, error } = await supabase
         .from('activities')
@@ -410,7 +508,10 @@ async function submitEditActivity(e) {
     const name = document.getElementById('edit-name').value;
     const km = parseInt(document.getElementById('edit-km').value, 10);
     const deptRaw = document.getElementById('edit-department').value;
-    const dept = deptRaw ? parseInt(deptRaw, 10) : null;
+    // Scoped อุปนายก can never move an activity out of their own ฝ่าย, even via a
+    // tampered (disabled) select — clamp the saved dept to theirs.
+    const ownDept = scopedDept();
+    const dept = ownDept !== null ? ownDept : (deptRaw ? parseInt(deptRaw, 10) : null);
     const subDeptRaw = document.getElementById('edit-sub-department').value;
     const subDept = subDeptRaw ? parseInt(subDeptRaw, 10) : null;
     const badge_name = document.getElementById('edit-badge-name').value || name;
@@ -460,7 +561,9 @@ async function createActivity(e) {
     const name = document.getElementById('act-name').value;
     const km = parseInt(document.getElementById('act-km').value, 10);
     const deptRaw = document.getElementById('act-department').value;
-    const dept = deptRaw ? parseInt(deptRaw, 10) : null;
+    // Scoped อุปนายก always create inside their own ฝ่าย (clamp, don't trust the select).
+    const ownDept = scopedDept();
+    const dept = ownDept !== null ? ownDept : (deptRaw ? parseInt(deptRaw, 10) : null);
     const subDeptRaw = document.getElementById('act-sub-department').value;
     const subDept = subDeptRaw ? parseInt(subDeptRaw, 10) : null;
     const badge_name = document.getElementById('act-badge-name').value || name;
