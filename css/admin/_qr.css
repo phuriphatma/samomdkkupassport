@@ -7,11 +7,15 @@
     margin-bottom: 30px;
 }
 
-.qr-box {
-    background: white;
-    padding: 10px;
-    border-radius: 10px;
-    display: inline-block;
+/* The on-screen preview IS the downloadable poster (built by buildQrPoster) — what you
+   see is what you download. The image is already a 3:4 card on a coloured background. */
+.qr-poster {
+    display: block;
+    width: 100%;
+    max-width: 320px;
+    margin: 0 auto;
+    border-radius: 14px;
+    box-shadow: 0 8px 28px rgba(0, 0, 0, .14);
 }
 
 .qr-close-btn {
