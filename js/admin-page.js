@@ -184,118 +184,81 @@ function makeQrDataUrl(text, size) {
     }
 }
 
-const POSTER_TITLE = 'MDKKU PASSPORT';
-const POSTER_TAGLINE = 'Life is a Journey';
-const POSTER_FOOTER = 'สแกนเพื่อสะสมคะแนนกิจกรรม';
+// The designed poster background (public/qr-poster-template.png, served at root by Vite).
+// Everything decorative — MDKKU PASSPORT title, tagline, globe/postmark, world-map band,
+// SAMO logo, footer, and the empty QR box outline — is baked into this image. Only the QR
+// and the activity name are drawn on at run time.
+const POSTER_TEMPLATE = '/qr-poster-template.png';
+const POSTER_W = 1086, POSTER_H = 1448;  // native template size (px)
+// Slots measured from the template: the QR sits centred inside the box outline; the name
+// occupies the blank band between the box and the world-map band.
+const QR_CX = 540, QR_CY = 707, QR_SIZE = 430;
+const NAME_TOP = 963, NAME_BOTTOM = 1112, NAME_CX = 540, NAME_MAXW = 720;
+// The activity badge, drawn as a passport stamp, sits in the empty centre of the
+// world-map band (the map continents sit either side of it).
+const STAMP_CX = 540, STAMP_CY = 1208, STAMP_SIZE = 150;
 
-// Compose title + QR + ชื่องาน + stamp onto a white rounded card sitting on a
-// theme-colour 3:4 background; return a PNG data URL.
+// Draw the live QR + activity name (+ badge stamp) onto the designed template; return a PNG data URL.
 async function buildQrPoster(qrDataUrl, name, badgeUrl) {
     if (document.fonts?.ready) await document.fonts.ready; // Thai/Nunito metrics before measuring
 
-    const qrImg = await loadImageEl(qrDataUrl);
+    const [template, qrImg] = await Promise.all([
+        loadImageEl(POSTER_TEMPLATE),
+        loadImageEl(qrDataUrl),
+    ]);
     let badgeImg = null;
     if (badgeUrl) {
-        try { badgeImg = await loadCertImage(badgeUrl); } catch { badgeImg = null; } // CORS-safe; skip if it fails
+        // CORS-safe (fixGoogleDriveUrl → lh3); skip the stamp if the image can't load.
+        try { badgeImg = await loadCertImage(badgeUrl); }
+        catch { badgeImg = null; console.warn('[poster] badge image failed to load; stamp omitted:', badgeUrl); }
     }
 
-    const SS = 2;                       // supersample for crisp text/edges
-    const W = 720, H = 960;             // 3:4 portrait
-    const margin = 40;                  // theme-colour border around the white card
-    const cardX = margin, cardY = margin, cardW = W - margin * 2, cardH = H - margin * 2, cardR = 40;
-    const innerPad = 44;                // card edge → content
-    const titleSize = 32, taglineSize = 19, gapTitleTag = 8, gapTitle = 24;
-    const nameSize = 30, nameWeight = 800, lineH = nameSize * 1.4;
-    const gapName = 30, gapStamp = 26, stampSize = badgeImg ? 140 : 0;
-    // No stamp? Grow the QR a little so the card doesn't look empty (vertical centering
-    // soaks up the rest) — but not so much that the QR dominates.
-    const qrSize = badgeImg ? 370 : 430;
-    const footerSize = 21, footerWeight = 700, gapFooter = 24;
+    const SS = 2;                       // supersample so overlaid text stays crisp
     const fam = "Nunito, 'Noto Sans Thai', system-ui, sans-serif";
-    const nameFont = `${nameWeight} ${nameSize}px ${fam}`;
-    const titleColor = '#1e3a5f';            // navy — all poster text
-    const taglineColor = 'rgba(30,58,95,.72)'; // muted navy
-    const bgColor = '#bfe0f2';               // light blue card background
-
-    // Wrap the name to fit the card: break at spaces, and char-break a single word
-    // only if it's too wide to fit on its own line.
-    const measure = document.createElement('canvas').getContext('2d');
-    measure.font = nameFont;
-    const lines = name ? wrapLines(measure, name, cardW - innerPad * 2) : [];
-
-    // Centre the title/QR/name/stamp/footer stack vertically inside the card.
-    const titleBlock = titleSize + gapTitleTag + taglineSize;
-    const nameBlock = lines.length ? gapName + lines.length * lineH : 0;
-    const stampBlock = badgeImg ? gapStamp + stampSize : 0;
-    const footerBlock = gapFooter + footerSize;
-    const contentH = titleBlock + gapTitle + qrSize + nameBlock + stampBlock + footerBlock;
-    let y = cardY + Math.max(innerPad, (cardH - contentH) / 2);
+    const nameWeight = 700, nameColor = '#1e3a5f';
 
     const canvas = document.createElement('canvas');
-    canvas.width = W * SS; canvas.height = H * SS;
+    canvas.width = POSTER_W * SS; canvas.height = POSTER_H * SS;
     const ctx = canvas.getContext('2d');
     ctx.scale(SS, SS);
 
-    // Theme-colour background, then a white rounded card (soft drop shadow) on top.
-    ctx.fillStyle = bgColor;
-    ctx.fillRect(0, 0, W, H);
-    ctx.save();
-    ctx.shadowColor = 'rgba(0,0,0,.18)';
-    ctx.shadowBlur = 26;
-    ctx.shadowOffsetY = 10;
-    ctx.fillStyle = '#ffffff';
-    roundRectPath(ctx, cardX, cardY, cardW, cardH, cardR);
-    ctx.fill();
-    ctx.restore();
+    // Full-bleed template, then the QR centred in its box (white quiet-zone covers the
+    // box interior; the printed blue outline stays visible around it).
+    ctx.drawImage(template, 0, 0, POSTER_W, POSTER_H);
+    ctx.drawImage(qrImg, QR_CX - QR_SIZE / 2, QR_CY - QR_SIZE / 2, QR_SIZE, QR_SIZE);
 
-    // Title (theme colour) + tagline (muted italic), centred above the QR.
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'alphabetic';
-    ctx.fillStyle = titleColor;
-    ctx.font = `800 ${titleSize}px ${fam}`;
-    if ('letterSpacing' in ctx) ctx.letterSpacing = '1.5px';
-    ctx.fillText(POSTER_TITLE, W / 2, y + titleSize);
-    if ('letterSpacing' in ctx) ctx.letterSpacing = '0px';
-    ctx.fillStyle = taglineColor;
-    ctx.font = `italic 600 ${taglineSize}px ${fam}`;
-    ctx.fillText(POSTER_TAGLINE, W / 2, y + titleSize + gapTitleTag + taglineSize);
-    y += titleBlock + gapTitle;
-
-    ctx.drawImage(qrImg, (W - qrSize) / 2, y, qrSize, qrSize);
-    y += qrSize;
-
-    if (lines.length) {
-        y += gapName;
-        ctx.fillStyle = titleColor;
-        ctx.font = nameFont;
+    // Activity name: wrap to the box width, shrink to fit the band, then vertically centre.
+    if (name) {
+        ctx.fillStyle = nameColor;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'alphabetic';
-        lines.forEach((ln, i) => ctx.fillText(ln, W / 2, y + nameSize + i * lineH));
-        y += lines.length * lineH;
+        const bandH = NAME_BOTTOM - NAME_TOP;
+        let size = 36, lines, blockH;
+        for (;;) {
+            ctx.font = `${nameWeight} ${size}px ${fam}`;
+            lines = wrapLines(ctx, name, NAME_MAXW);
+            blockH = lines.length * size * 1.32;
+            if (blockH <= bandH || size <= 20) break;
+            size -= 2;
+        }
+        const lineH = size * 1.32;
+        const top = NAME_TOP + Math.max(0, (bandH - blockH) / 2);
+        lines.forEach((ln, i) => ctx.fillText(ln, NAME_CX, top + size + i * lineH));
     }
 
+    // Activity badge as a passport stamp, centred in the world-map band.
     if (badgeImg) {
-        y += gapStamp;
         const [grain, grainFilled] = await Promise.all([
             loadImageEl(STAMP_GRAIN), loadImageEl(STAMP_GRAIN_FILLED),
         ]).catch(() => [null, null]); // grain is decorative — render without it if it fails
-        const stamp = renderStampCanvas(badgeImg, stampSize * SS, grain, grainFilled);
+        const stamp = renderStampCanvas(badgeImg, STAMP_SIZE * SS, grain, grainFilled);
         ctx.save();
         ctx.shadowColor = 'rgba(60,45,20,.3)';
         ctx.shadowBlur = 7;
         ctx.shadowOffsetY = 4;
-        ctx.drawImage(stamp, (W - stampSize) / 2, y, stampSize, stampSize);
+        ctx.drawImage(stamp, STAMP_CX - STAMP_SIZE / 2, STAMP_CY - STAMP_SIZE / 2, STAMP_SIZE, STAMP_SIZE);
         ctx.restore();
-        y += stampSize;
     }
-
-    // Footer call-to-action, centred at the bottom of the card.
-    y += gapFooter;
-    ctx.fillStyle = titleColor;
-    ctx.font = `${footerWeight} ${footerSize}px ${fam}`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'alphabetic';
-    ctx.fillText(POSTER_FOOTER, W / 2, y + footerSize);
 
     return canvas.toDataURL('image/png');
 }
@@ -307,18 +270,6 @@ function loadImageEl(src) {
         img.onerror = () => reject(new Error('image load failed'));
         img.src = src;
     });
-}
-
-// Trace a rounded-rect path (uses native roundRect when available, else arcTo).
-function roundRectPath(ctx, x, y, w, h, r) {
-    ctx.beginPath();
-    if (ctx.roundRect) { ctx.roundRect(x, y, w, h, r); return; }
-    ctx.moveTo(x + r, y);
-    ctx.arcTo(x + w, y, x + w, y + h, r);
-    ctx.arcTo(x + w, y + h, x, y + h, r);
-    ctx.arcTo(x, y + h, x, y, r);
-    ctx.arcTo(x, y, x + w, y, r);
-    ctx.closePath();
 }
 
 // Compounds the ICU dictionary splits but that should never break across lines (e.g.

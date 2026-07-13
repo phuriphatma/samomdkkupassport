@@ -73,11 +73,14 @@ Last updated: 2026-06-21. **Tagged release: v1.0.0.**
 - **Admin** — create/edit/delete activities; department + sub-department filters;
   **search by name**; static-QR generation + a downloadable poster. The QR screen shows
   the **poster image itself** (what-you-see-is-what-downloads), built on a `<canvas>` by
-  `buildQrPoster` (`js/admin-page.js`): a **3:4** card — light-blue background, white
-  rounded card, **navy** title **MDKKU PASSPORT** + *Life is a Journey* tagline, hi-res QR,
-  the activity **ชื่องาน**, the badge drawn as a passport **stamp** (scallop + parchment
-  grain ported from `css/passport/_stamps.css`), and a footer **สแกนเพื่อสะสมคะแนนกิจกรรม**.
-  With no badge the QR grows to fill the stamp's slot. The name wraps at **Thai word
+  `buildQrPoster` (`js/admin-page.js`). The poster is now a **designed template image**
+  (`public/qr-poster-template.png`, 1086×1448, served at root) with all decoration baked
+  in — MDKKU PASSPORT title/tagline, globe + postmark, world-map band, footer, and the
+  empty QR-box outline. Only three things are drawn on at run time, at slot coordinates
+  measured from the PNG: the **hi-res QR** (in the box), the activity **ชื่องาน** (in the
+  blank band below, auto-shrunk to fit), and the badge drawn as a passport **stamp**
+  (scallop + parchment grain ported from `css/passport/_stamps.css`) **centred in the
+  world-map band**. No badge → the stamp is simply omitted. The name wraps at **Thai word
   boundaries** (`Intl.Segmenter('th')` in `wrapLines`); dates and the compound
   **ปีการศึกษา** are kept on one line (`protectedRanges` / `KEEP_TOGETHER`).
 - **Scan flow** — static token validated in `scanning.js`; records a scan.

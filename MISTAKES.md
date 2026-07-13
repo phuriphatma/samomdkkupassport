@@ -396,3 +396,38 @@ exception. `removeOwnScan` (`js/dashboard.js`, from the memory modal) runs
 stamps / flight log / leaderboard / boarding pass all re-derive cleanly — no partial cache
 fixups). RLS already permits it (`scans_delete using(true)`, db/0009); the `user_id` filter is
 the real guard. The modal's `#modal-danger` block is shown only when a real `scan.id` is present.
+
+## QR poster is now a template image with hard-coded slot coordinates
+**Note:** `buildQrPoster` (`js/admin-page.js`) no longer draws the poster from scratch — it
+composites the live QR + activity name + badge stamp onto a **designed background**,
+`public/qr-poster-template.png` (1086×1448). The QR box, name band, and stamp position are
+fixed pixel coordinates (`QR_CX/CY/SIZE`, `NAME_TOP/BOTTOM`, `STAMP_CX/CY/SIZE`) **measured
+from that specific PNG**. **Trap:** if the template art is re-exported at a different size or
+layout, those constants silently drift — the QR lands off the box, the name overlaps the map,
+etc. **Fix/where:** re-measure against the new PNG (a quick PIL pixel-scan for the box outline
+edges + the band's colour change works) and update the constants. Keep the template at 1086×1448
+to avoid re-measuring. The asset must live in `public/` so Vite serves it at `/` (referenced as
+`/qr-poster-template.png`); if it 404s, the whole QR-generate flow throws.
+
+## Poster stamp / cert bg intermittently missing = lh3 rate-limiting (HTTP 429), NOT a bad link
+**Symptom:** an activity has a valid badge image, but its **stamp is missing from the poster**
+— intermittently, "some of the time", different activities on different tries.
+**Real cause (confirmed 2026-07-13 via headless Chrome):** canvas images load via `loadCertImage`
+with `img.crossOrigin='anonymous'` (required so `canvas.toDataURL` can export — else the canvas is
+tainted). The images ARE valid and CORS-correct (`lh3.googleusercontent.com/d/ID`, `acao: *`), but
+**lh3 rate-limits under load and returns HTTP 429**, which surfaces as a plain `onerror` → the
+stamp is silently dropped (`catch { badgeImg = null }`). It's volume/timing-dependent, hence
+"sometimes / some activities". `curl` won't reproduce it (no `Origin`, low volume); a real browser
+firing several badge loads (admin list thumbnails + a crossOrigin poster fetch, which is a
+*separate* cache entry) will. **Beware when debugging: running many automated image loads yourself
+triggers the 429**, making everything look broken when it's your own load.
+**Fix:** `loadCertImage` (`js/certificate.js`) now (a) sets `img.referrerPolicy='no-referrer'`
+(lh3 throttles partly on `Referer`; mirrors the badge `<img>` in `scanning.js`) and (b) **retries
+3× with backoff + a cache-busting `_r=` param** since 429 is transient. Verified: after the self-
+inflicted throttle cooled, loads return 200 and export cleanly.
+**Also hardened (separate, latent):** `fixGoogleDriveUrl` (`js/utils.js`) now matches `/\/d\/(ID)/`
+**or** `/[?&]id=(ID)/` so a *pasted* `?id=`/`open?id=`/`uc?id=` Drive link is normalised to the
+CORS-safe lh3 host too (previously only `/file/d/ID` was). Current prod badges all already used the
+working `/file/d/ID` form — this wasn't the cause, just belt-and-suspenders.
+**Non-bug reminder:** no-stamp can also just mean **no `badge_url`** — "has a badge *name*" ≠ "has
+a badge *image*" (`badge_name` defaults to the activity name even with no image uploaded).
