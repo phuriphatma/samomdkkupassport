@@ -68,17 +68,32 @@ export const CERT_FONTS = [
 ];
 
 /**
- * Load a certificate background image with CORS enabled so the resulting canvas
- * can be exported. Google Drive links are normalised to lh3.googleusercontent.com,
- * which serves the right CORS headers.
+ * Load a certificate/badge image with CORS enabled so the resulting canvas can be
+ * exported. Google Drive links are normalised to lh3.googleusercontent.com (CORS-correct).
+ *
+ * lh3 **rate-limits** (HTTP 429) under load, which shows up as an intermittent onerror —
+ * "the stamp/background is sometimes missing". Two mitigations, matching the badge <img>
+ * in scanning.js: send **no referrer** (lh3 throttles partly on Referer), and **retry**
+ * a few times with backoff since a 429 is transient. A cache-busting query param forces
+ * each retry to actually re-fetch instead of replaying the failed response.
  */
 export function loadCertImage(url) {
-    return new Promise((resolve, reject) => {
+    const src = fixGoogleDriveUrl(url);
+    const attempt = (n) => new Promise((resolve, reject) => {
         const img = new Image();
         img.crossOrigin = 'anonymous';
+        img.referrerPolicy = 'no-referrer';
         img.onload = () => resolve(img);
-        img.onerror = () => reject(new Error('Could not load the background image. Check the link is public.'));
-        img.src = fixGoogleDriveUrl(url);
+        img.onerror = () => reject(new Error('Could not load the image. Check the link is public.'));
+        img.src = n === 0 ? src : `${src}${src.includes('?') ? '&' : '?'}_r=${n}`;
+    });
+    const RETRIES = 3, BACKOFF_MS = 700;
+    return attempt(0).catch(async (err) => {
+        for (let n = 1; n <= RETRIES; n++) {
+            await new Promise((r) => setTimeout(r, BACKOFF_MS * n));
+            try { return await attempt(n); } catch { /* keep retrying */ }
+        }
+        throw err;
     });
 }
 
