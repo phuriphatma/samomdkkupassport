@@ -5,6 +5,30 @@ you. Each entry: the symptom, the cause, and the fix.
 
 ---
 
+## Wrapping Thai correctly (no spaces → break at word boundaries, not mid-syllable)
+**Context:** Thai has no spaces, so `/\s+/` splitting treats a whole phrase as one
+"word" (then char-breaks mid-syllable when it overflows), while `word-break: keep-all`
+doesn't stop Chrome's Thai breaking and `break-all` chops syllables. None give clean
+word-boundary wraps.
+**Fix (canvas, current):** the QR poster name is drawn on `<canvas>`, so `wrapLines()` in
+`js/admin-page.js` segments with **`Intl.Segmenter('th', {granularity:'word'})`** (ICU
+dictionary) to get real Thai words, wraps between them, and char-breaks a single segment
+only if it alone is too wide. Falls back to space-splitting if `Intl.Segmenter` is absent.
+**For DOM text (not canvas):** just let the browser do it — defaults + `lang="th"` +
+`overflow-wrap: anywhere` as a safety net; the engine has the same ICU Thai breaker.
+
+## Canvas postage-stamp: perforations bulge OUT instead of notching IN
+**Symptom:** Re-creating the dashboard stamp on a `<canvas>` (for the QR poster download),
+the edge perforation circles rendered as outward white bumps, not inward notches.
+**Cause:** The CSS mask SVG has `viewBox="0 0 100 100"`; circles centred on the edges
+extend past it and the **viewBox clips** the outer halves, leaving notches. A bare canvas
+`fill(path,'evenodd')` doesn't clip, so the outer halves show.
+**Fix:** Clip to `rect(0,0,100,100)` before filling/clipping the scallop path
+(`renderStampCanvas` in `js/admin-page.js`). It's rendered to an offscreen canvas, then
+drawn with a shadow so the shadow still traces the scalloped alpha. Grain/parchment/dashed-
+frame are ported from `css/passport/_stamps.css`; the dashed frame is expressed as % of the
+100-box (1.5px/7px on a 60px stamp → ~2.5%/11.7%) to match the on-screen proportions.
+
 ## OAuth redirects to production instead of localhost in dev
 **Symptom:** Running `npm run dev` on `http://localhost:5173`, after Google login you
 land on `https://samomdkkupassport.pages.dev/#` instead of localhost.

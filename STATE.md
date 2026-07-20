@@ -71,7 +71,15 @@ Last updated: 2026-06-21. **Tagged release: v1.0.0.**
 - **Profile photo** — `localStorage`, per device.
 - **Data backup** — Export/Import all on-device user content as a JSON file.
 - **Admin** — create/edit/delete activities; department + sub-department filters;
-  **search by name**; static-QR generation + download.
+  **search by name**; static-QR generation + a downloadable poster. The QR screen shows
+  the **poster image itself** (what-you-see-is-what-downloads), built on a `<canvas>` by
+  `buildQrPoster` (`js/admin-page.js`): a **3:4** card — light-blue background, white
+  rounded card, **navy** title **MDKKU PASSPORT** + *Life is a Journey* tagline, hi-res QR,
+  the activity **ชื่องาน**, the badge drawn as a passport **stamp** (scallop + parchment
+  grain ported from `css/passport/_stamps.css`), and a footer **สแกนเพื่อสะสมคะแนนกิจกรรม**.
+  With no badge the QR grows to fill the stamp's slot. The name wraps at **Thai word
+  boundaries** (`Intl.Segmenter('th')` in `wrapLines`); dates and the compound
+  **ปีการศึกษา** are kept on one line (`protectedRanges` / `KEEP_TOGETHER`).
 - **Scan flow** — static token validated in `scanning.js`; records a scan.
 - **Certificates** — admin manages templates per activity (label + background +
   name placement) with live preview; students generate + download a PNG with their
