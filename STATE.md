@@ -137,7 +137,13 @@ Other:
 
 - User content (profile photo, memories, photos) is **localStorage only** by choice —
   SAMO storage is reserved for important data. Backup/restore covers cross-device.
-- Admin auth is a hardcoded `admin/1234` flag; RLS is permissive. Not production-grade.
+- Admin auth is a **client-side** account map in `js/admin-page.js` (`ADMIN_ACCOUNTS`);
+  RLS is permissive, so this is a UX scope, not real security. `admin`/`1234` + `samomdkkudev`
+  = full access; ten `samomdkku<ฝ่าย>` accounts are **department-scoped** — full CRUD on their own
+  ฝ่าย only (create, view, edit, delete, manage certificates). The dept is locked in the create/edit
+  forms + list filter and clamped on save, ownership is re-checked in edit/delete, and **Manage
+  Seasons** (cross-ฝ่าย) is hidden. Only dev/master can touch other ฝ่าย or seasons.
+  Logged-in username persists as `admin_user` (legacy `admin_logged_in` flag still honoured as `admin`).
 - Dead DB columns remain (`continent_id`, `is_marketing_bonus`, `active_token`,
   `token_expires_at`) — safe to drop later.
 

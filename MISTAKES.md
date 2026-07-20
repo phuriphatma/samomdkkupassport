@@ -92,11 +92,18 @@ do not move it to Supabase storage without an explicit product decision (STATE.m
 **Mitigation:** Inputs now have `min="0"`; km is parsed with `parseInt`. Validate before
 trusting `base_points_km` in aggregates.
 
-## Permissive RLS / hardcoded admin
+## Permissive RLS / client-side admin accounts
 **Note:** `certificates` (and `activities`) RLS policies allow anon read/write because
-the admin terminal uses the anon key with a hardcoded `admin/1234` localStorage flag —
-there is no real admin auth. Treat the admin surface as trusted-network only and tighten
-RLS if/when real auth is added.
+the admin terminal authorizes with the anon key behind a **client-side** account map
+(`ADMIN_ACCOUNTS` in `js/admin-page.js`) — `admin`/`samomdkkudev` are full-access, the ten
+`samomdkku<ฝ่าย>` accounts are department-scoped (full CRUD on their own ฝ่าย only).
+This is a **UX scope, not security**: the passwords ship in the JS bundle and any logged-in
+session can issue arbitrary anon-key writes via the console. Treat the admin surface as
+trusted-network only and tighten RLS if/when real auth is added. Department scope is enforced
+in `renderActivityList`/`deleteActivity`, **not** by the DB.
+**Gotcha:** the scoped department `<select>` is `disabled` to lock it, which is fine because
+`createActivity` reads `.value` directly in JS — a disabled select still reports its value
+(it just isn't form-serialized). Don't "fix" it to a hidden input expecting form submission.
 
 ## iPad: modal clips / page "locks up" when the keyboard opens
 **Symptom:** Writing a memory on iPad, the keyboard pushes the modal so its top is
