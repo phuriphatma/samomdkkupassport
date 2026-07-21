@@ -3,11 +3,13 @@ import { defineConfig } from 'vite';
 import htmlIncludes from './vite-plugin-html-includes.js';
 
 export default defineConfig({
-  // Served at the /passport/ subpath on samo.md.kku.ac.th (behind the KKU
-  // VM's Nginx). Vite must prefix asset URLs with /passport/ or the HTML's
-  // root-absolute /assets/* links resolve to samoweb's root → blank page.
-  // Revert to '/' only if passport ever moves to its own subdomain root.
-  base: '/passport/',
+  // Base path differs by deploy target:
+  //   - Cloudflare Pages (samomdkkupassport.pages.dev) serves at ROOT → '/'
+  //     (the default; DON'T set PASSPORT_BASE there or assets 404 + no CSS).
+  //   - KKU VM Nginx serves at the /passport/ SUBPATH → build with
+  //     `PASSPORT_BASE=/passport/ npm run build` (server/deploy.sh does this)
+  //     so asset URLs are prefixed and don't resolve to samoweb's root.
+  base: process.env.PASSPORT_BASE || '/',
   plugins: [htmlIncludes()],
   build: {
     rollupOptions: {
