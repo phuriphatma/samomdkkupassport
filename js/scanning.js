@@ -1,6 +1,6 @@
 // js/scanning.js
 import { supabase } from './app.js';
-import { checkSession } from './auth.js';
+import { checkSession, ensureProfile } from './auth.js';
 import { fixGoogleDriveUrl, savePendingScanUrl, clearPendingScanUrl } from './utils.js';
 import { ROUTES } from './routes.js';
 import { getCurrentContext } from './samo.js';
@@ -95,6 +95,10 @@ if (!user) {
         confirmSection.style.display = 'none';
         spinner.style.display = 'block';
         document.querySelector('#loading-spinner h2').innerText = 'Stamping Passport...';
+
+        // Make sure the user has a profile row before the scan lands, or
+        // on_new_scan would update 0 rows and this scan's km would be lost.
+        await ensureProfile(user);
 
         // Stamp the scan with the current SamoYear + Season and a snapshot of the
         // activity, so the record is immutable history (survives activity edits/

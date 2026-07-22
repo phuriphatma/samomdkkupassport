@@ -53,6 +53,30 @@ export async function checkSession() {
   return null;
 }
 
+// Ensure this signed-in user has a passport profile row. Covers users who
+// already had a samoweb (project A) account BEFORE the passport merge: the
+// signup trigger only fires at signup, so they'd otherwise have no profile and
+// their km wouldn't track / they'd be absent from the roster. Own-row INSERT is
+// allowed by the profiles_insert_own RLS policy (with_check auth.uid()=id); a
+// duplicate / already-linked row (23505) is a harmless no-op. Best-effort —
+// never throws, so it can't block a scan or the dashboard from loading.
+export async function ensureProfile(user) {
+  if (!user?.id) return;
+  try {
+    const { data, error } = await supabase
+      .from("profiles").select("id").eq("id", user.id).maybeSingle();
+    if (error) { console.warn("ensureProfile check failed:", error.message); return; }
+    if (data) return; // already has a profile
+    const { error: insErr } = await supabase.from("profiles").insert({
+      id: user.id,
+      email: user.email,
+      full_name: user.user_metadata?.full_name || user.user_metadata?.name || null,
+      total_km: 0,
+    });
+    if (insErr && insErr.code !== "23505") console.warn("ensureProfile create failed:", insErr.message);
+  } catch (e) { console.warn("ensureProfile error:", e); }
+}
+
 export async function logout() {
   try {
       await Promise.race([

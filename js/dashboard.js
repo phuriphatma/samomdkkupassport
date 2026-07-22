@@ -1,6 +1,6 @@
 // js/dashboard.js — Passport ebook with memory popup
 import { supabase } from './app.js';
-import { checkSession, logout } from './auth.js';
+import { checkSession, logout, ensureProfile } from './auth.js';
 import { fixGoogleDriveUrl, getPendingScanUrl, clearPendingScanUrl } from './utils.js';
 import { renderCertificate, downloadCanvasPng } from './certificate.js';
 import { ROUTES } from './routes.js';
@@ -1443,6 +1443,7 @@ async function init() {
     if (pendingUrl) { clearPendingScanUrl(); window.location.href = pendingUrl; return; }
 
     currentUserId = user.id;
+    await ensureProfile(user);   // create passport profile if this user has none yet
     setupProfilePhoto(currentUserId);
 
     // ── Display name ────────────────────────────────────────
