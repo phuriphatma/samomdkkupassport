@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Preview — verification email (dev only)</title>
+  <style>
+    body { margin:0; font-family:system-ui,-apple-system,"Noto Sans Thai",Segoe UI,sans-serif;
+           background:#e9edf1; padding:24px; }
+    .wrap { max-width:640px; margin:0 auto; }
+    .hint { font-size:13px; color:#5a6b7a; margin:0 0 16px; }
+    .mail { background:#fff; border:1px solid #d3dae1; border-radius:12px; overflow:hidden;
+            box-shadow:0 6px 22px rgba(20,40,60,.08); }
+    .hdr { padding:14px 18px; border-bottom:1px solid #eef2f5; font-size:13.5px; color:#33414e; }
+    .hdr b { color:#111; }
+    .subj { font-size:16px; font-weight:700; color:#111; margin:2px 0 8px; }
+    .body { padding:8px 14px 18px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <p class="hint">Dev preview of the email <code>sendMigrationVerifyEmails()</code> sends. This is the <b>pmphuriphat@gmail.com → phuriphat.ma@kkumail.com</b> test version. Gmail may render fonts/spacing slightly differently — for a 100% faithful test, run the GAS dry-run (lands in your real inbox).</p>
+    <div class="mail">
+      <div class="hdr">
+        <div class="subj">[SAMO Passport] ยืนยันอีเมล @kkumail.com ของคุณ</div>
+        <div><b>MDKKU SAMO</b> &lt;mdstuddata.beta@gmail.com&gt;</div>
+        <div>to: pmphuriphat@gmail.com &nbsp;·&nbsp; reply-to: mdstuddata.beta@gmail.com</div>
+      </div>
+      <div class="body">
+        <div style="font-family:system-ui,-apple-system,'Noto Sans Thai',Segoe UI,sans-serif;max-width:520px;margin:0 auto;color:#1b2733;line-height:1.7;font-size:15px">
+          <p>สวัสดีค่ะ/ครับ 🛂</p>
+          <p>ก่อนหน้านี้คุณสแกนสะสมคะแนน <b>SAMO Passport</b> ด้วยบัญชี <span style="word-break:break-all">pmphuriphat@gmail.com</span></p>
+          <p>ขณะนี้ SAMO Passport รองรับเฉพาะบัญชี <b>@kkumail.com</b> เท่านั้น เราจึงได้ <b>ย้ายคะแนน กิจกรรม แสตมป์ และเกียรติบัตร</b> ของคุณไปยังบัญชี:</p>
+          <p style="text-align:center;font-size:17px;font-weight:700;background:#eafaf2;border:1px solid #b7e6ce;border-radius:12px;padding:14px;word-break:break-all">phuriphat.ma@kkumail.com</p>
+          <p><b>กรุณาช่วยตรวจสอบ:</b> เข้าสู่ระบบที่ลิงก์ด้านล่างด้วยบัญชี kkumail นี้</p>
+          <p style="text-align:center;margin:22px 0"><a href="https://samo.md.kku.ac.th/passport/" style="display:inline-block;background:#2f9e78;color:#fff;text-decoration:none;padding:13px 26px;border-radius:12px;font-weight:600">เปิด SAMO Passport</a></p>
+          <p style="background:#f4f7f9;border-radius:10px;padding:14px 16px">✅ <b>ถ้าเข้าสู่ระบบแล้วเห็นคะแนนของคุณครบ</b> — เรียบร้อย ไม่ต้องทำอะไรเพิ่มเติม<br><br>❌ <b>ถ้า phuriphat.ma@kkumail.com ไม่ใช่อีเมล @kkumail.com ของคุณ</b> หรือเข้าสู่ระบบแล้วไม่เห็นคะแนน — กรุณา <b>ตอบกลับอีเมลฉบับนี้</b> พร้อมแจ้งอีเมล @kkumail.com ที่ถูกต้องของคุณ แล้วเราจะย้ายข้อมูลให้ใหม่</p>
+          <p style="color:#7a8896;font-size:13px;margin-top:24px">— ทีมงาน SAMO MDKKU</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

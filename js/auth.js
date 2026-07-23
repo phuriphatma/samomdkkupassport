@@ -154,7 +154,7 @@ export function renderAccessBlock(access) {
     ? `คะแนน กิจกรรม แสตมป์ และเกียรติบัตรของบัญชีนี้<br>ถูกย้ายไปยัง<br>` +
       `<b style="word-break:break-all">${escAttr(access.to)}</b><br>เรียบร้อยแล้ว<br><br>` +
       `กรุณาเข้าสู่ระบบด้วยบัญชี @kkumail.com นั้นแทน<br><br>` +
-      `<span style="opacity:.72;font-size:.92em">หากนี่ไม่ใช่คุณ กรุณาติดต่อทีมงานผ่าน Vital Sound</span>`
+      `<span style="opacity:.72;font-size:.92em">หากนี่ไม่ใช่คุณ กรุณาติดต่อ mdstuddata.beta@gmail.com</span>`
     : `SAMO Passport รองรับเฉพาะบัญชี <b>@kkumail.com</b> เท่านั้น<br><br>` +
       `กรุณาเข้าสู่ระบบด้วยอีเมล @kkumail.com ของคุณ`;
 
@@ -191,7 +191,7 @@ export function renderReceivedBanner(fromEmail) {
     'font-size:13.5px;line-height:1.55;text-align:center;box-shadow:0 2px 12px rgba(0,0,0,.25)';
   el.innerHTML =
     `บัญชีนี้ได้รับคะแนน/กิจกรรม/แสตมป์ จาก <b style="word-break:break-all">${escAttr(fromEmail)}</b> เรียบร้อยแล้ว` +
-    ` — หากไม่ถูกต้อง กรุณาติดต่อทีมงานผ่าน Vital Sound` +
+    ` — หากไม่ถูกต้อง กรุณาติดต่อ mdstuddata.beta@gmail.com` +
     `<span id="prb-close" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);` +
     `cursor:pointer;font-size:18px;opacity:.8;padding:0 4px">×</span>`;
   document.body.appendChild(el);
