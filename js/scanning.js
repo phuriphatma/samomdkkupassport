@@ -159,7 +159,8 @@ await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {
         redirectTo: window.location.origin + ROUTES.DASHBOARD, // Updated
-        queryParams: { hd: 'kkumail.com' }, // pre-filter chooser to kkumail (UX hint)
+        // No queryParams.hd — forcing the kkumail hosted domain redirects to
+        // KKU's malformed SAML SSO URL (ERR_ADDRESS_INVALID). See js/index.js.
     }
 });
     };

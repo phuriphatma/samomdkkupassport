@@ -2,6 +2,7 @@
 import { supabase } from './app.js';
 import { getPendingScanUrl, clearPendingScanUrl } from './utils.js';
 import { ROUTES } from './routes.js';
+import { getPassportAccess, renderAccessBlock } from './auth.js';
 
 const loadingText = document.getElementById('loading-text');
 const loginBtn = document.getElementById('google-login');
@@ -38,6 +39,22 @@ function updateUI(session) {
     }
 }
 
+// Gate the landing itself so a non-kkumail / migrated-away session doesn't see a
+// misleading "Welcome back / Board Your Flight" only to hit the wall one click
+// later on the dashboard. Returns true if the account was blocked (block shown).
+async function gateBlockedAccount(session) {
+    if (!session || !session.user) return false;
+    const access = await getPassportAccess(session.user);
+    if (access.status === 'moved' || access.status === 'blocked') {
+        loggedInSection.style.display = 'none';
+        loginBtn.style.display = 'none';
+        loadingText.style.display = 'none';
+        renderAccessBlock(access);   // its button routes through logout()
+        return true;
+    }
+    return false;
+}
+
 async function initAuth() {
     try {
         const response = await Promise.race([
@@ -47,6 +64,7 @@ async function initAuth() {
         if (response.error) throw response.error;
         updateUI(response.data.session);
         if (RETURNING_FROM_OAUTH && response.data.session) { forwardAfterLogin(); return; }
+        await gateBlockedAccount(response.data.session);
     } catch (err) {
         console.error("Session check error or timeout:", err);
         updateUI(null);
@@ -58,7 +76,9 @@ async function initAuth() {
         // pending scan once the session is established.
         if (RETURNING_FROM_OAUTH && session && (event === 'SIGNED_IN' || event === 'INITIAL_SESSION')) {
             forwardAfterLogin();
+            return;
         }
+        gateBlockedAccount(session);
     });
 }
 
@@ -75,9 +95,12 @@ await supabase.auth.signInWithOAuth({
     options: {
         // Land back on THIS page; forwardAfterLogin() then routes onward.
         redirectTo: window.location.origin + window.location.pathname,
-        // Pre-filter Google's chooser to kkumail Workspace accounts (UX hint
-        // only — the real kkumail-only enforcement is the app-side gate).
-        queryParams: { hd: 'kkumail.com' },
+        // NB: do NOT set queryParams.hd = 'kkumail.com'. Forcing the hosted
+        // domain makes Google redirect straight to kkumail.com's third-party
+        // SAML IdP (ssonext-api.kku.ac.th), whose SSO URL is malformed →
+        // ERR_ADDRESS_INVALID. The normal chooser routes kkumail logins through
+        // Google's own working SSO handling; the app-side gate is the real
+        // kkumail-only enforcement anyway.
     }
 });
 });

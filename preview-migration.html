@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Preview — migration notices (dev only)</title>
+  <style>
+    body { margin:0; font-family:system-ui,-apple-system,"Noto Sans Thai",Segoe UI,sans-serif;
+           background:#0c141c; color:#eef3f7; padding:24px; }
+    h1 { font-size:18px; margin:0 0 4px; }
+    p.sub { opacity:.6; font-size:13px; margin:0 0 20px; }
+    .grid { display:grid; gap:12px; max-width:560px; }
+    .card { background:#141d27; border:1px solid rgba(255,255,255,.09); border-radius:14px; padding:16px; }
+    .card h2 { font-size:14px; margin:0 0 6px; }
+    .card p { font-size:12.5px; opacity:.7; margin:0 0 12px; line-height:1.5; }
+    button { padding:10px 14px; border:0; border-radius:10px; background:#2f9e78; color:#fff;
+             font-size:13.5px; font-weight:600; cursor:pointer; }
+    button.alt { background:#3a4a5a; }
+    code { background:rgba(255,255,255,.08); padding:1px 5px; border-radius:5px; font-size:12px; }
+  </style>
+</head>
+<body>
+  <h1>🛂 Migration-notice preview</h1>
+  <p class="sub">Dev-only page. Renders the real <code>renderAccessBlock</code> / <code>renderReceivedBanner</code> from <code>js/auth.js</code> with mock data — no login, no network. Serve with <code>npm run dev</code> → open <code>/preview-migration.html</code>.</p>
+
+  <div class="grid">
+    <div class="card">
+      <h2>1. Old gmail account (data moved away)</h2>
+      <p>What one of the 5 students sees if they log in with their <b>old gmail</b>. Full-screen block, no way into the app.</p>
+      <button data-act="moved">Show "moved" block</button>
+    </div>
+
+    <div class="card">
+      <h2>2. Any non-kkumail account (not migrated)</h2>
+      <p>Generic gate for a Google account that is neither @kkumail.com nor one of the 5 migrated gmails.</p>
+      <button data-act="blocked">Show "blocked" block</button>
+    </div>
+
+    <div class="card">
+      <h2>3. New kkumail account (received the data)</h2>
+      <p>Dismissible top banner the receiving <b>kkumail</b> account sees once. (Clears its "seen" flag first so it always shows.)</p>
+      <button data-act="received">Show "received" banner</button>
+    </div>
+
+    <div class="card">
+      <h2>Reset</h2>
+      <p>Remove any overlay/banner currently on screen.</p>
+      <button class="alt" data-act="clear">Clear</button>
+    </div>
+  </div>
+
+  <script type="module">
+    import { renderAccessBlock, renderReceivedBanner } from './js/auth.js';
+
+    // Mock the 5-account migration (first pair from migration 0064).
+    const MOCK_FROM = 'wariikung@gmail.com';
+    const MOCK_TO   = 'ingwer.s@kkumail.com';
+
+    function clear() {
+      document.getElementById('passport-access-block')?.remove();
+      document.getElementById('passport-recv-banner')?.remove();
+    }
+
+    document.body.addEventListener('click', (e) => {
+      const act = e.target?.dataset?.act;
+      if (!act) return;
+      clear();
+      if (act === 'moved') {
+        renderAccessBlock({ status: 'moved', to: MOCK_TO });
+        // In preview, make the block's button just dismiss instead of signing out.
+        const b = document.querySelector('#passport-access-block #pab-switch');
+        if (b) b.onclick = clear;
+      } else if (act === 'blocked') {
+        renderAccessBlock({ status: 'blocked' });
+        const b = document.querySelector('#passport-access-block #pab-switch');
+        if (b) b.onclick = clear;
+      } else if (act === 'received') {
+        try { localStorage.removeItem('passport.recvNoticeSeen'); } catch {}
+        renderReceivedBanner(MOCK_FROM);
+      }
+    });
+  </script>
+</body>
+</html>
