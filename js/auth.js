@@ -120,13 +120,16 @@ export async function getPassportAccess(user) {
   const email = (user?.email || '').toLowerCase().trim();
   if (!email) return { status: 'blocked' };
 
+  // Use .eq (not .ilike): from_email/to_email are stored lowercased and `email`
+  // is lowercased above, so an exact match is correct. .ilike would treat `_`
+  // and `%` in the address (both legal in an email local-part) as wildcards.
   let movedTo = null, receivedFrom = null;
   try {
     const { data: fromRows } = await supabase
-      .from('account_migrations').select('to_email').ilike('from_email', email).limit(1);
+      .from('account_migrations').select('to_email').eq('from_email', email).limit(1);
     if (fromRows && fromRows.length) movedTo = fromRows[0].to_email;
     const { data: toRows } = await supabase
-      .from('account_migrations').select('from_email').ilike('to_email', email).limit(1);
+      .from('account_migrations').select('from_email').eq('to_email', email).limit(1);
     if (toRows && toRows.length) receivedFrom = toRows[0].from_email;
   } catch (e) { console.warn('getPassportAccess lookup failed:', e); }
 
