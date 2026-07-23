@@ -5,13 +5,17 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <!-- Deprecated-host guard: *.pages.dev is retired; the app is self-hosted at
-       samo.md.kku.ac.th/passport. Forward pages.dev visitors to the moved splash
-       (preserving the deep link). Never fires on the VM or localhost. -->
+       samo.md.kku.ac.th/passport. A scan is a TRANSACTIONAL deep-link (an action,
+       not a bookmark), so old printed QR codes forward STRAIGHT to the VM — no
+       "we've moved" splash / 30s countdown (that interstitial is only right for
+       the bookmark-style index/dashboard/admin entries). Params (aid/tk) are
+       preserved; the VM nginx $uri.html fallback resolves the extensionless path.
+       Never fires on the VM or localhost. -->
   <script>
     (function () {
       try {
-        if (/\.pages\.dev$/i.test(location.hostname) && location.pathname !== '/moved.html') {
-          location.replace('/moved.html?next=' + encodeURIComponent(location.pathname + location.search + location.hash));
+        if (/\.pages\.dev$/i.test(location.hostname)) {
+          location.replace('https://samo.md.kku.ac.th/passport' + location.pathname + location.search + location.hash);
         }
       } catch (e) {}
     })();
