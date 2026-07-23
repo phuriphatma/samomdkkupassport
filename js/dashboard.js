@@ -1,6 +1,6 @@
 // js/dashboard.js — Passport ebook with memory popup
 import { supabase } from './app.js';
-import { checkSession, logout, ensureProfile } from './auth.js';
+import { checkSession, logout, ensureProfile, getPassportAccess, renderAccessBlock, renderReceivedBanner } from './auth.js';
 import { fixGoogleDriveUrl, getPendingScanUrl, clearPendingScanUrl } from './utils.js';
 import { renderCertificate, downloadCanvasPng } from './certificate.js';
 import { ROUTES } from './routes.js';
@@ -1439,11 +1439,19 @@ async function init() {
     const user = await checkSession();
     if (!user) { window.location.href = ROUTES.HOME; return; }
 
+    // ── kkumail-only gate ───────────────────────────────────
+    // Blocks non-kkumail accounts and accounts whose data was migrated away.
+    // Runs BEFORE the pending-scan redirect so a blocked user isn't bounced to
+    // the scan page, and before ensureProfile so no junk profile is created.
+    const access = await getPassportAccess(user);
+    if (access.status === 'moved' || access.status === 'blocked') { renderAccessBlock(access); return; }
+
     const pendingUrl = getPendingScanUrl();
     if (pendingUrl) { clearPendingScanUrl(); window.location.href = pendingUrl; return; }
 
     currentUserId = user.id;
     await ensureProfile(user);   // create passport profile if this user has none yet
+    if (access.receivedFrom) renderReceivedBanner(access.receivedFrom);
     setupProfilePhoto(currentUserId);
 
     // ── Display name ────────────────────────────────────────

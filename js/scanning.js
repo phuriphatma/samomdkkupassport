@@ -1,6 +1,6 @@
 // js/scanning.js
 import { supabase } from './app.js';
-import { checkSession, ensureProfile } from './auth.js';
+import { checkSession, ensureProfile, getPassportAccess, renderAccessBlock } from './auth.js';
 import { fixGoogleDriveUrl, savePendingScanUrl, clearPendingScanUrl } from './utils.js';
 import { ROUTES } from './routes.js';
 import { getCurrentContext } from './samo.js';
@@ -45,6 +45,16 @@ export async function processScan() {
 
     // 3. Verify User Session
     const user = await checkSession();
+
+    // 3b. kkumail-only gate — a non-kkumail or migrated-away account may not stamp.
+    if (user) {
+        const access = await getPassportAccess(user);
+        if (access.status === 'moved' || access.status === 'blocked') {
+            spinner.style.display = 'none';
+            renderAccessBlock(access);
+            return;
+        }
+    }
 
     // 4. SHOW CONFIRMATION UI
     spinner.style.display = 'none';
@@ -149,6 +159,7 @@ await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {
         redirectTo: window.location.origin + ROUTES.DASHBOARD, // Updated
+        queryParams: { hd: 'kkumail.com' }, // pre-filter chooser to kkumail (UX hint)
     }
 });
     };

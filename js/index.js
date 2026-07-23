@@ -75,6 +75,9 @@ await supabase.auth.signInWithOAuth({
     options: {
         // Land back on THIS page; forwardAfterLogin() then routes onward.
         redirectTo: window.location.origin + window.location.pathname,
+        // Pre-filter Google's chooser to kkumail Workspace accounts (UX hint
+        // only — the real kkumail-only enforcement is the app-side gate).
+        queryParams: { hd: 'kkumail.com' },
     }
 });
 });
