@@ -23,6 +23,11 @@
     align-items: center;
     margin-bottom: 20px;
 }
+.admin-topbar-links {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
 
 .admin-login-box {
     max-width: 400px;

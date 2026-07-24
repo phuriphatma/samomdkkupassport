@@ -32,6 +32,13 @@
     </div>
   </nav>
   <div class="tb-actions">
+    <!-- Leaves the passport for the main SAMO portal (site root). Absolute "/" is
+         correct on the VM where the passport is mounted at /passport/ — do NOT use
+         BASE_URL here (that stays inside the passport). -->
+    <a href="/" class="tb-back" title="กลับสู่หน้าหลัก SAMO — Back to SAMO main site"
+       aria-label="Back to SAMO main site">
+      <span class="tb-back-arrow" aria-hidden="true">←</span> SAMO
+    </a>
     <span class="tb-chip" id="tb-flight-chip">✈ SAMO</span>
   </div>
 </div>

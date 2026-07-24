@@ -116,6 +116,21 @@ body.passport-page-theme {
   background: var(--pri-s); color: var(--pri); font-size: 12.6px; font-weight: 800;
   padding: 4px 11px; border-radius: 20px; letter-spacing: .5px; white-space: nowrap;
 }
+/* Back-to-parent affordance: leaves the passport for the main SAMO portal.
+   Styled as a subtle outlined pill (distinct from the solid status chip beside it)
+   so it clearly reads as a navigation action, not a status badge. */
+.tb-back {
+  display: inline-flex; align-items: center; gap: 4px;
+  background: var(--s2); color: var(--t2);
+  border: 1px solid var(--border);
+  font-size: 12.6px; font-weight: 800; letter-spacing: .3px;
+  padding: 4px 11px; border-radius: 20px; white-space: nowrap;
+  text-decoration: none;
+  transition: background .15s, color .15s, border-color .15s, transform .15s;
+}
+.tb-back:hover { background: var(--pri-s); color: var(--pri); border-color: var(--pri); transform: translateX(-1px); }
+.tb-back:active { transform: scale(.97); }
+.tb-back-arrow { font-size: 15px; line-height: 1; margin-top: -1px; }
 
 /* Scrollable content — cleared below the top bar and right of the sidebar */
 .app-body {

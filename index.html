@@ -79,7 +79,12 @@
                     </div>
                 </div>
 
-                <div class="lpc-admin-link">
+                <div class="lpc-foot-links">
+                    <!-- Leave the passport for the main SAMO portal (site root).
+                         Absolute "/" is correct on the VM (passport lives at
+                         /passport/); NOT BASE_URL, which stays in the passport. -->
+                    <a href="/" class="text-link">&larr; SAMO Website</a>
+                    <span class="lpc-foot-dot" aria-hidden="true">·</span>
                     <a href="html/admin.html" class="text-link">Admin Portal</a>
                 </div>
             </div>

@@ -100,6 +100,12 @@ body.landing {
 .lpc-admin-link {
   text-align: center; margin-top: 14px;
 }
+/* Card footer: back-to-SAMO + admin, separated by a dot. */
+.lpc-foot-links {
+  display: flex; align-items: center; justify-content: center;
+  gap: 10px; margin-top: 14px;
+}
+.lpc-foot-dot { color: var(--t2); font-weight: 800; opacity: .55; }
 
 /* ── Theme picker (landing) ── */
 .theme-picker {

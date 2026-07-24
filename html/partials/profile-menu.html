@@ -7,6 +7,10 @@
   <button class="pm-item pm-sub" id="backup-info-btn" type="button">ⓘ What is "my data"?</button>
   <input type="file" id="import-data-input" accept="application/json" style="display:none;">
   <hr class="pm-divider">
-  <a href="../" class="pm-item">🏠 Back to Home</a>
+  <!-- Two distinct destinations: the passport's own landing (../ = /passport/) and
+       the main SAMO portal (absolute / = site root; NOT BASE_URL, which stays in
+       the passport). -->
+  <a href="../" class="pm-item">🛂 Passport Home</a>
+  <a href="/" class="pm-item">🌐 SAMO Website</a>
   <button class="pm-item pm-danger" id="pm-logout">🚪 Sign Out</button>
 </div>
