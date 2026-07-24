@@ -17,12 +17,17 @@ export function generateUUID() {
 
 /**
  * Fix Google Drive share URLs to direct-viewable image URLs.
- * Converts `/file/d/FILE_ID/...` patterns to `lh3.googleusercontent.com/d/FILE_ID`.
- * Returns the original URL unchanged if it's not a Google Drive link.
+ * Handles every Drive link form we store or admins paste — `/file/d/FILE_ID/...`,
+ * `/d/FILE_ID`, and the query forms `?id=`, `open?id=`, `uc?id=`, `thumbnail?id=` —
+ * normalising them all to `lh3.googleusercontent.com/d/FILE_ID`, which serves the
+ * right CORS headers (needed so a badge/cert drawn onto a <canvas> can be exported).
+ * A pasted `?id=` link left un-normalised loads fine as an <img> but is CORS-blocked
+ * under `crossOrigin='anonymous'`, so the canvas silently drops it. See MISTAKES.md.
+ * Returns the original URL unchanged if it's not a recognised Google Drive link.
  */
 export function fixGoogleDriveUrl(url) {
     if (!url) return url;
-    const gdriveMatch = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+    const gdriveMatch = url.match(/\/d\/([a-zA-Z0-9_-]+)/) || url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
     if (gdriveMatch) {
         return `https://lh3.googleusercontent.com/d/${gdriveMatch[1]}`;
     }

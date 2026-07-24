@@ -44,7 +44,9 @@ let currentActivityId = null;
 let editingActivityId = null;
 
 // --- QR GENERATION ---
-let qrStaticGenerator = null;
+let currentQrUrl = null;          // last static scan URL — rendered hi-res into the poster
+let currentQrActivity = null;     // { name, badge_url } baked into the poster
+let currentPosterDataUrl = null;  // the built poster PNG (shown on screen + downloaded)
 
 async function init() {
     setupSubDepartmentToggle('act-department', 'act-sub-department');
@@ -142,31 +144,290 @@ async function init() {
 
     const downloadBtn = document.getElementById('download-qr-btn');
     if (downloadBtn) {
-        downloadBtn.addEventListener('click', () => {
-            const qrContainer = document.getElementById('qrcode-static');
-            const img = qrContainer.querySelector('img');
-            const canvas = qrContainer.querySelector('canvas');
-
-            let dataUrl = '';
-            // Attempt to get base64 source from either img src or canvas toDataURL
-            if (img && img.src && img.src.startsWith('data:image')) {
-                dataUrl = img.src;
-            } else if (canvas) {
-                dataUrl = canvas.toDataURL('image/png');
-            }
-
-            if (dataUrl) {
-                const link = document.createElement('a');
-                link.href = dataUrl;
-                link.download = `static-qr-${currentActivityId || 'code'}.png`;
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-            } else {
-                alert('QR Code is still rendering. Please try again in a moment.');
-            }
-        });
+        downloadBtn.addEventListener('click', downloadQrPoster);
     }
+}
+
+// Download the poster currently shown on screen (built in generateStaticQR). Rebuilds
+// on demand if it isn't ready yet.
+async function downloadQrPoster() {
+    try {
+        let dataUrl = currentPosterDataUrl;
+        if (!dataUrl) {
+            if (!currentQrUrl) { alert('QR Code is still rendering. Please try again in a moment.'); return; }
+            dataUrl = await buildQrPoster(makeQrDataUrl(currentQrUrl, 880), (currentQrActivity?.name || '').trim(), currentQrActivity?.badge_url || '');
+        }
+        const link = document.createElement('a');
+        link.href = dataUrl;
+        link.download = `qr-${currentActivityId || 'code'}.png`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    } catch (err) {
+        console.error(err);
+        alert('Could not build the image: ' + (err.message || err));
+    }
+}
+
+// Render an off-screen QR at an arbitrary size and return its PNG data URL (sync —
+// the CDN QRCode lib draws to a <canvas> immediately).
+function makeQrDataUrl(text, size) {
+    try {
+        const holder = document.createElement('div');
+        new QRCode(holder, { width: size, height: size, correctLevel: QRCode.CorrectLevel.M }).makeCode(text);
+        const canvas = holder.querySelector('canvas');
+        if (canvas) return canvas.toDataURL('image/png');
+        const img = holder.querySelector('img');
+        return img && img.src ? img.src : '';
+    } catch {
+        return '';
+    }
+}
+
+// The designed poster background (public/qr-poster-template.png). Everything decorative —
+// MDKKU PASSPORT title, tagline, globe/postmark, world-map band, SAMO logo, footer, and the
+// empty QR box outline — is baked into this image. Only the QR and the activity name are
+// drawn on at run time. BASE_URL-prefixed so it resolves under the '/passport/' subpath on
+// the KKU VM (a root-absolute '/qr-poster-template.png' would 404 there — see routes.js).
+const POSTER_TEMPLATE = import.meta.env.BASE_URL + 'qr-poster-template.png';
+const POSTER_W = 1086, POSTER_H = 1448;  // native template size (px)
+// Slots measured from the template: the QR sits centred inside the box outline; the name
+// occupies the blank band between the box and the world-map band.
+const QR_CX = 540, QR_CY = 707, QR_SIZE = 430;
+const NAME_TOP = 963, NAME_BOTTOM = 1112, NAME_CX = 540, NAME_MAXW = 720;
+// The activity badge, drawn as a passport stamp, sits in the empty centre of the
+// world-map band (the map continents sit either side of it).
+const STAMP_CX = 540, STAMP_CY = 1208, STAMP_SIZE = 150;
+
+// Draw the live QR + activity name (+ badge stamp) onto the designed template; return a PNG data URL.
+async function buildQrPoster(qrDataUrl, name, badgeUrl) {
+    if (document.fonts?.ready) await document.fonts.ready; // Thai/Nunito metrics before measuring
+
+    const [template, qrImg] = await Promise.all([
+        loadImageEl(POSTER_TEMPLATE),
+        loadImageEl(qrDataUrl),
+    ]);
+    let badgeImg = null;
+    if (badgeUrl) {
+        // CORS-safe (fixGoogleDriveUrl → lh3); skip the stamp if the image can't load.
+        try { badgeImg = await loadCertImage(badgeUrl); }
+        catch { badgeImg = null; console.warn('[poster] badge image failed to load; stamp omitted:', badgeUrl); }
+    }
+
+    const SS = 2;                       // supersample so overlaid text stays crisp
+    const fam = "Nunito, 'Noto Sans Thai', system-ui, sans-serif";
+    const nameWeight = 700, nameColor = '#1e3a5f';
+
+    const canvas = document.createElement('canvas');
+    canvas.width = POSTER_W * SS; canvas.height = POSTER_H * SS;
+    const ctx = canvas.getContext('2d');
+    ctx.scale(SS, SS);
+
+    // Full-bleed template, then the QR centred in its box (white quiet-zone covers the
+    // box interior; the printed blue outline stays visible around it).
+    ctx.drawImage(template, 0, 0, POSTER_W, POSTER_H);
+    ctx.drawImage(qrImg, QR_CX - QR_SIZE / 2, QR_CY - QR_SIZE / 2, QR_SIZE, QR_SIZE);
+
+    // Activity name: wrap to the box width, shrink to fit the band, then vertically centre.
+    if (name) {
+        ctx.fillStyle = nameColor;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'alphabetic';
+        const bandH = NAME_BOTTOM - NAME_TOP;
+        let size = 36, lines, blockH;
+        for (;;) {
+            ctx.font = `${nameWeight} ${size}px ${fam}`;
+            lines = wrapLines(ctx, name, NAME_MAXW);
+            blockH = lines.length * size * 1.32;
+            if (blockH <= bandH || size <= 20) break;
+            size -= 2;
+        }
+        const lineH = size * 1.32;
+        const top = NAME_TOP + Math.max(0, (bandH - blockH) / 2);
+        lines.forEach((ln, i) => ctx.fillText(ln, NAME_CX, top + size + i * lineH));
+    }
+
+    // Activity badge as a passport stamp, centred in the world-map band.
+    if (badgeImg) {
+        const [grain, grainFilled] = await Promise.all([
+            loadImageEl(STAMP_GRAIN), loadImageEl(STAMP_GRAIN_FILLED),
+        ]).catch(() => [null, null]); // grain is decorative — render without it if it fails
+        const stamp = renderStampCanvas(badgeImg, STAMP_SIZE * SS, grain, grainFilled);
+        ctx.save();
+        ctx.shadowColor = 'rgba(60,45,20,.3)';
+        ctx.shadowBlur = 7;
+        ctx.shadowOffsetY = 4;
+        ctx.drawImage(stamp, STAMP_CX - STAMP_SIZE / 2, STAMP_CY - STAMP_SIZE / 2, STAMP_SIZE, STAMP_SIZE);
+        ctx.restore();
+    }
+
+    return canvas.toDataURL('image/png');
+}
+
+function loadImageEl(src) {
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = () => reject(new Error('image load failed'));
+        img.src = src;
+    });
+}
+
+// Compounds the ICU dictionary splits but that should never break across lines (e.g.
+// ปีการศึกษา → ปี + การศึกษา). Add phrases here to keep them on one row.
+const KEEP_TOGETHER = ['ปีการศึกษา'];
+
+// Whole dates must stay on one line (Thai + English + numeric). Each pattern matches a
+// full date so it becomes one unbreakable token: "21 มิ.ย. 2569", "21 มิถุนายน 2569",
+// "21 Jun 2026", "June 21, 2026", "21/06/2026", "2026-06-21".
+const _TH_MONTH = 'ม\\.?ค\\.?|ก\\.?พ\\.?|มี\\.?ค\\.?|เม\\.?ย\\.?|พ\\.?ค\\.?|มิ\\.?ย\\.?|ก\\.?ค\\.?|ส\\.?ค\\.?|ก\\.?ย\\.?|ต\\.?ค\\.?|พ\\.?ย\\.?|ธ\\.?ค\\.?|มกราคม|กุมภาพันธ์|มีนาคม|เมษายน|พฤษภาคม|มิถุนายน|กรกฎาคม|สิงหาคม|กันยายน|ตุลาคม|พฤศจิกายน|ธันวาคม';
+const _EN_MONTH = '(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)[a-z]*\\.?';
+const DATE_PATTERNS = [
+    new RegExp(`\\d{1,2}\\s*(?:${_TH_MONTH})\\s*\\d{2,4}`, 'g'),
+    new RegExp(`\\d{1,2}\\s+${_EN_MONTH}\\s*,?\\s*\\d{2,4}`, 'gi'),
+    new RegExp(`${_EN_MONTH}\\s+\\d{1,2}\\s*,?\\s*\\d{2,4}`, 'gi'),
+    /\d{1,4}[/.-]\d{1,2}[/.-]\d{1,4}/g,
+];
+
+// Character ranges in `text` that must not be split (KEEP_TOGETHER phrases + dates),
+// expanded over any wrapping brackets/quotes so e.g. "(21 มิ.ย. 2569)" stays whole.
+function protectedRanges(text) {
+    const ranges = [];
+    for (const phrase of KEEP_TOGETHER) {
+        for (let i = text.indexOf(phrase); i !== -1; i = text.indexOf(phrase, i + phrase.length)) {
+            ranges.push([i, i + phrase.length]);
+        }
+    }
+    for (const re of DATE_PATTERNS) for (const m of text.matchAll(re)) ranges.push([m.index, m.index + m[0].length]);
+    const open = '([{“"\'', close = ')]}”"\'';
+    return ranges.map(([s, e]) => {
+        while (s > 0 && open.includes(text[s - 1])) s--;
+        while (e < text.length && close.includes(text[e])) e++;
+        return [s, e];
+    });
+}
+
+// Split text into break units: real Thai words via Intl.Segmenter (ICU dictionary —
+// Thai has no spaces, so this is the only way to break between words, not mid-syllable),
+// with spaces/punctuation as their own tokens. Falls back to space-splitting. Segments
+// inside a protected range (compound / date) are merged into one unbreakable token.
+function segmentWords(text) {
+    const ranges = protectedRanges(text);
+    const rangeAt = (i) => ranges.find(([s, e]) => i >= s && i < e) || null;
+
+    let segs;
+    if (typeof Intl !== 'undefined' && Intl.Segmenter) {
+        try { segs = [...new Intl.Segmenter('th', { granularity: 'word' }).segment(text)].map(s => ({ t: s.segment, i: s.index })); }
+        catch { /* fall through to the simple splitter */ }
+    }
+    if (!segs) { segs = []; let idx = 0; for (const t of text.split(/(\s+)/)) { if (t !== '') segs.push({ t, i: idx }); idx += t.length; } }
+
+    const out = [];
+    let buf = '', bufRange = null;
+    const flushBuf = () => { if (buf) out.push(buf); buf = ''; bufRange = null; };
+    for (const { t, i } of segs) {
+        const r = rangeAt(i);
+        if (r) {
+            if (bufRange && r[0] === bufRange[0] && r[1] === bufRange[1]) buf += t; // same protected span
+            else { flushBuf(); buf = t; bufRange = r; }
+        } else {
+            flushBuf();
+            out.push(t);
+        }
+    }
+    flushBuf();
+    return out;
+}
+
+// Wrap the name to fit maxW, breaking at Thai word boundaries / spaces. A single
+// segment wider than the line is char-broken as a last resort so nothing overflows.
+function wrapLines(ctx, text, maxW) {
+    const lines = [];
+    let line = '';
+    const flush = () => { lines.push(line.replace(/\s+$/, '')); line = ''; };
+    for (const tok of segmentWords(text)) {
+        if (ctx.measureText(line + tok).width <= maxW) { line += tok; continue; }
+        if (line) flush();
+        if (/^\s+$/.test(tok)) continue;                  // don't start a line with a space
+        if (ctx.measureText(tok).width <= maxW) { line = tok; continue; }
+        // segment too wide on its own — break it character by character
+        let chunk = '';
+        for (const ch of tok) {
+            if (chunk && ctx.measureText(chunk + ch).width > maxW) { lines.push(chunk); chunk = ch; }
+            else chunk += ch;
+        }
+        line = chunk;
+    }
+    if (line.trim()) lines.push(line.replace(/\s+$/, ''));
+    return lines;
+}
+
+// Grain textures lifted verbatim from css/passport/_stamps.css so the downloaded stamp
+// matches the dashboard: fine fractal noise multiplied onto the parchment, and coarser
+// noise laid over the badge (overlay blend). width/height added so the SVG has an
+// intrinsic size when drawn to canvas.
+const STAMP_GRAIN = "data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='120'%20height='120'%20viewBox='0%200%20120%20120'%3E%3Cfilter%20id='n'%3E%3CfeTurbulence%20type='fractalNoise'%20baseFrequency='0.9'%20numOctaves='2'%20stitchTiles='stitch'/%3E%3CfeColorMatrix%20type='saturate'%20values='0'/%3E%3C/filter%3E%3Crect%20width='120'%20height='120'%20filter='url(%23n)'%20opacity='0.12'/%3E%3C/svg%3E";
+const STAMP_GRAIN_FILLED = "data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='120'%20height='120'%20viewBox='0%200%20120%20120'%3E%3Cfilter%20id='g'%3E%3CfeTurbulence%20type='fractalNoise'%20baseFrequency='0.4'%20numOctaves='2'%20stitchTiles='stitch'/%3E%3CfeColorMatrix%20type='saturate'%20values='0'/%3E%3C/filter%3E%3Crect%20width='120'%20height='120'%20filter='url(%23g)'/%3E%3C/svg%3E";
+
+// The scalloped postage-stamp outline (square minus edge perforations), as an SVG
+// path over a 100×100 box — same geometry as the CSS mask in css/passport/_stamps.css.
+function stampOutlinePath() {
+    const r = 4.5, step = 100 / 9;
+    const circle = (cx, cy) => `M${cx - r},${cy}a${r},${r},0,1,0,${2 * r},0a${r},${r},0,1,0,${-2 * r},0`;
+    let d = 'M0,0H100V100H0Z';
+    for (let i = 0; i <= 9; i++) { const p = i * step; d += circle(p, 0) + circle(p, 100); }
+    for (let j = 1; j <= 8; j++) { const p = j * step; d += circle(0, p) + circle(100, p); }
+    return d;
+}
+
+// Render the badge as a passport stamp on its own transparent canvas. Clipping to the
+// 0–100 box makes the edge perforations read as inward NOTCHES (the CSS mask's SVG
+// viewBox clips the same way) — without it the circles bulge outward as bumps. Then:
+// parchment fill, badge image (cover-fit), dashed inner frame. Drawn with a shadow by
+// the caller, which traces this canvas's scalloped alpha.
+function renderStampCanvas(img, px, grain, grainFilled) {
+    const c = document.createElement('canvas');
+    c.width = px; c.height = px;
+    const ctx = c.getContext('2d');
+    ctx.scale(px / 100, px / 100);
+
+    ctx.save();
+    ctx.beginPath(); ctx.rect(0, 0, 100, 100); ctx.clip(); // viewBox clip: drop the outward bumps
+    ctx.clip(new Path2D(stampOutlinePath()), 'evenodd');   // scalloped outline
+
+    // Parchment: warm cream radial + fine grain (multiply) — matches _stamps.css.
+    const rg = ctx.createRadialGradient(25, 15, 0, 25, 15, 120);
+    rg.addColorStop(0, '#fffefb'); rg.addColorStop(0.6, '#fdf9f0'); rg.addColorStop(1, '#faf4e6');
+    ctx.fillStyle = rg; ctx.fillRect(0, 0, 100, 100);
+    if (grain) { ctx.save(); ctx.globalCompositeOperation = 'multiply'; ctx.drawImage(grain, 0, 0, 100, 100); ctx.restore(); }
+
+    // Badge image (cover-fit) over the parchment.
+    drawImageCover(ctx, img, 0, 0, 100, 100);
+
+    // Aged grain over the badge (overlay blend, like .stamp-emoji.filled::after).
+    if (grainFilled) { ctx.save(); ctx.globalCompositeOperation = 'overlay'; ctx.globalAlpha = 0.5; ctx.drawImage(grainFilled, 0, 0, 100, 100); ctx.restore(); }
+
+    // Aged-ink dashed inner frame (.stamp-emoji::before). CSS is 1.5px dashed, inset 7px,
+    // radius 4px on a 60px stamp — expressed here as % of the 100-unit box to match.
+    ctx.strokeStyle = '#7a6a3f';
+    ctx.globalAlpha = 0.45;
+    ctx.lineWidth = 2.5;          // 1.5px / 60px
+    ctx.setLineDash([5, 5]);
+    const ins = 11.67, side = 100 - 2 * ins, rad = 6.67; // 7px inset, 4px radius / 60px
+    if (ctx.roundRect) { ctx.beginPath(); ctx.roundRect(ins, ins, side, side, rad); ctx.stroke(); }
+    else ctx.strokeRect(ins, ins, side, side);
+
+    ctx.restore();
+    return c;
+}
+
+// object-fit: cover — crop the image to fill the destination box, centred.
+function drawImageCover(ctx, img, dx, dy, dw, dh) {
+    const ir = img.width / img.height, dr = dw / dh;
+    let sw, sh, sx, sy;
+    if (ir > dr) { sh = img.height; sw = sh * dr; sx = (img.width - sw) / 2; sy = 0; }
+    else { sw = img.width; sh = sw / dr; sx = 0; sy = (img.height - sh) / 2; }
+    ctx.drawImage(img, sx, sy, sw, sh, dx, dy, dw, dh);
 }
 
 function setupSubDepartmentToggle(deptSelectId, subDeptSelectId) {
@@ -501,11 +762,7 @@ async function startStaticQR() {
     document.getElementById('event-creation').style.display = 'none';
     document.getElementById('manage-section').style.display = 'none';
     document.getElementById('qr-section').style.display = 'block';
-
-    const staticQrContainer = document.getElementById('qrcode-static');
-    staticQrContainer.innerHTML = '';
-
-    qrStaticGenerator = new QRCode(staticQrContainer, { width: 220, height: 220 });
+    document.getElementById('qr-poster').removeAttribute('src'); // clear stale preview while building
 
     try {
         await generateStaticQR();
@@ -521,10 +778,10 @@ async function startStaticQR() {
 }
 
 async function generateStaticQR() {
-    // 1. Get or create the Static Token
+    // 1. Get or create the Static Token (+ name & badge for the poster).
     const { data: act, error: selectError } = await supabase
         .from('activities')
-        .select('static_token')
+        .select('static_token, name, badge_url')
         .eq('id', currentActivityId)
         .single();
 
@@ -532,8 +789,10 @@ async function generateStaticQR() {
         throw new Error('Failed to fetch activity: ' + selectError.message);
     }
 
-    let staticToken = act?.static_token;
+    currentQrActivity = { name: act?.name || '', badge_url: act?.badge_url || '' };
+    currentPosterDataUrl = null; // drop any previous poster until this one finishes building
 
+    let staticToken = act?.static_token;
     if (!staticToken) {
         staticToken = generateUUID();
         const { error: updateError } = await supabase
@@ -546,8 +805,12 @@ async function generateStaticQR() {
         }
     }
 
-    const scanUrlStatic = `${window.location.origin}${ROUTES.SCAN}?aid=${currentActivityId}&tk=${staticToken}`;
-    qrStaticGenerator.makeCode(scanUrlStatic);
+    currentQrUrl = `${window.location.origin}${ROUTES.SCAN}?aid=${currentActivityId}&tk=${staticToken}`;
+
+    // 2. Build the downloadable poster and show it — the on-screen preview IS the download.
+    const qrDataUrl = makeQrDataUrl(currentQrUrl, 880);
+    currentPosterDataUrl = await buildQrPoster(qrDataUrl, currentQrActivity.name.trim(), currentQrActivity.badge_url);
+    document.getElementById('qr-poster').src = currentPosterDataUrl;
 }
 
 // --- CERTIFICATES ---
