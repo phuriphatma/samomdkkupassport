@@ -5,6 +5,30 @@ you. Each entry: the symptom, the cause, and the fix.
 
 ---
 
+## Wrapping Thai correctly (no spaces → break at word boundaries, not mid-syllable)
+**Context:** Thai has no spaces, so `/\s+/` splitting treats a whole phrase as one
+"word" (then char-breaks mid-syllable when it overflows), while `word-break: keep-all`
+doesn't stop Chrome's Thai breaking and `break-all` chops syllables. None give clean
+word-boundary wraps.
+**Fix (canvas, current):** the QR poster name is drawn on `<canvas>`, so `wrapLines()` in
+`js/admin-page.js` segments with **`Intl.Segmenter('th', {granularity:'word'})`** (ICU
+dictionary) to get real Thai words, wraps between them, and char-breaks a single segment
+only if it alone is too wide. Falls back to space-splitting if `Intl.Segmenter` is absent.
+**For DOM text (not canvas):** just let the browser do it — defaults + `lang="th"` +
+`overflow-wrap: anywhere` as a safety net; the engine has the same ICU Thai breaker.
+
+## Canvas postage-stamp: perforations bulge OUT instead of notching IN
+**Symptom:** Re-creating the dashboard stamp on a `<canvas>` (for the QR poster download),
+the edge perforation circles rendered as outward white bumps, not inward notches.
+**Cause:** The CSS mask SVG has `viewBox="0 0 100 100"`; circles centred on the edges
+extend past it and the **viewBox clips** the outer halves, leaving notches. A bare canvas
+`fill(path,'evenodd')` doesn't clip, so the outer halves show.
+**Fix:** Clip to `rect(0,0,100,100)` before filling/clipping the scallop path
+(`renderStampCanvas` in `js/admin-page.js`). It's rendered to an offscreen canvas, then
+drawn with a shadow so the shadow still traces the scalloped alpha. Grain/parchment/dashed-
+frame are ported from `css/passport/_stamps.css`; the dashed frame is expressed as % of the
+100-box (1.5px/7px on a 60px stamp → ~2.5%/11.7%) to match the on-screen proportions.
+
 ## OAuth redirects to production instead of localhost in dev
 **Symptom:** Running `npm run dev` on `http://localhost:5173`, after Google login you
 land on `https://samomdkkupassport.pages.dev/#` instead of localhost.
@@ -372,3 +396,56 @@ exception. `removeOwnScan` (`js/dashboard.js`, from the memory modal) runs
 stamps / flight log / leaderboard / boarding pass all re-derive cleanly — no partial cache
 fixups). RLS already permits it (`scans_delete using(true)`, db/0009); the `user_id` filter is
 the real guard. The modal's `#modal-danger` block is shown only when a real `scan.id` is present.
+
+## QR poster is now a template image with hard-coded slot coordinates
+**Note:** `buildQrPoster` (`js/admin-page.js`) no longer draws the poster from scratch — it
+composites the live QR + activity name + badge stamp onto a **designed background**,
+`public/qr-poster-template.png` (1086×1448). The QR box, name band, and stamp position are
+fixed pixel coordinates (`QR_CX/CY/SIZE`, `NAME_TOP/BOTTOM`, `STAMP_CX/CY/SIZE`) **measured
+from that specific PNG**. **Trap:** if the template art is re-exported at a different size or
+layout, those constants silently drift — the QR lands off the box, the name overlaps the map,
+etc. **Fix/where:** re-measure against the new PNG (a quick PIL pixel-scan for the box outline
+edges + the band's colour change works) and update the constants. Keep the template at 1086×1448
+to avoid re-measuring. The asset must live in `public/` so Vite serves it as a root asset; if
+it 404s, the whole QR-generate flow throws. **Reference it BASE_URL-relative, never
+root-absolute** — see the subpath entry below.
+
+## A root-absolute `public/` asset path (`'/foo.png'`) 404s on the `/passport/` VM subpath
+**Symptom:** the QR poster renders on pages.dev / localhost but throws on the KKU VM — the
+designed template never loads.
+**Cause:** `POSTER_TEMPLATE` was `'/qr-poster-template.png'` (root-absolute). On the root
+build (`base: '/'`, pages.dev) that resolves correctly, but the VM builds with
+`PASSPORT_BASE=/passport/`, so the asset is emitted at `/passport/qr-poster-template.png` while
+the code still requests `/qr-poster-template.png` → 404 (and, on the VM, it falls through to
+the samoweb catch-all, not even passport). Exactly the same class as the routes.js base bug —
+any hardcoded leading-slash path breaks on the subpath.
+**Fix:** build `public/` asset URLs from `import.meta.env.BASE_URL`, e.g.
+`import.meta.env.BASE_URL + 'qr-poster-template.png'` — `/` on pages.dev, `/passport/` on the
+VM. Verified in both builds (`grep qr-poster-template dist/assets/admin-*.js`).
+**Where:** `js/admin-page.js` `POSTER_TEMPLATE`. **Rule:** never hardcode a root-absolute
+`/asset` in passport code — mirror `routes.js` and go through `BASE_URL`. This feature (QR
+poster, PRs #28/#30) was authored on a branch forked *before* the subpath cutover, so it
+carried the pre-cutover root-absolute assumption; it was caught and fixed on incorporation.
+
+## Poster stamp / cert bg intermittently missing = lh3 rate-limiting (HTTP 429), NOT a bad link
+**Symptom:** an activity has a valid badge image, but its **stamp is missing from the poster**
+— intermittently, "some of the time", different activities on different tries.
+**Real cause (confirmed 2026-07-13 via headless Chrome):** canvas images load via `loadCertImage`
+with `img.crossOrigin='anonymous'` (required so `canvas.toDataURL` can export — else the canvas is
+tainted). The images ARE valid and CORS-correct (`lh3.googleusercontent.com/d/ID`, `acao: *`), but
+**lh3 rate-limits under load and returns HTTP 429**, which surfaces as a plain `onerror` → the
+stamp is silently dropped (`catch { badgeImg = null }`). It's volume/timing-dependent, hence
+"sometimes / some activities". `curl` won't reproduce it (no `Origin`, low volume); a real browser
+firing several badge loads (admin list thumbnails + a crossOrigin poster fetch, which is a
+*separate* cache entry) will. **Beware when debugging: running many automated image loads yourself
+triggers the 429**, making everything look broken when it's your own load.
+**Fix:** `loadCertImage` (`js/certificate.js`) now (a) sets `img.referrerPolicy='no-referrer'`
+(lh3 throttles partly on `Referer`; mirrors the badge `<img>` in `scanning.js`) and (b) **retries
+3× with backoff + a cache-busting `_r=` param** since 429 is transient. Verified: after the self-
+inflicted throttle cooled, loads return 200 and export cleanly.
+**Also hardened (separate, latent):** `fixGoogleDriveUrl` (`js/utils.js`) now matches `/\/d\/(ID)/`
+**or** `/[?&]id=(ID)/` so a *pasted* `?id=`/`open?id=`/`uc?id=` Drive link is normalised to the
+CORS-safe lh3 host too (previously only `/file/d/ID` was). Current prod badges all already used the
+working `/file/d/ID` form — this wasn't the cause, just belt-and-suspenders.
+**Non-bug reminder:** no-stamp can also just mean **no `badge_url`** — "has a badge *name*" ≠ "has
+a badge *image*" (`badge_name` defaults to the activity name even with no image uploaded).
