@@ -2,6 +2,10 @@
 
 Snapshot of what's built, what's pending, and required config. Update as things land.
 Last updated: 2026-07-25. **Tagged release: v1.0.0.**
+**Deployed to the KKU VM (`/var/www/passport`): `ffec467`** — admin ฝ่าย scope + the
+temporary `admin`/`1234` fallback. Deploy = push `main`, then on the VM
+`cd ~/samo-projects/samomdkkupassport && git pull && npm ci && PASSPORT_BASE=/passport/ npm run build`
+→ `rsync -a --delete dist/ /var/www/passport/` (samoweb `server/deploy.sh` does both apps).
 
 ## Working
 
