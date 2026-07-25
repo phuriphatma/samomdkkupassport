@@ -18,6 +18,14 @@ Last updated: 2026-07-25. **Tagged release: v1.0.0.**
   **Fails closed** — no session, rpc error, or no grant all land on the gate.
   ⚠️ This is the VISIBLE boundary only; `passport` schema RLS is still open for anon
   (db/0056), so it stops accidents, not attackers — see SECURITY-HARDENING-PLAN.md.
+- **⏳ TEMPORARY: `admin`/`1234` still works** — kept as an escape hatch so nobody is locked
+  out while ฝ่าย grants are handed out. It grants **ทุกฝ่าย** (a client-side string compare
+  has no uid to scope against), so **while it is on, department scoping is opt-in, not
+  enforced**. A real ทีม SAMO session always takes precedence over a stored legacy one, and
+  the panel shows a red banner in legacy mode. **To retire it:** flip
+  `LEGACY_PASSWORD_LOGIN = false` in `js/admin-scope.js`, redeploy, confirm every admin can
+  sign in with Google, then delete the marked block there, `handleLegacyLogin` in
+  `admin-page.js`, and the `#admin-legacy-box` markup.
 - **Student dashboard** — "MDKKU Passport" redesign (Nunito, 5 themes via
   `[data-theme]` + `wp-theme` localStorage). Brand/flavour is MDKKU Air — flight code
   `MD-`, passport no. `MP-`, IATA `MDK`; the boarding-pass/leaderboard **seat** is a
@@ -141,6 +149,8 @@ Other:
 
 - User content (profile photo, memories, photos) is **localStorage only** by choice —
   SAMO storage is reserved for important data. Backup/restore covers cross-device.
+- The `admin`/`1234` fallback is still enabled (see Working) — until it is retired, the ฝ่าย
+  scope is a convenience, not a boundary, for anyone who knows the password.
 - Admin **identity** is now real (ทีม SAMO tree, see Working), but **enforcement is not**:
   the `passport` schema's RLS is still `using (true)` for anon, so the department scope is
   a UI boundary a determined admin can step around with DevTools. Closing it is

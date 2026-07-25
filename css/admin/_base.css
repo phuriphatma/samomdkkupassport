@@ -35,6 +35,45 @@
     text-align: center;
 }
 
+/* TEMPORARY — legacy password form. Deliberately de-emphasised below the Google
+   button; delete with the LEGACY ESCAPE HATCH in js/admin-scope.js. */
+.admin-login-input {
+    margin-bottom: 10px;
+    width: 100%;
+    padding: 10px;
+    box-sizing: border-box;
+}
+
+.remember-label {
+    color: var(--text-light);
+    font-size: 0.95rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+}
+
+.remember-checkbox {
+    width: auto;
+    margin: 0;
+    cursor: pointer;
+}
+
+.admin-legacy-sep {
+    margin: 26px 0 10px;
+    color: var(--text-muted);
+    font-size: 0.82rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
+.admin-legacy-note {
+    margin: 0 0 14px;
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    line-height: 1.6;
+}
+
 /* Who you are + which ฝ่าย you administer (admin-scope.js). Deliberately loud
    for a SCOPED admin, muted for a full one — the narrow case is the surprising
    one ("why can't I see the other departments?"). */
@@ -56,6 +95,13 @@
 .admin-scope-banner.is-all {
     border-color: var(--text-muted, #7b8794);
     background: transparent;
+}
+
+/* TEMPORARY — password login is a scope bypass, so it gets the loudest treatment
+   of the three. Remove with the LEGACY ESCAPE HATCH. */
+.admin-scope-banner.is-legacy {
+    border-color: var(--accent-danger, #d9534f);
+    background: color-mix(in srgb, var(--accent-danger, #d9534f) 12%, transparent);
 }
 
 .admin-scope-banner .asb-who {

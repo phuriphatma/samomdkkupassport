@@ -8,6 +8,7 @@ import { getCurrentContext } from './samo.js';
 import { DEPARTMENTS, SUBDEPARTMENTS } from './constants.js';
 import {
     getAdminScope, scopeCoversActivity, allowedDeptIds, allowedSubIdsForDept, scopeLabel,
+    LEGACY_PASSWORD_LOGIN, getLegacyScope, legacyLogin, clearLegacySession,
 } from './admin-scope.js';
 
 // --- ORPHANED-UPLOAD TRACKING ---
@@ -85,6 +86,10 @@ async function init() {
     document
         .getElementById('admin-switch-btn')
         .addEventListener('click', signOutAdmin);
+    // TEMPORARY — legacy password form (see admin-scope.js LEGACY ESCAPE HATCH).
+    document
+        .getElementById('admin-login-form')
+        ?.addEventListener('submit', handleLegacyLogin);
     document
         .getElementById('activity-form')
         .addEventListener('submit', createActivity);
@@ -476,6 +481,13 @@ async function bootAdminAuth() {
 
     adminScope = await getAdminScope();
 
+    // A real ทีม SAMO identity ALWAYS wins over a stored legacy session — otherwise
+    // anyone who once ticked "remember me" would never see their ฝ่าย scope apply.
+    if (!adminScope.isAdmin) {
+        const legacy = getLegacyScope();
+        if (legacy) adminScope = legacy;
+    }
+
     if (adminScope.isAdmin) {
         await showAdminPanel();
         return;
@@ -492,6 +504,9 @@ function showAdminGate(scope) {
     document.getElementById('admin-login-section').style.display = '';
     document.getElementById('admin-content').style.display = 'none';
     document.getElementById('admin-logout').style.display = 'none';
+
+    const legacyBox = document.getElementById('admin-legacy-box');
+    if (legacyBox && LEGACY_PASSWORD_LOGIN) legacyBox.style.display = '';
 
     if (!scope?.user) return; // signed out — the default markup already says it
 
@@ -518,7 +533,22 @@ async function signInWithGoogle() {
     if (error) alert('เข้าสู่ระบบไม่สำเร็จ: ' + error.message);
 }
 
+// TEMPORARY — see the LEGACY ESCAPE HATCH block in admin-scope.js. Delete this
+// handler together with its markup when every admin has a ทีม SAMO grant.
+function handleLegacyLogin(e) {
+    e.preventDefault();
+    const scope = legacyLogin(
+        document.getElementById('admin-user').value,
+        document.getElementById('admin-pass').value,
+        document.getElementById('admin-remember').checked,
+    );
+    if (!scope) { alert('Invalid credentials!'); return; }
+    adminScope = scope;
+    showAdminPanel();
+}
+
 async function signOutAdmin() {
+    clearLegacySession();
     try {
         await Promise.race([
             supabase.auth.signOut(),
@@ -546,12 +576,18 @@ async function showAdminPanel() {
 function applyScopeToUi() {
     const banner = document.getElementById('admin-scope-banner');
     if (banner) {
+        const legacy = adminScope.legacy === true;
         banner.style.display = '';
-        banner.className = 'admin-scope-banner' + (isAllDepts() ? ' is-all' : '');
-        banner.innerHTML =
-            `<span class="asb-who">${escapeHtml(adminScope.user?.email || '')}</span>` +
-            `<span class="asb-scope">ขอบเขต: ${escapeHtml(
-                scopeLabel(adminScope, { departments: DEPARTMENTS, subDepartments: SUBDEPARTMENTS }))}</span>`;
+        banner.className = 'admin-scope-banner'
+            + (isAllDepts() ? ' is-all' : '') + (legacy ? ' is-legacy' : '');
+        banner.innerHTML = legacy
+            // Say plainly that no ฝ่าย scope is in effect — otherwise a scoped
+            // admin who fell back to the password wonders why they see everything.
+            ? '<span class="asb-who">เข้าสู่ระบบด้วยรหัสผ่านชั่วคราว (ไม่ผูกกับบัญชี)</span>' +
+              '<span class="asb-scope">ขอบเขต: ทุกฝ่าย — ยังไม่จำกัดตามสิทธิ์ ทีม SAMO</span>'
+            : `<span class="asb-who">${escapeHtml(adminScope.user?.email || '')}</span>` +
+              `<span class="asb-scope">ขอบเขต: ${escapeHtml(
+                  scopeLabel(adminScope, { departments: DEPARTMENTS, subDepartments: SUBDEPARTMENTS }))}</span>`;
     }
 
     const allowed = allowedDeptIds(adminScope); // null = unrestricted

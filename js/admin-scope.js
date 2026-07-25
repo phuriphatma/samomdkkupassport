@@ -37,6 +37,63 @@ const DENIED = Object.freeze({
 const toIntList = (v) =>
     (Array.isArray(v) ? v : []).map((n) => parseInt(n, 10)).filter(Number.isInteger);
 
+// ── LEGACY ESCAPE HATCH — TEMPORARY, DELETE ME ───────────────────────────────
+// The pre-0087 admin/1234 login, kept so nobody is locked out mid-transition
+// while ฝ่าย grants are still being handed out in ทีม SAMO.
+//
+// It grants ALL DEPARTMENTS: it is a client-side string compare with no server
+// identity, so there is no uid to scope against and no way to make it narrower.
+// While this is enabled, department scoping is opt-in — anyone with the password
+// bypasses it entirely. The panel says so in a banner; that is deliberate.
+//
+// TO REMOVE (the whole point of this being one flag):
+//   1. set LEGACY_PASSWORD_LOGIN = false, redeploy, confirm every admin has a
+//      ทีม SAMO grant and can sign in with Google;
+//   2. then delete this block, `legacyScope`/`legacyLogin`/`clearLegacySession`
+//      below, and the #admin-legacy-* markup in html/admin.html.
+export const LEGACY_PASSWORD_LOGIN = true;
+const LEGACY_USER = 'admin';
+const LEGACY_PASS = '1234';
+const LEGACY_KEY = 'admin_logged_in';
+
+/** The full-access scope a legacy password login stands in for. */
+const legacyScope = () => ({
+    isAdmin: true, allDepartments: true, departments: [], subDepartments: [],
+    user: null, error: null, legacy: true,
+});
+
+/** True when a legacy password session is currently stored. */
+export function hasLegacySession() {
+    if (!LEGACY_PASSWORD_LOGIN) return false;
+    try {
+        return localStorage.getItem(LEGACY_KEY) === 'true'
+            || sessionStorage.getItem(LEGACY_KEY) === 'true';
+    } catch { return false; }
+}
+
+/** Check the legacy credentials and, on success, persist + return the scope. */
+export function legacyLogin(user, pass, remember) {
+    if (!LEGACY_PASSWORD_LOGIN) return null;
+    if (user !== LEGACY_USER || pass !== LEGACY_PASS) return null;
+    try {
+        (remember ? localStorage : sessionStorage).setItem(LEGACY_KEY, 'true');
+    } catch { /* private mode — the session still works for this page load */ }
+    return legacyScope();
+}
+
+export function clearLegacySession() {
+    try {
+        localStorage.removeItem(LEGACY_KEY);
+        sessionStorage.removeItem(LEGACY_KEY);
+    } catch { /* nothing to clear */ }
+}
+
+/** Resolve a stored legacy session into a scope (null when there isn't one). */
+export function getLegacyScope() {
+    return hasLegacySession() ? legacyScope() : null;
+}
+// ── END LEGACY ESCAPE HATCH ──────────────────────────────────────────────────
+
 /**
  * Resolve the signed-in user's passport admin scope.
  *

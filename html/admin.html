@@ -56,6 +56,30 @@
       <button type="button" id="admin-google-btn" style="width: 100%">เข้าสู่ระบบด้วย Google</button>
       <button type="button" id="admin-switch-btn" style="width: 100%; display: none; margin-top: 10px;"
         class="btn-cancel-edit">ออกจากระบบ / เปลี่ยนบัญชี</button>
+
+      <!-- TEMPORARY legacy password login. Grants ALL departments (no server
+           identity to scope against). Delete this block together with the
+           LEGACY ESCAPE HATCH in js/admin-scope.js once every admin has a
+           ทีม SAMO grant. -->
+      <div id="admin-legacy-box" style="display: none">
+        <div class="admin-legacy-sep">หรือใช้รหัสผ่านชั่วคราว</div>
+        <p class="admin-legacy-note">
+          เข้าด้วยรหัสผ่านจะได้สิทธิ์ <b>ทุกฝ่าย</b> และไม่จำกัดตามสิทธิ์ ทีม SAMO
+        </p>
+        <form id="admin-login-form">
+          <input type="text" id="admin-user" placeholder="Username" required class="admin-login-input" />
+          <input type="password" id="admin-pass" placeholder="Password" required class="admin-login-input" />
+
+          <div style="margin-bottom: 20px; text-align: left">
+            <label class="remember-label">
+              <input type="checkbox" id="admin-remember" class="remember-checkbox" />
+              Remember me
+            </label>
+          </div>
+
+          <button type="submit" style="width: 100%">Login</button>
+        </form>
+      </div>
     </div>
 
     <div id="admin-content" style="display: none">
