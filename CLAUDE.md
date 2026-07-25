@@ -35,6 +35,7 @@ js/
   index.js            Landing page auth + Google sign-in
   dashboard.js        Passport book, stamps, memory modal, backup, certificates
   admin-page.js       Admin: activities CRUD, QR, department filter/search, certificates
+  admin-scope.js      Admin identity + ฝ่าย scope from the ทีม SAMO tree (samoweb 0087)
   scanning.js         Validates a scanned QR (static token) and records a scan
   certificate.js      Shared canvas renderer (draws a name onto a background)
   samo.js             SamoYear/Season helpers ("current" = open row, ended_at IS NULL)

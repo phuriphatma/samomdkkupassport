@@ -6,6 +6,9 @@ import { renderCertificate, loadCertImage, CERT_FONTS } from './certificate.js';
 import { uploadToDrive, deleteFromDrive, deleteFromDriveBeacon, isUploadConfigured } from './upload.js';
 import { getCurrentContext } from './samo.js';
 import { DEPARTMENTS, SUBDEPARTMENTS } from './constants.js';
+import {
+    getAdminScope, scopeCoversActivity, allowedDeptIds, allowedSubIdsForDept, scopeLabel,
+} from './admin-scope.js';
 
 // --- ORPHANED-UPLOAD TRACKING ---
 // Images upload to Drive immediately (so the preview/QR works), but if the admin
@@ -43,6 +46,12 @@ const SUB_DEPT_OPTIONS = {
 let currentActivityId = null;
 let editingActivityId = null;
 
+// Who the signed-in admin is and which ฝ่าย they administer, from the ทีม SAMO
+// tree via public.passport_admin_context(). Null until bootAdminAuth() resolves;
+// every scope check treats null as "not an admin" (fail closed).
+let adminScope = null;
+const isAllDepts = () => adminScope?.allDepartments === true;
+
 // --- QR GENERATION ---
 let currentQrUrl = null;          // last static scan URL — rendered hi-res into the poster
 let currentQrActivity = null;     // { name, badge_url } baked into the poster
@@ -70,16 +79,12 @@ async function init() {
         uncommittedUploads.forEach(url => deleteFromDriveBeacon(url));
     });
 
-    if (
-        localStorage.getItem('admin_logged_in') === 'true' ||
-        sessionStorage.getItem('admin_logged_in') === 'true'
-    ) {
-        showAdminPanel();
-    }
-
     document
-        .getElementById('admin-login-form')
-        .addEventListener('submit', handleLogin);
+        .getElementById('admin-google-btn')
+        .addEventListener('click', signInWithGoogle);
+    document
+        .getElementById('admin-switch-btn')
+        .addEventListener('click', signOutAdmin);
     document
         .getElementById('activity-form')
         .addEventListener('submit', createActivity);
@@ -88,11 +93,7 @@ async function init() {
         .addEventListener('submit', submitEditActivity);
     document
         .getElementById('admin-logout')
-        .addEventListener('click', () => {
-            localStorage.removeItem('admin_logged_in');
-            sessionStorage.removeItem('admin_logged_in');
-            window.location.reload();
-        });
+        .addEventListener('click', signOutAdmin);
 
     document
         .getElementById('filter-department')
@@ -146,6 +147,10 @@ async function init() {
     if (downloadBtn) {
         downloadBtn.addEventListener('click', downloadQrPoster);
     }
+
+    // Last: resolve identity, then open (or refuse) the panel. Awaited so nothing
+    // below can observe a half-known scope.
+    await bootAdminAuth();
 }
 
 // Download the poster currently shown on screen (built in generateStaticQR). Rebuilds
@@ -457,13 +462,150 @@ function setupSubDepartmentToggle(deptSelectId, subDeptSelectId) {
     });
 }
 
+// ── ADMIN IDENTITY (ทีม SAMO tree → public.passport_admin_context) ───────────
+// Replaces the old client-side admin/1234 + localStorage flag. Fails closed:
+// no session, rpc error, or no grant all land on the gate, never on the panel.
+
+async function bootAdminAuth() {
+    // OAuth lands back here with #access_token=…; give supabase-js a beat to
+    // persist it before asking for the session (same race as auth.js checkSession).
+    if (window.location.hash.includes('access_token')) {
+        await new Promise((r) => setTimeout(r, 300));
+        window.history.replaceState(null, null, window.location.pathname + window.location.search);
+    }
+
+    adminScope = await getAdminScope();
+
+    if (adminScope.isAdmin) {
+        await showAdminPanel();
+        return;
+    }
+    showAdminGate(adminScope);
+}
+
+function showAdminGate(scope) {
+    const title = document.getElementById('admin-gate-title');
+    const msg = document.getElementById('admin-gate-msg');
+    const googleBtn = document.getElementById('admin-google-btn');
+    const switchBtn = document.getElementById('admin-switch-btn');
+
+    document.getElementById('admin-login-section').style.display = '';
+    document.getElementById('admin-content').style.display = 'none';
+    document.getElementById('admin-logout').style.display = 'none';
+
+    if (!scope?.user) return; // signed out — the default markup already says it
+
+    // Signed in but not an admin: say so, and offer a switch rather than a
+    // re-login button that would just bounce them back to the same account.
+    googleBtn.style.display = 'none';
+    switchBtn.style.display = '';
+    title.textContent = 'บัญชีนี้ไม่มีสิทธิ์ผู้ดูแล';
+    msg.innerHTML = scope.error
+        ? `ตรวจสอบสิทธิ์ไม่สำเร็จ<br><span style="opacity:.75;font-size:.9em">${escapeHtml(scope.error)}</span>` +
+          `<br><br>กรุณาลองใหม่อีกครั้ง หรือติดต่อผู้ดูแลระบบ`
+        : `<b style="word-break:break-all">${escapeHtml(scope.user.email || '')}</b><br>` +
+          `ยังไม่ได้รับสิทธิ์ SAMO Passport<br><br>` +
+          `ขอสิทธิ์ได้ที่ เว็บ SAMO → <b>ทีม SAMO</b> → จัดการสิทธิ์ → SAMO Passport`;
+}
+
+async function signInWithGoogle() {
+    // NB: do NOT set queryParams.hd — forcing the hosted domain sends kkumail
+    // logins to KKU's malformed SAML IdP URL (see js/index.js for the full note).
+    const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo: window.location.origin + window.location.pathname },
+    });
+    if (error) alert('เข้าสู่ระบบไม่สำเร็จ: ' + error.message);
+}
+
+async function signOutAdmin() {
+    try {
+        await Promise.race([
+            supabase.auth.signOut(),
+            new Promise((resolve) => setTimeout(resolve, 2000)),
+        ]);
+    } catch (err) {
+        console.error('Logout error:', err);
+    }
+    window.location.reload();
+}
+
 async function showAdminPanel() {
     document.getElementById('admin-login-section').style.display = 'none';
     document.getElementById('admin-content').style.display = 'block';
     document.getElementById('admin-logout').style.display = 'inline-block';
+    applyScopeToUi();
     await loadSamoData().catch(() => {}); // for the วาระสโม/Season activity filters
     populateActivitySamoFilters();
     loadActivities();
+}
+
+// Narrow every department-bearing control to what this admin actually owns.
+// This is presentation + accident-prevention; the authoritative filter is
+// scopeCoversActivity(), re-checked on every read AND every write below.
+function applyScopeToUi() {
+    const banner = document.getElementById('admin-scope-banner');
+    if (banner) {
+        banner.style.display = '';
+        banner.className = 'admin-scope-banner' + (isAllDepts() ? ' is-all' : '');
+        banner.innerHTML =
+            `<span class="asb-who">${escapeHtml(adminScope.user?.email || '')}</span>` +
+            `<span class="asb-scope">ขอบเขต: ${escapeHtml(
+                scopeLabel(adminScope, { departments: DEPARTMENTS, subDepartments: SUBDEPARTMENTS }))}</span>`;
+    }
+
+    const allowed = allowedDeptIds(adminScope); // null = unrestricted
+    if (allowed) {
+        ['act-department', 'edit-department', 'filter-department'].forEach((id) =>
+            restrictDeptSelect(id, allowed));
+    }
+
+    // Seasons and the destructive data wipe are org-wide operations — a
+    // department-scoped admin must not start a new วาระ or clean everyone's data.
+    if (!isAllDepts()) {
+        document.querySelectorAll('[onclick^="openSeasons"]').forEach((el) => el.remove());
+    }
+}
+
+// Keep only `allowed` departments in a <select>, and drop the "any department"
+// placeholder when exactly one remains so the choice can't be left blank.
+function restrictDeptSelect(id, allowed) {
+    const sel = document.getElementById(id);
+    if (!sel) return;
+    const single = allowed.length === 1;
+    [...sel.options].forEach((opt) => {
+        if (opt.value === '') { if (single) opt.remove(); return; }
+        if (!allowed.includes(parseInt(opt.value, 10))) opt.remove();
+    });
+    if (single) {
+        sel.value = String(allowed[0]);
+        sel.dispatchEvent(new Event('change')); // rebuild the dependent sub-dept select
+        restrictSubSelect(sel, allowed[0]);
+    }
+    sel.addEventListener('change', () => restrictSubSelect(sel, sel.value));
+}
+
+// A sub-department grant owns ONE sub, not the whole parent department: pin the
+// dependent select to it (setupSubDepartmentToggle has just refilled it).
+function restrictSubSelect(deptSel, deptId) {
+    const subSel = document.getElementById(deptSel.id.replace(/-department$/, '-sub-department'));
+    if (!subSel) return;
+    const subs = allowedSubIdsForDept(adminScope, deptId);
+    if (subs === null) return; // owns the whole department
+    [...subSel.options].forEach((opt) => {
+        if (opt.value === '') { if (subs.length === 1) opt.remove(); return; }
+        if (!subs.includes(parseInt(opt.value, 10))) opt.remove();
+    });
+    if (subs.length === 1) subSel.value = String(subs[0]);
+}
+
+// Guard for every write path: refuse a department the admin does not own.
+// Returns true when the write may proceed.
+function assertInScope(act, what) {
+    if (scopeCoversActivity(adminScope, act)) return true;
+    alert(`ไม่มีสิทธิ์${what}กิจกรรมของฝ่ายนี้\n\nขอบเขตของคุณ: ` +
+        scopeLabel(adminScope, { departments: DEPARTMENTS, subDepartments: SUBDEPARTMENTS }));
+    return false;
 }
 
 // Fill the วาระสโม + Season dropdowns used to filter the activity list. The
@@ -484,24 +626,6 @@ function populateActivitySamoFilters() {
     seasonSel.value = seasons.some(s => s.id === selSeason) ? selSeason : '';
 }
 
-function handleLogin(e) {
-    e.preventDefault();
-    const user = document.getElementById('admin-user').value;
-    const pass = document.getElementById('admin-pass').value;
-    const remember = document.getElementById('admin-remember').checked;
-
-    if (user === 'admin' && pass === '1234') {
-        if (remember) {
-            localStorage.setItem('admin_logged_in', 'true');
-        } else {
-            sessionStorage.setItem('admin_logged_in', 'true');
-        }
-        showAdminPanel();
-    } else {
-        alert('Invalid credentials!');
-    }
-}
-
 // --- ACTIVITY LIST & MANAGEMENT ---
 let activitiesCache = [];
 async function loadActivities() {
@@ -515,7 +639,10 @@ async function loadActivities() {
         return;
     }
 
-    activitiesCache = data; // เก็บข้อมูลใน cache เพื่อใช้กับฟิลเตอร์
+    // Drop out-of-scope rows at the CACHE boundary, not just at render: every
+    // later lookup (editActivity, manageCerts, the QR generator) reads this
+    // array, so anything that never enters it cannot leak through them either.
+    activitiesCache = (data || []).filter((act) => scopeCoversActivity(adminScope, act));
 
     renderActivityList();
 }
@@ -592,12 +719,12 @@ function withinWindow(createdAt, win) {
 }
 
 window.startScannerFor = (id) => {
+    if (!assertInScope(activitiesCache.find((a) => a.id === id), 'สร้าง QR ของ')) return;
     currentActivityId = id;
     startStaticQR();
 };
 
 window.editActivity = async (id) => {
-    editingActivityId = id;
     const { data, error } = await supabase
         .from('activities')
         .select('*')
@@ -607,6 +734,10 @@ window.editActivity = async (id) => {
         alert('Could not load activity.');
         return;
     }
+    // Re-check against the row we just fetched, not the cached one — these
+    // window.* handlers are reachable from the console with any id.
+    if (!assertInScope(data, 'แก้ไข')) return;
+    editingActivityId = id;
 
     document.getElementById('edit-name').value = data.name;
     document.getElementById('edit-km').value = data.base_points_km;
@@ -636,6 +767,10 @@ window.cancelEdit = () => {
 };
 
 window.deleteActivity = async (id) => {
+    const { data: scopeRow } = await supabase
+        .from('activities').select('department_id, sub_department_id').eq('id', id).single();
+    if (!assertInScope(scopeRow, 'ลบ')) return;
+
     if (
         !confirm(
             'Delete this activity?\n\nIt disappears from the admin list and can no longer be scanned. Earners KEEP their points + flight-log entry (history is immutable), but its CERTIFICATES are deleted with it — once the activity is gone, the certificate is gone (students must collect it while the activity is open).',
@@ -676,6 +811,10 @@ async function submitEditActivity(e) {
     const subDept = subDeptRaw ? parseInt(subDeptRaw, 10) : null;
     const badge_name = document.getElementById('edit-badge-name').value || name;
     const badge_url = document.getElementById('edit-badge-url').value || null;
+
+    // Guard the DESTINATION department too: a scoped admin must not be able to
+    // move an activity they own out into a department they don't.
+    if (!assertInScope({ department_id: dept, sub_department_id: subDept }, 'ย้ายกิจกรรมไปยัง')) return;
 
     // 1. Update the activity details
     const { error } = await supabase
@@ -726,6 +865,10 @@ async function createActivity(e) {
     const subDept = subDeptRaw ? parseInt(subDeptRaw, 10) : null;
     const badge_name = document.getElementById('act-badge-name').value || name;
     const badge_url = document.getElementById('act-badge-url').value || null;
+
+    // A scoped admin must file the activity under a department they own —
+    // including the "no department" case, which only a full admin may create.
+    if (!assertInScope({ department_id: dept, sub_department_id: subDept }, 'สร้าง')) return;
 
     const { data, error } = await supabase
         .from('activities')
@@ -836,6 +979,7 @@ function updateCertFormMode() {
 
 window.manageCerts = async (id) => {
     const act = activitiesCache.find(a => a.id === id);
+    if (!assertInScope(act, 'จัดการเกียรติบัตรของ')) return;
     certActivityId = id;
     document.getElementById('cert-activity-name').textContent = act ? act.name : '';
 
@@ -1212,7 +1356,17 @@ const currentSeasonRow = () => {
 const seasonsOfYear = (yId) => samoSeasons.filter(s => s.samo_year_id === yId);
 const fmtDate = (ts) => ts ? new Date(ts).toLocaleDateString() : '';
 
+// วาระสโม / Season / the data wipe are ORG-WIDE: starting a new season freezes
+// every department's points at once. Only an all-departments admin may do it —
+// applyScopeToUi() removes the entry button, and this guards the console route.
+function assertOrgWide(what) {
+    if (isAllDepts()) return true;
+    alert(`${what} เป็นการดำเนินการระดับองค์กร — ต้องมีสิทธิ์ SAMO Passport ทุกฝ่าย`);
+    return false;
+}
+
 window.openSeasons = async () => {
+    if (!assertOrgWide('การจัดการวาระสโม/Season')) return;
     document.getElementById('event-creation').style.display = 'none';
     document.getElementById('manage-section').style.display = 'none';
     document.getElementById('seasons-section').style.display = 'block';
@@ -1277,6 +1431,7 @@ function renderSamoHistory() {
 }
 
 window.startNewYear = async () => {
+    if (!assertOrgWide('การเริ่มวาระสโมใหม่')) return;
     const name = (prompt("Name the new วาระสโม (e.g. วาระสโม'69):") || '').trim();
     if (!name) return;
     // A วาระสโม must open WITH a season — otherwise scans before the first season is
@@ -1299,6 +1454,7 @@ window.startNewYear = async () => {
 };
 
 window.startNewSeason = async () => {
+    if (!assertOrgWide('การเริ่ม Season ใหม่')) return;
     const y = currentYearRow();
     if (!y) { alert('Start a วาระสโม first.'); return; }
     const name = (prompt('Name the new Season (e.g. Q1):') || '').trim();
@@ -1314,6 +1470,7 @@ window.startNewSeason = async () => {
 
 // Danger zone: wipe all app content (keeps user accounts). Double-gated.
 window.cleanAllData = async () => {
+    if (!assertOrgWide('การล้างข้อมูลทั้งหมด')) return;
     if (!confirm('⚠️ This permanently deletes ALL activities, certificates, scans, and every วาระสโม/season — AND the badge + certificate images they stored in the SAMO Google Drive.\n\nUser accounts (profiles) are kept. This CANNOT be undone.\n\nContinue?')) return;
     const typed = prompt('Type DELETE to confirm wiping all data:');
     if ((typed || '').trim() !== 'DELETE') { alert('Cancelled — you did not type DELETE.'); return; }
@@ -1380,8 +1537,18 @@ let lbProfiles = null;
 function populateLbDepartments() {
     const sel = document.getElementById('lb-department');
     if (sel.options.length) return;
-    sel.innerHTML = '<option value="">All departments (total)</option>' +
-        Object.entries(DEPARTMENTS).map(([id, name]) => `<option value="${id}">${name}</option>`).join('');
+    const allowed = allowedDeptIds(adminScope); // null = every department
+    const entries = Object.entries(DEPARTMENTS)
+        .filter(([id]) => !allowed || allowed.includes(parseInt(id, 10)));
+    // "All departments" means "everything you administer" — for a scoped admin
+    // that is their own ฝ่าย, not the org total, so drop the option when it
+    // would be the only meaningful choice anyway.
+    sel.innerHTML = (allowed && entries.length === 1 ? '' : '<option value="">All departments (total)</option>') +
+        entries.map(([id, name]) => `<option value="${id}">${name}</option>`).join('');
+    if (allowed && entries.length === 1) {
+        sel.value = String(entries[0][0]);
+        onLbDeptChange();
+    }
 }
 
 window.openLeaderboard = async () => {
@@ -1452,6 +1619,10 @@ function onLbDeptChange() {
 function adminAggregate(yearId, seasonId, deptId, subId) {
     const totals = new Map();
     (lbScans || []).forEach(s => {
+        // Scope first: the dropdowns below only narrow WITHIN what you administer.
+        // A scan carries the department it was stamped under, so the same
+        // predicate as the activity list applies unchanged.
+        if (!scopeCoversActivity(adminScope, s)) return;
         if (yearId && s.samo_year_id !== yearId) return;
         if (seasonId && s.season_id !== seasonId) return;
         if (deptId && s.department_id !== deptId) return;

@@ -9,7 +9,9 @@ Students attend wellness activities, scan QR codes, and earn "km" points that ac
 - 🔐 **Google OAuth** — Login restricted to `@kkumail.com` accounts via Supabase Auth
 - 📱 **QR Code Scanning** — Dynamic (rotating, anti-cheat) and static (printable) QR codes
 - 🎫 **Boarding Pass Dashboard** — Travel-themed passport UI with tier progression and city stamps
-- 🛡️ **Admin Terminal** — Create, edit, delete activities and generate QR scanners
+- 🛡️ **Admin Terminal** — Create, edit, delete activities and generate QR scanners.
+  Access is granted per-ฝ่าย from the SAMO website (ทีม SAMO → จัดการสิทธิ์ → SAMO Passport);
+  sign in with the Google account that holds the grant.
 - ⭐ **Travel Visa** — Streak bonus for consistent participation
 
 ## Tech Stack
@@ -37,7 +39,8 @@ passport/
 │   ├── passport.css        # Boarding pass dashboard styles
 │   └── scan.css            # Scan page styles (spinner, status)
 ├── js/
-│   ├── admin-page.js       # Admin CRUD, login, QR, season control, leaderboard
+│   ├── admin-page.js       # Admin CRUD, QR, season control, leaderboard
+│   ├── admin-scope.js      # Who may admin, and which ฝ่าย (ทีม SAMO tree)
 │   ├── app.js              # Supabase client initialization
 │   ├── auth.js             # Session checking, OAuth error handling, logout
 │   ├── certificate.js      # Shared canvas renderer (name drawn on a background)

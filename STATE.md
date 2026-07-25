@@ -1,11 +1,23 @@
 # STATE.md — project state
 
 Snapshot of what's built, what's pending, and required config. Update as things land.
-Last updated: 2026-06-21. **Tagged release: v1.0.0.**
+Last updated: 2026-07-25. **Tagged release: v1.0.0.**
 
 ## Working
 
 - **Auth** — Google OAuth via Supabase; session handled in `auth.js` / `index.js`.
+- **Admin identity + department scope (2026-07-25)** — the `admin`/`1234` +
+  `localStorage.admin_logged_in` gate is **gone**. `html/admin.html` now signs in with
+  Google and asks `public.passport_admin_context()` (samoweb migration 0087) who the
+  caller is; `js/admin-scope.js` turns that into `{allDepartments, departments[],
+  subDepartments[]}`. Grants are issued in samoweb → **ทีม SAMO → จัดการสิทธิ์ → SAMO
+  Passport → ขอบเขต** (ทุกฝ่าย / ฝ่าย X / แผนกย่อย Y); `getAdminScope()` calls
+  `sync_my_team_permissions()` first so a fresh grant self-heals. A scoped admin sees only
+  their ฝ่าย's activities, certificates, QR codes and leaderboard, their dept pickers are
+  pruned to what they own, and วาระสโม/Season/`cleanAllData` are all-departments-only.
+  **Fails closed** — no session, rpc error, or no grant all land on the gate.
+  ⚠️ This is the VISIBLE boundary only; `passport` schema RLS is still open for anon
+  (db/0056), so it stops accidents, not attackers — see SECURITY-HARDENING-PLAN.md.
 - **Student dashboard** — "MDKKU Passport" redesign (Nunito, 5 themes via
   `[data-theme]` + `wp-theme` localStorage). Brand/flavour is MDKKU Air — flight code
   `MD-`, passport no. `MP-`, IATA `MDK`; the boarding-pass/leaderboard **seat** is a
@@ -129,13 +141,18 @@ Other:
 
 - User content (profile photo, memories, photos) is **localStorage only** by choice —
   SAMO storage is reserved for important data. Backup/restore covers cross-device.
-- Admin auth is a hardcoded `admin/1234` flag; RLS is permissive. Not production-grade.
+- Admin **identity** is now real (ทีม SAMO tree, see Working), but **enforcement is not**:
+  the `passport` schema's RLS is still `using (true)` for anon, so the department scope is
+  a UI boundary a determined admin can step around with DevTools. Closing it is
+  SECURITY-HARDENING-PLAN.md — its policies must read `passport_admin_context()`, not
+  invent a second admin table.
 - Dead DB columns remain (`continent_id`, `is_marketing_bonus`, `active_token`,
   `token_expires_at`) — safe to drop later.
 
 ## Ideas / roadmap (not started)
 
-- Real admin authentication + tightened RLS.
+- Tightened `passport`-schema RLS keyed off `passport_admin_context()` (admin *identity* landed
+  2026-07-25; enforcement has not).
 - Optional certificate "organizer (ผู้จัดทำ)" gating — currently any earner of an
   activity can generate any of its certificate templates.
 - Linting/formatting (ESLint + Prettier) if the team wants enforced style.

@@ -11,3 +11,8 @@ export const DEPARTMENTS = {
 };
 
 export const SUBDEPARTMENTS = { 1: 'โครงการ', 2: 'ชุมนุม', 3: 'จิตอาสา', 4: '7 คณะ' };
+
+// Which ฝ่ายอุปนายก each sub-department hangs off. Mirrors SUB_DEPT_OPTIONS in
+// admin-page.js (the input widget) — keep the two in sync. Used by admin-scope.js
+// to resolve a sub-department grant back to the department it must be filed under.
+export const SUBDEPT_PARENT = { 1: 3, 2: 3, 3: 5, 4: 5 };

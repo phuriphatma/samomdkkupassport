@@ -32,26 +32,37 @@
 .admin-login-box {
     max-width: 400px;
     margin: 0 auto;
+    text-align: center;
 }
 
-.admin-login-input {
-    margin-bottom: 10px;
-    width: 100%;
-    padding: 10px;
-    box-sizing: border-box;
-}
-
-.remember-label {
-    color: var(--text-light);
-    font-size: 0.95rem;
+/* Who you are + which ฝ่าย you administer (admin-scope.js). Deliberately loud
+   for a SCOPED admin, muted for a full one — the narrow case is the surprising
+   one ("why can't I see the other departments?"). */
+.admin-scope-banner {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
-    gap: 8px;
-    cursor: pointer;
+    justify-content: space-between;
+    gap: 8px 16px;
+    margin-bottom: 22px;
+    padding: 11px 15px;
+    border: 1px solid var(--accent-secondary, #2f9e78);
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--accent-secondary, #2f9e78) 12%, transparent);
+    font-size: 0.9rem;
+    line-height: 1.5;
 }
 
-.remember-checkbox {
-    width: auto;
-    margin: 0;
-    cursor: pointer;
+.admin-scope-banner.is-all {
+    border-color: var(--text-muted, #7b8794);
+    background: transparent;
+}
+
+.admin-scope-banner .asb-who {
+    color: var(--text-muted);
+    word-break: break-all;
+}
+
+.admin-scope-banner .asb-scope {
+    font-weight: 700;
 }

@@ -449,3 +449,34 @@ CORS-safe lh3 host too (previously only `/file/d/ID` was). Current prod badges a
 working `/file/d/ID` form — this wasn't the cause, just belt-and-suspenders.
 **Non-bug reminder:** no-stamp can also just mean **no `badge_url`** — "has a badge *name*" ≠ "has
 a badge *image*" (`badge_name` defaults to the activity name even with no image uploaded).
+
+## A permission granted in ANOTHER repo's admin console is decorative until this app calls the RPC that reads it
+**Symptom:** SAMO Passport was granted to an account in samoweb (**ทีม SAMO → จัดการสิทธิ์ →
+SAMO Passport → ขอบเขต → ฝ่ายบริหารองค์กร**). Signing into `/passport/html/admin.html`, the
+admin panel showed **every** department's activities, leaderboard and QR codes. Looks like the
+grant didn't apply, or like the scope resolver is broken.
+**Cause:** the grant was perfect. Verified live: the tree node carried
+`passport_dept_id = 1` with no blanket `passport` key (the mutual-exclusion rule held),
+`users.managed_passport_scopes` resolved to `{d:1}`, and `public.passport_admin_context()`
+returned `{is_admin:true, all_departments:false, departments:[1]}` for that uid. **Nothing in
+the passport repo ever called it** — `grep -rn "\.rpc(" js/*.js` returned zero hits. Migration
+0087 deliberately built only the identity+scope half in samoweb and said so in its header; the
+consuming half here was still the pre-0087 client-side `admin`/`1234` + `localStorage` gate,
+which shows everything to anyone who types the password. The `filter-department` dropdown that
+*looks* like a scope is a view filter the admin picks by hand, defaulting to "all".
+**Fix:** `js/admin-scope.js` + the rewired `js/admin-page.js` — Google sign-in, then
+`passport_admin_context()`, then hard-filter at the `activitiesCache` boundary and re-check
+`scopeCoversActivity()` on every write.
+**Where it lives now:** `js/admin-scope.js`, `js/admin-page.js` (`bootAdminAuth`,
+`applyScopeToUi`, `assertInScope`, `assertOrgWide`). **Rules:**
+1. When a permission model spans two repos, "granted" means **the consumer reads it**. Before
+   debugging a scope that "doesn't apply", grep the consuming app for the RPC/column name — if
+   there are no hits, the feature was never wired, and no amount of re-granting will help.
+2. The `public` schema hop is load-bearing. `app.js` pins the client to `db.schema:'passport'`,
+   so `supabase.rpc('passport_admin_context')` 404s (`PGRST202`, searched
+   `passport.passport_admin_context`). It must be `supabase.schema('public').rpc(...)`.
+   Confirmed both branches against the live project.
+3. A UI-only scope is not a boundary. `passport`-schema RLS is still `using (true)` for anon
+   (db/0056), so this stops accidents, not attackers — SECURITY-HARDENING-PLAN.md is what makes
+   it real, and its policies must read `passport_admin_context()` rather than invent a second
+   admin table.
