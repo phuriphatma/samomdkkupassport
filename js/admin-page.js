@@ -474,12 +474,19 @@ function setupSubDepartmentToggle(deptSelectId, subDeptSelectId) {
 async function bootAdminAuth() {
     // OAuth lands back here with #access_token=…; give supabase-js a beat to
     // persist it before asking for the session (same race as auth.js checkSession).
-    if (window.location.hash.includes('access_token')) {
-        await new Promise((r) => setTimeout(r, 300));
-        window.history.replaceState(null, null, window.location.pathname + window.location.search);
-    }
+    const fromOAuth = window.location.hash.includes('access_token');
+    if (fromOAuth) await new Promise((r) => setTimeout(r, 300));
 
     adminScope = await getAdminScope();
+
+    // Wipe the token from the URL bar only AFTER the session has been read.
+    // Clearing it first (as this did) races detectSessionInUrl: on a slow device
+    // the 300ms can elapse before supabase-js has parsed the hash, and removing
+    // it destroys the only copy of the token — the user silently lands back on
+    // the gate, and signing in again loops through the same window.
+    if (fromOAuth && adminScope.user) {
+        window.history.replaceState(null, null, window.location.pathname + window.location.search);
+    }
 
     // A real ทีม SAMO identity ALWAYS wins over a stored legacy session — otherwise
     // anyone who once ticked "remember me" would never see their ฝ่าย scope apply.
@@ -689,8 +696,11 @@ function renderActivityList(){
     list.innerHTML = '';
 
     if (activitiesCache.length === 0) {
-        list.innerHTML =
-            '<p style="font-size: 0.9rem;">No activities created yet.</p>';
+        // Distinguish "none exist" from "none in your ฝ่าย" — otherwise a scoped
+        // admin reads an empty list as a broken query.
+        list.innerHTML = isAllDepts()
+            ? '<p style="font-size: 0.9rem;">No activities created yet.</p>'
+            : '<p style="font-size: 0.9rem;">ยังไม่มีกิจกรรมในขอบเขตของคุณ</p>';
         return;
     }
     const filterDept = document.getElementById('filter-department').value;
@@ -1099,6 +1109,13 @@ async function loadCerts(activityId) {
 }
 
 window.deleteCert = async (id) => {
+    // certListCache only ever holds certs of the in-scope activity manageCerts
+    // opened, so membership IS the scope check — and it also closes the
+    // console route (deleteCert('<any-uuid>')) that the rendered buttons can't reach.
+    if (!certListCache.some(c => c.id === id)) {
+        alert('ไม่มีสิทธิ์ลบเกียรติบัตรนี้');
+        return;
+    }
     if (!confirm('Delete this certificate template?')) return;
     const { error } = await supabase.from('certificates').delete().eq('id', id);
     if (error) {
@@ -1616,8 +1633,12 @@ async function ensureLbScans() {
         table.innerHTML = `<p style="color:var(--accent-danger);">Could not load leaderboard: ${(e1 || e2).message}</p>`;
         return false;
     }
-    lbScans = scans || [];
-    lbProfiles = new Map((profiles || []).map(p => [p.id, p]));
+    // Scope the scans HERE, then keep only the profiles those scans reference:
+    // a ฝ่าย-scoped admin has no reason to hold the whole student roster
+    // (name + email) in memory just to rank their own department.
+    lbScans = (scans || []).filter(s => scopeCoversActivity(adminScope, s));
+    const inScope = new Set(lbScans.map(s => s.user_id));
+    lbProfiles = new Map((profiles || []).filter(p => inScope.has(p.id)).map(p => [p.id, p]));
     return true;
 }
 
