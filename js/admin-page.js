@@ -1,5 +1,9 @@
 // js/admin-page.js — Admin terminal logic
-import { supabase } from './app.js';
+// `adminDb` is a LIVE BINDING (app.js): it points at the normal client, or at the
+// legacy-admin client once admin/1234 signs in. Every DATA call in this file goes
+// through it; auth calls stay on `supabase` so the Google sign-in and sign-out
+// always act on the user's own session, never the shared one.
+import { supabase, adminDb } from './app.js';
 import { generateUUID, fixGoogleDriveUrl } from './utils.js';
 import { ROUTES } from './routes.js';
 import { renderCertificate, loadCertImage, CERT_FONTS } from './certificate.js';
@@ -9,6 +13,7 @@ import { DEPARTMENTS, SUBDEPARTMENTS } from './constants.js';
 import {
     getAdminScope, scopeCoversActivity, allowedDeptIds, allowedSubIdsForDept, scopeLabel,
     LEGACY_PASSWORD_LOGIN, getLegacyScope, legacyLogin, clearLegacySession,
+    ensureLegacySession,
 } from './admin-scope.js';
 
 // --- ORPHANED-UPLOAD TRACKING ---
@@ -472,7 +477,7 @@ function setupSubDepartmentToggle(deptSelectId, subDeptSelectId) {
 // no session, rpc error, or no grant all land on the gate, never on the panel.
 
 async function bootAdminAuth() {
-    // OAuth lands back here with #access_token=…; give supabase-js a beat to
+    // OAuth lands back here with #access_token=…; give adminDb-js a beat to
     // persist it before asking for the session (same race as auth.js checkSession).
     const fromOAuth = window.location.hash.includes('access_token');
     if (fromOAuth) await new Promise((r) => setTimeout(r, 300));
@@ -481,7 +486,7 @@ async function bootAdminAuth() {
 
     // Wipe the token from the URL bar only AFTER the session has been read.
     // Clearing it first (as this did) races detectSessionInUrl: on a slow device
-    // the 300ms can elapse before supabase-js has parsed the hash, and removing
+    // the 300ms can elapse before adminDb-js has parsed the hash, and removing
     // it destroys the only copy of the token — the user silently lands back on
     // the gate, and signing in again loops through the same window.
     if (fromOAuth && adminScope.user) {
@@ -491,8 +496,11 @@ async function bootAdminAuth() {
     // A real ทีม SAMO identity ALWAYS wins over a stored legacy session — otherwise
     // anyone who once ticked "remember me" would never see their ฝ่าย scope apply.
     if (!adminScope.isAdmin) {
+        // A stored legacy marker outlives the shared Supabase session, so re-establish
+        // it before trusting it — otherwise the panel renders and every write is
+        // rejected, which is precisely the failure this door was rebuilt to avoid.
         const legacy = getLegacyScope();
-        if (legacy) adminScope = legacy;
+        if (legacy && await ensureLegacySession()) adminScope = legacy;
     }
 
     if (adminScope.isAdmin) {
@@ -542,20 +550,32 @@ async function signInWithGoogle() {
 
 // TEMPORARY — see the LEGACY ESCAPE HATCH block in admin-scope.js. Delete this
 // handler together with its markup when every admin has a ทีม SAMO grant.
-function handleLegacyLogin(e) {
+async function handleLegacyLogin(e) {
     e.preventDefault();
-    const scope = legacyLogin(
-        document.getElementById('admin-user').value,
-        document.getElementById('admin-pass').value,
-        document.getElementById('admin-remember').checked,
-    );
-    if (!scope) { alert('Invalid credentials!'); return; }
-    adminScope = scope;
-    showAdminPanel();
+    const btn = e.target.querySelector('button[type="submit"]');
+    const label = btn?.textContent;
+    if (btn) { btn.disabled = true; btn.textContent = 'กำลังเข้าสู่ระบบ...'; }
+    try {
+        // Now a real sign-in to the shared admin account, so it can fail for
+        // reasons a string compare never could (offline, shared account disabled).
+        // Distinguish that from a wrong password: null = wrong, throw = broken.
+        const scope = await legacyLogin(
+            document.getElementById('admin-user').value,
+            document.getElementById('admin-pass').value,
+            document.getElementById('admin-remember').checked,
+        );
+        if (!scope) { alert('Invalid credentials!'); return; }
+        adminScope = scope;
+        await showAdminPanel();
+    } catch (err) {
+        alert('เข้าสู่ระบบไม่สำเร็จ: ' + (err?.message || err));
+    } finally {
+        if (btn) { btn.disabled = false; btn.textContent = label; }
+    }
 }
 
 async function signOutAdmin() {
-    clearLegacySession();
+    await clearLegacySession();
     try {
         await Promise.race([
             supabase.auth.signOut(),
@@ -672,7 +692,7 @@ function populateActivitySamoFilters() {
 // --- ACTIVITY LIST & MANAGEMENT ---
 let activitiesCache = [];
 async function loadActivities() {
-    const { data, error } = await supabase
+    const { data, error } = await adminDb
         .from('activities')
         .select('*')
         .order('created_at', { ascending: false });
@@ -771,7 +791,7 @@ window.startScannerFor = (id) => {
 };
 
 window.editActivity = async (id) => {
-    const { data, error } = await supabase
+    const { data, error } = await adminDb
         .from('activities')
         .select('*')
         .eq('id', id)
@@ -813,7 +833,7 @@ window.cancelEdit = () => {
 };
 
 window.deleteActivity = async (id) => {
-    const { data: scopeRow } = await supabase
+    const { data: scopeRow } = await adminDb
         .from('activities').select('department_id, sub_department_id').eq('id', id).single();
     if (!assertInScope(scopeRow, 'ลบ')) return;
 
@@ -827,9 +847,9 @@ window.deleteActivity = async (id) => {
     // The badge image is removed from Drive. Scans are kept (immutable flight-log
     // history), but certificate templates are deleted with the activity: certs are
     // no longer season-scoped snapshots — "activity gone ⇒ cert gone".
-    const { data: actRow } = await supabase.from('activities').select('badge_url').eq('id', id).single();
+    const { data: actRow } = await adminDb.from('activities').select('badge_url').eq('id', id).single();
 
-    const { data, error } = await supabase
+    const { data, error } = await adminDb
         .from('activities')
         .delete()
         .eq('id', id)
@@ -841,7 +861,7 @@ window.deleteActivity = async (id) => {
     } else if (!data || data.length === 0) {
         alert('Delete failed: No matching activity found, or restricted by permissions (RLS). Please check database policies.');
     } else {
-        await supabase.from('certificates').delete().eq('activity_id', id); // certs die with the activity
+        await adminDb.from('certificates').delete().eq('activity_id', id); // certs die with the activity
         if (actRow?.badge_url) deleteFromDrive(actRow.badge_url); // best-effort
         loadActivities();
     }
@@ -863,7 +883,7 @@ async function submitEditActivity(e) {
     if (!assertInScope({ department_id: dept, sub_department_id: subDept }, 'ย้ายกิจกรรมไปยัง')) return;
 
     // 1. Update the activity details
-    const { error } = await supabase
+    const { error } = await adminDb
         .from('activities')
         .update({
             name,
@@ -886,7 +906,7 @@ async function submitEditActivity(e) {
     //    so the current วาระ reflects the edit; older scans keep their old values.
     const { season } = await getCurrentContext().catch(() => ({ season: null }));
     if (season) {
-        await supabase
+        await adminDb
             .from('scans')
             .update({ points_awarded: km, activity_name: name, department_id: dept, sub_department_id: subDept })
             .eq('activity_id', editingActivityId)
@@ -916,7 +936,7 @@ async function createActivity(e) {
     // including the "no department" case, which only a full admin may create.
     if (!assertInScope({ department_id: dept, sub_department_id: subDept }, 'สร้าง')) return;
 
-    const { data, error } = await supabase
+    const { data, error } = await adminDb
         .from('activities')
         .insert([
             {
@@ -968,7 +988,7 @@ async function startStaticQR() {
 
 async function generateStaticQR() {
     // 1. Get or create the Static Token (+ name & badge for the poster).
-    const { data: act, error: selectError } = await supabase
+    const { data: act, error: selectError } = await adminDb
         .from('activities')
         .select('static_token, name, badge_url')
         .eq('id', currentActivityId)
@@ -984,7 +1004,7 @@ async function generateStaticQR() {
     let staticToken = act?.static_token;
     if (!staticToken) {
         staticToken = generateUUID();
-        const { error: updateError } = await supabase
+        const { error: updateError } = await adminDb
             .from('activities')
             .update({ static_token: staticToken })
             .eq('id', currentActivityId);
@@ -1079,7 +1099,7 @@ async function loadCerts(activityId) {
     const list = document.getElementById('cert-list');
     list.innerHTML = '<p style="font-size:0.9rem;">Loading…</p>';
 
-    const { data, error } = await supabase
+    const { data, error } = await adminDb
         .from('certificates')
         .select('*')
         .eq('activity_id', activityId)
@@ -1117,7 +1137,7 @@ window.deleteCert = async (id) => {
         return;
     }
     if (!confirm('Delete this certificate template?')) return;
-    const { error } = await supabase.from('certificates').delete().eq('id', id);
+    const { error } = await adminDb.from('certificates').delete().eq('id', id);
     if (error) {
         alert('Delete failed: ' + error.message);
         return;
@@ -1252,8 +1272,8 @@ async function submitCertificate(e) {
     // NULL). Editing updates in place so the template is always "what it is now".
     const insertExtras = { activity_id: certActivityId };
     const run = (payload) => editingCertId
-        ? supabase.from('certificates').update(payload).eq('id', editingCertId)
-        : supabase.from('certificates').insert([{ ...insertExtras, ...payload }]);
+        ? adminDb.from('certificates').update(payload).eq('id', editingCertId)
+        : adminDb.from('certificates').insert([{ ...insertExtras, ...payload }]);
 
     let { error } = await run(cert);
     // Drop the optional font column if the DB doesn't have it yet, then retry.
@@ -1394,8 +1414,8 @@ function escapeHtml(s) {
 
 async function loadSamoData() {
     const [{ data: ys }, { data: ss }] = await Promise.all([
-        supabase.from('samo_years').select('*').order('started_at', { ascending: false }),
-        supabase.from('samo_seasons').select('*').order('started_at', { ascending: false }),
+        adminDb.from('samo_years').select('*').order('started_at', { ascending: false }),
+        adminDb.from('samo_seasons').select('*').order('started_at', { ascending: false }),
     ]);
     samoYears = ys || [];
     samoSeasons = ss || [];
@@ -1493,13 +1513,13 @@ window.startNewYear = async () => {
     if (!seasonName) { alert('Cancelled — a วาระสโม must start with a season (so scans are never uncategorized).'); return; }
     if (!confirm(`Start "${name}" with season "${seasonName}"?\n\nThis ENDS the current วาระสโม + season and resets the live leaderboard and current-year totals. All past logs and standings are kept.`)) return;
     const now = new Date().toISOString();
-    await supabase.from('samo_seasons').update({ ended_at: now }).is('ended_at', null);
-    await supabase.from('samo_years').update({ ended_at: now }).is('ended_at', null);
-    const { data: yRows, error } = await supabase.from('samo_years').insert([{ name }]).select();
+    await adminDb.from('samo_seasons').update({ ended_at: now }).is('ended_at', null);
+    await adminDb.from('samo_years').update({ ended_at: now }).is('ended_at', null);
+    const { data: yRows, error } = await adminDb.from('samo_years').insert([{ name }]).select();
     if (error) { alert('Failed: ' + error.message); return; }
     const newYear = yRows && yRows[0];
     if (!newYear) { alert('วาระสโม created but could not read it back — add the season manually.'); await loadSamoData(); renderSamoControl(); return; }
-    const { error: sErr } = await supabase.from('samo_seasons').insert([{ samo_year_id: newYear.id, name: seasonName }]);
+    const { error: sErr } = await adminDb.from('samo_seasons').insert([{ samo_year_id: newYear.id, name: seasonName }]);
     if (sErr) { alert(`วาระสโม "${name}" started, but the season failed: ${sErr.message}\nAdd a season now or scans will be uncategorized.`); }
     await loadSamoData();
     renderSamoControl();
@@ -1514,8 +1534,8 @@ window.startNewSeason = async () => {
     if (!name) return;
     if (!confirm(`Start season "${name}" under ${y.name}?\n\nThis ENDS the current season and resets the live leaderboard. The previous season's standings stay viewable.`)) return;
     const now = new Date().toISOString();
-    await supabase.from('samo_seasons').update({ ended_at: now }).is('ended_at', null).eq('samo_year_id', y.id);
-    const { error } = await supabase.from('samo_seasons').insert([{ samo_year_id: y.id, name }]);
+    await adminDb.from('samo_seasons').update({ ended_at: now }).is('ended_at', null).eq('samo_year_id', y.id);
+    const { error } = await adminDb.from('samo_seasons').insert([{ samo_year_id: y.id, name }]);
     if (error) { alert('Failed: ' + error.message); return; }
     await loadSamoData();
     renderSamoControl();
@@ -1533,8 +1553,8 @@ window.cleanAllData = async () => {
     const driveUrls = [];
     if (isUploadConfigured()) {
         const [{ data: acts }, { data: certs }] = await Promise.all([
-            supabase.from('activities').select('badge_url'),
-            supabase.from('certificates').select('background_url'),
+            adminDb.from('activities').select('badge_url'),
+            adminDb.from('certificates').select('background_url'),
         ]);
         (acts || []).forEach(a => { if (a.badge_url) driveUrls.push(a.badge_url); });
         (certs || []).forEach(c => { if (c.background_url) driveUrls.push(c.background_url); });
@@ -1543,7 +1563,7 @@ window.cleanAllData = async () => {
     // `id IS NOT NULL` matches every row and works for ANY primary-key type.
     // (The old `.neq('id', <uuid>)` threw "invalid input syntax for type integer"
     // on scans — whose id is a bigint — aborting the whole wipe. See MISTAKES.md.)
-    const wipe = (table) => supabase.from(table).delete().not('id', 'is', null).select('id');
+    const wipe = (table) => adminDb.from(table).delete().not('id', 'is', null).select('id');
     try {
         // Dependents first (FKs to activities were dropped in 0006; samo_seasons +
         // season_results cascade from their parents, but delete explicitly to be safe).
@@ -1557,7 +1577,7 @@ window.cleanAllData = async () => {
             // No error but 0 rows deleted while rows exist ⇒ blocked by RLS (no DELETE
             // policy). Flag it so the admin knows the wipe was incomplete.
             if (!error && Array.isArray(data) && data.length === 0) {
-                const { count } = await supabase.from(t).select('id', { count: 'exact', head: true });
+                const { count } = await adminDb.from(t).select('id', { count: 'exact', head: true });
                 if (count) stuck.push(`${t} (${count} rows — needs a DELETE policy; run db/0007)`);
             }
         }
@@ -1636,42 +1656,26 @@ async function ensureLbScans() {
     // Scans are still read directly (scans_read stays public) because the
     // year/season/ฝ่าย facet dropdowns are derived from them client-side; they
     // carry no personal data beyond user_id.
-    // A LEGACY admin/1234 session has no Supabase JWT at all, so
-    // passport.admin_leaderboard() raises NOT_AUTHORIZED for it — is_admin() can
-    // only see a real session. While that door is still in use it therefore needs
-    // the old direct read, which works because profiles_read_all is still open.
-    //
-    // This fallback is EXACTLY what db/0011 removes. That is deliberate: the day
-    // the lockdown lands, the legacy leaderboard stops working, which is the
-    // forcing function for retiring the password. Until then both paths must work,
-    // and branching on adminScope.legacy (rather than catching the RPC error) keeps
-    // the reason visible.
-    const legacy = adminScope?.legacy === true;
-
-    const [{ data: scans, error: e1 }, people] = await Promise.all([
-        supabase.from('scans').select('user_id, points_awarded, samo_year_id, season_id, department_id, sub_department_id'),
-        legacy
-            ? supabase.from('profiles').select('id, full_name, email')
-            : supabase.rpc('admin_leaderboard'),
+    // ONE path for both doors. This briefly had a `adminScope.legacy` fallback that
+    // read `profiles` directly, because admin/1234 had no session for
+    // admin_leaderboard()'s is_admin() guard to accept. That door now signs into the
+    // shared admin account, so it holds a real JWT and takes the same RPC as a
+    // Google admin — which is the whole point of doing it that way: no second code
+    // path to keep in step, and no reliance on profiles being world-readable.
+    const [{ data: scans, error: e1 }, { data: people, error: e2 }] = await Promise.all([
+        adminDb.from('scans').select('user_id, points_awarded, samo_year_id, season_id, department_id, sub_department_id'),
+        adminDb.rpc('admin_leaderboard'),
     ]);
-    if (e1 || people.error) {
-        table.innerHTML = `<p style="color:var(--accent-danger);">Could not load leaderboard: ${(e1 || people.error).message}</p>`;
+    if (e1 || e2) {
+        table.innerHTML = `<p style="color:var(--accent-danger);">Could not load leaderboard: ${(e1 || e2).message}</p>`;
         return false;
     }
     lbScans = (scans || []).filter(s => scopeCoversActivity(adminScope, s));
-    // Both shapes reduce to the same identity map. The RPC keys on user_id and has
-    // already applied the caller's ฝ่าย scope server-side; the legacy read keys on
-    // id and is narrowed here to the students the scoped scans reference, so the
-    // whole roster is not retained in memory either way.
-    if (legacy) {
-        const inScope = new Set(lbScans.map(s => s.user_id));
-        lbProfiles = new Map((people.data || [])
-            .filter(p => inScope.has(p.id))
-            .map(p => [p.id, { full_name: p.full_name, email: p.email }]));
-    } else {
-        lbProfiles = new Map((people.data || [])
-            .map(p => [p.user_id, { full_name: p.full_name, email: p.email }]));
-    }
+    // The RPC returns one row per in-scope participant, already ฝ่าย-filtered
+    // server-side; per-facet totals are still aggregated client-side from lbScans,
+    // so only the identity map comes from here.
+    lbProfiles = new Map((people || [])
+        .map(p => [p.user_id, { full_name: p.full_name, email: p.email }]));
     return true;
 }
 

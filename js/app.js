@@ -20,3 +20,34 @@ try {
     console.error("Failed to initialize Supabase:", err);
 }
 
+// ── The legacy-admin client ──────────────────────────────────────────────────
+// The temporary admin/1234 door needs a REAL Supabase session, because the
+// database can only grant rights to an identity it can verify (see
+// js/admin-scope.js for the whole story). It signs into ONE shared account.
+//
+// It gets its OWN client with its OWN storageKey, deliberately. Sessions are
+// keyed by storageKey in localStorage, so sharing the default key would mean an
+// organiser opening the admin panel silently replaces their own Google session
+// on that browser — logging them out of their personal passport, and swapping
+// the identity the dashboard and scan pages see. Two keys, two independent
+// sessions, no interference in either direction.
+let legacyClient = null;
+export function getLegacyAdminClient() {
+    if (!legacyClient) {
+        legacyClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+            db: { schema: "passport" },
+            auth: { storageKey: "sb-passport-legacy-admin", detectSessionInUrl: false },
+        });
+    }
+    return legacyClient;
+}
+
+// ── adminDb: which client the admin panel's DATA calls should use ─────────────
+// A live binding, so reassigning it here updates every importer (ES modules
+// export bindings, not copies). admin-page.js does its reads/writes through
+// `adminDb` and its Google sign-in through `supabase`, so one line switches the
+// whole panel onto the legacy session without touching 20 call sites.
+export let adminDb = supabase;
+export function useLegacyAdminDb() { adminDb = getLegacyAdminClient(); }
+export function useNormalAdminDb() { adminDb = supabase; }
+

@@ -12,18 +12,23 @@
 // handed to us by ONE rpc, `public.passport_admin_context()`. Never re-derive
 // the rule from the tree tables — this app only consumes the answer.
 //
-// ── READ THIS BEFORE TRUSTING IT ─────────────────────────────────────────────
-// This is the VISIBLE half of the boundary only. The `passport` schema's RLS is
-// still wide open for anon (`using (true)` / `with check (true)`, migration
-// 0056), so a scoped admin can still reach another department's rows over the
-// wire with DevTools. Closing that is SECURITY-HARDENING-PLAN.md; when it lands
-// its policies must read passport_admin_context() rather than inventing a
-// second admin table. Until then: this stops accidents, not attackers.
+// ── HOW MUCH OF THIS IS ENFORCED ─────────────────────────────────────────────
+// db/0010 + 0011 make the server enforce admin-ness: every passport write policy
+// reads passport.is_admin(), which wraps passport_admin_context() — the same rpc
+// this module consumes — so the panel and the database now agree.
+//
+// ฝ่าย SCOPING, however, is still only enforced where a function re-applies it
+// (passport.admin_leaderboard does; the write policies check is_admin, not the
+// department). So a scoped admin editing another ฝ่าย's activity with DevTools is
+// not blocked by RLS today. Narrowing the write policies per-ฝ่าย is the next
+// step; it is also pointless while the all-departments admin/1234 door is open.
 //
 // FAIL CLOSED. Any error — no session, rpc rejected, malformed payload — yields
 // `{ isAdmin: false }`. Never default to "probably an admin".
 
-import { supabase } from './app.js';
+import {
+    supabase, getLegacyAdminClient, useLegacyAdminDb, useNormalAdminDb,
+} from './app.js';
 import { SUBDEPT_PARENT } from './constants.js';
 
 /** @typedef {{isAdmin:boolean, allDepartments:boolean, departments:number[],
@@ -38,23 +43,55 @@ const toIntList = (v) =>
     (Array.isArray(v) ? v : []).map((n) => parseInt(n, 10)).filter(Number.isInteger);
 
 // ── LEGACY ESCAPE HATCH — TEMPORARY, DELETE ME ───────────────────────────────
-// The pre-0087 admin/1234 login, kept so nobody is locked out mid-transition
-// while ฝ่าย grants are still being handed out in ทีม SAMO.
+// The pre-0087 admin/1234 login, kept because many people still use it.
 //
-// It grants ALL DEPARTMENTS: it is a client-side string compare with no server
-// identity, so there is no uid to scope against and no way to make it narrower.
-// While this is enabled, department scoping is opt-in — anyone with the password
-// bypasses it entirely. The panel says so in a banner; that is deliberate.
+// It used to be a pure client-side string compare with NO server identity, which
+// made it incompatible with any real database authorization: the DB can only grant
+// rights to an identity it can verify, and a password compared in JavaScript
+// produces none. "The database rejects anonymous writes" and "admin/1234 has full
+// admin" were the same sentence negated — so db/0011 could never land while this
+// door existed in that form.
 //
-// TO REMOVE (the whole point of this being one flag):
+// It now signs into ONE SHARED Supabase account that holds the `passport`
+// permission in ทีม SAMO, on its own client (own storageKey — see app.js) so it
+// cannot disturb anybody's personal Google session. The prompt is unchanged; behind
+// it there is a real JWT, so passport.is_admin() is true and every admin write
+// passes the same policies a Google admin's writes pass.
+//
+// BE HONEST ABOUT WHAT THIS IS AND ISN'T:
+//   * It does NOT make the door secure. The shared account's password ships in the
+//     bundle, so anyone who reads the bundle gets full passport admin — exactly as
+//     true when the literal was '1234'. It is not a secret; it is a speed bump.
+//   * What it DOES buy is that everyone who does *not* go through this door loses
+//     write access entirely (that is db/0011), and every admin write now carries a
+//     uid instead of arriving as anonymous.
+//   * It is ALL DEPARTMENTS, so while it is enabled ฝ่าย scoping stays opt-in for
+//     anyone using it. The panel says so in a banner; that is deliberate.
+//
+// TO REMOVE (still one flag):
 //   1. set LEGACY_PASSWORD_LOGIN = false, redeploy, confirm every admin has a
 //      ทีม SAMO grant and can sign in with Google;
-//   2. then delete this block, `legacyScope`/`legacyLogin`/`clearLegacySession`
-//      below, and the #admin-legacy-* markup in html/admin.html.
+//   2. delete this block, `legacyScope`/`legacyLogin`/`clearLegacySession`/
+//      `ensureLegacySession` below, and the #admin-legacy-* markup in
+//      html/admin.html;
+//   3. then disable the shared account:
+//      `update public.users set permissions = array_remove(permissions,'passport')`
+//      for passportadmin@samomdkku.app (needs the users_self_update_guard dance —
+//      see samoweb mistakes.md), or delete the auth user outright.
 export const LEGACY_PASSWORD_LOGIN = true;
 const LEGACY_USER = 'admin';
 const LEGACY_PASS = '1234';
 const LEGACY_KEY = 'admin_logged_in';
+
+// The shared account the door signs into. Injected at build time so the
+// credential is not greppable in this PUBLIC repo — it still ends up in the
+// bundle (it has to, to be usable), so this is about not publishing it twice,
+// not about secrecy. Missing env => the door is simply unavailable, which is the
+// correct failure: better a door that will not open than one that opens onto a
+// panel where nothing saves.
+const SHARED_EMAIL = import.meta.env?.VITE_PASSPORT_ADMIN_EMAIL || '';
+const SHARED_PASSWORD = import.meta.env?.VITE_PASSPORT_ADMIN_PASSWORD || '';
+export const LEGACY_LOGIN_CONFIGURED = Boolean(SHARED_EMAIL && SHARED_PASSWORD);
 
 /** The full-access scope a legacy password login stands in for. */
 const legacyScope = () => ({
@@ -71,21 +108,64 @@ export function hasLegacySession() {
     } catch { return false; }
 }
 
-/** Check the legacy credentials and, on success, persist + return the scope. */
-export function legacyLogin(user, pass, remember) {
+/**
+ * Check the legacy credentials and, on success, establish a REAL session for the
+ * shared admin account and persist the marker.
+ * @returns {Promise<AdminScope|null>} null = wrong credentials or not configured.
+ * @throws when the credentials are right but the shared sign-in fails, so the
+ *         caller can say "password correct, sign-in failed" rather than silently
+ *         behaving like a typo.
+ */
+export async function legacyLogin(user, pass, remember) {
     if (!LEGACY_PASSWORD_LOGIN) return null;
     if (user !== LEGACY_USER || pass !== LEGACY_PASS) return null;
+    if (!LEGACY_LOGIN_CONFIGURED) {
+        throw new Error('ยังไม่ได้ตั้งค่าบัญชีผู้ดูแลร่วม (VITE_PASSPORT_ADMIN_*) สำหรับการเข้าสู่ระบบด้วยรหัสนี้');
+    }
+    const { error } = await getLegacyAdminClient().auth.signInWithPassword({
+        email: SHARED_EMAIL, password: SHARED_PASSWORD,
+    });
+    if (error) throw new Error(error.message);
     try {
         (remember ? localStorage : sessionStorage).setItem(LEGACY_KEY, 'true');
     } catch { /* private mode — the session still works for this page load */ }
+    useLegacyAdminDb();
     return legacyScope();
 }
 
-export function clearLegacySession() {
+export async function clearLegacySession() {
     try {
         localStorage.removeItem(LEGACY_KEY);
         sessionStorage.removeItem(LEGACY_KEY);
     } catch { /* nothing to clear */ }
+    useNormalAdminDb();
+    try { await getLegacyAdminClient().auth.signOut(); } catch { /* already gone */ }
+}
+
+/**
+ * Re-establish the shared session for a REMEMBERED legacy login.
+ *
+ * The localStorage marker outlives the Supabase session (tokens expire, and
+ * `remember` can put the marker in localStorage while the session sits in memory
+ * after a reload). Without this a returning legacy admin would look signed in and
+ * then have every write rejected — the exact failure mode this whole change exists
+ * to prevent. Credentials are available, so recovery is silent.
+ * @returns {Promise<boolean>} true when a usable shared session is in place.
+ */
+export async function ensureLegacySession() {
+    if (!hasLegacySession()) return false;
+    if (!LEGACY_LOGIN_CONFIGURED) return false;
+    const client = getLegacyAdminClient();
+    try {
+        const { data } = await client.auth.getSession();
+        if (data?.session) { useLegacyAdminDb(); return true; }
+        const { error } = await client.auth.signInWithPassword({
+            email: SHARED_EMAIL, password: SHARED_PASSWORD,
+        });
+        if (error) return false;
+        useLegacyAdminDb();
+        return true;
+    } catch { return false; }
 }
 
 /** Resolve a stored legacy session into a scope (null when there isn't one). */
