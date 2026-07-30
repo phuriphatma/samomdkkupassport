@@ -1129,13 +1129,19 @@ let lbPageNames = null;
 
 async function ensureLbPageData() {
     if (lbPageScans) return true;
-    const [{ data: scans, error: e1 }, { data: profiles, error: e2 }] = await Promise.all([
+    // Names come from passport.leaderboard_names() rather than a `profiles` read.
+    // profiles carries every student's EMAIL, and a table read hands over whole
+    // rows — so selecting `id, full_name` from it only looked narrow: the policy
+    // that allowed it (`profiles_read_all using (true)`) allowed email too, to
+    // anyone holding the bundled anon key. The RPC is a projection of exactly
+    // (id, full_name), for participants only, and requires a session.
+    const [{ data: scans, error: e1 }, { data: names, error: e2 }] = await Promise.all([
         supabase.from('scans').select('user_id, activity_id, points_awarded, samo_year_id, season_id, department_id, sub_department_id, scanned_at'),
-        supabase.from('profiles').select('id, full_name'),
+        supabase.rpc('leaderboard_names'),
     ]);
     if (e1 || e2) return false;
     lbPageScans = scans || [];
-    lbPageNames = new Map((profiles || []).map(p => [p.id, p.full_name]));
+    lbPageNames = new Map((names || []).map(p => [p.id, p.full_name]));
     return true;
 }
 

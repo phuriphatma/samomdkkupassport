@@ -1,9 +1,10 @@
 // js/scanning.js
 import { supabase } from './app.js';
-import { checkSession, ensureProfile, getPassportAccess, renderAccessBlock } from './auth.js';
+// ensureProfile / getCurrentContext are no longer needed here: passport.stamp_scan
+// creates the profile row and resolves the current วาระ/season server-side.
+import { checkSession, getPassportAccess, renderAccessBlock } from './auth.js';
 import { fixGoogleDriveUrl, savePendingScanUrl, clearPendingScanUrl } from './utils.js';
 import { ROUTES } from './routes.js';
-import { getCurrentContext } from './samo.js';
 
 export async function processScan() {
     const titleEl = document.getElementById('scan-title');
@@ -106,41 +107,44 @@ if (!user) {
         spinner.style.display = 'block';
         document.querySelector('#loading-spinner h2').innerText = 'Stamping Passport...';
 
-        // Make sure the user has a profile row before the scan lands, or
-        // on_new_scan would update 0 rows and this scan's km would be lost.
-        await ensureProfile(user);
-
-        // Stamp the scan with the current SamoYear + Season and a snapshot of the
-        // activity, so the record is immutable history (survives activity edits/
-        // deletes and past-season freezes).
-        const { year, season } = await getCurrentContext().catch(() => ({ year: null, season: null }));
-        const baseRow = {
-            user_id: user.id,
-            activity_id: activity.id,
-            points_awarded: activity.base_points_km,
-        };
-        const snapshotRow = {
-            ...baseRow,
-            activity_name: activity.name,
-            department_id: activity.department_id ?? null,
-            sub_department_id: activity.sub_department_id ?? null,
-            samo_year_id: year?.id ?? null,
-            season_id: season?.id ?? null,
-        };
-
-        let { error: scanError } = await supabase.from('scans').insert([snapshotRow]);
-        // If the snapshot columns don't exist yet (migration 0006 not run), retry
-        // with just the original columns so scanning still works.
-        if (scanError && scanError.code !== '23505' &&
-            /column|does not exist|schema cache/i.test(scanError.message || '')) {
-            ({ error: scanError } = await supabase.from('scans').insert([baseRow]));
-        }
+        // The SERVER stamps the scan now (db/0010 passport.stamp_scan). It
+        // re-checks the QR token, reads the km from the activity, resolves the
+        // current วาระ/season, ensures the profile row exists, and pins user_id to
+        // auth.uid(). None of those are the client's decision any more — before
+        // this, `points_awarded` was whatever the browser sent and the token was
+        // compared in JS, so a DevTools user could award themselves any km for any
+        // activity without attending it. db/0011 then removes the INSERT policy on
+        // scans entirely, making this RPC the only way a scan can exist.
+        //
+        // The isStaticMatch check above stays as a fast, friendly pre-check — it is
+        // no longer the security boundary.
+        const { error: scanError } = await supabase.rpc('stamp_scan', {
+            p_activity_id: activity.id,
+            p_token: token,
+        });
 
         if (scanError) {
-            if (scanError.code === '23505') {
+            const msg = scanError.message || '';
+            const movedTo = (msg.match(/ACCOUNT_MOVED:(\S+)/) || [])[1];
+            if (msg.includes('ALREADY_STAMPED') || scanError.code === '23505') {
                 showStatus('Already Stamped!', 'You have already claimed points for this activity.', 'error');
+            } else if (msg.includes('INVALID_TOKEN')) {
+                showStatus('QR Code Invalid', 'This QR code is invalid. Please scan the current authorized code.', 'error');
+            } else if (msg.includes('ACTIVITY_NOT_FOUND')) {
+                showStatus('Activity Not Found', 'Could not locate this flight.', 'error');
+            } else if (msg.includes('AUTH_REQUIRED')) {
+                showStatus('Login Required', 'Your session expired. Please sign in again to stamp.', 'error');
+            } else if (movedTo) {
+                // The server enforces the same gate as getPassportAccess above, so
+                // reaching here means the client check was bypassed or the session
+                // changed mid-flow. Show the same overlay either way.
+                spinner.style.display = 'none';
+                renderAccessBlock({ status: 'moved', to: movedTo });
+            } else if (msg.includes('NOT_KKUMAIL')) {
+                spinner.style.display = 'none';
+                renderAccessBlock({ status: 'blocked' });
             } else {
-                showStatus('System Error', 'Could not stamp passport: ' + scanError.message, 'error');
+                showStatus('System Error', 'Could not stamp passport: ' + msg, 'error');
             }
             return;
         }

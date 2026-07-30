@@ -1625,20 +1625,30 @@ async function ensureLbScans() {
     if (lbScans) return true;
     const table = document.getElementById('leaderboard-table');
     table.innerHTML = '<p style="font-size:0.9rem;">Loading…</p>';
-    const [{ data: scans, error: e1 }, { data: profiles, error: e2 }] = await Promise.all([
+    // Names + emails come from passport.admin_leaderboard(), NOT from a profiles
+    // read. The previous version fetched EVERY profile (id, full_name, email) and
+    // narrowed it in the browser — so a ฝ่าย-scoped admin still received the whole
+    // 593-student roster over the wire, and the policy that permitted it
+    // (`profiles_read_all using (true)`) permitted it to anyone with the bundled
+    // anon key too. The RPC re-applies the caller's own ฝ่าย scope inside a
+    // SECURITY DEFINER function, so out-of-scope students never leave Postgres.
+    //
+    // Scans are still read directly (scans_read stays public) because the
+    // year/season/ฝ่าย facet dropdowns are derived from them client-side; they
+    // carry no personal data beyond user_id.
+    const [{ data: scans, error: e1 }, { data: people, error: e2 }] = await Promise.all([
         supabase.from('scans').select('user_id, points_awarded, samo_year_id, season_id, department_id, sub_department_id'),
-        supabase.from('profiles').select('id, full_name, email'),
+        supabase.rpc('admin_leaderboard'),
     ]);
     if (e1 || e2) {
         table.innerHTML = `<p style="color:var(--accent-danger);">Could not load leaderboard: ${(e1 || e2).message}</p>`;
         return false;
     }
-    // Scope the scans HERE, then keep only the profiles those scans reference:
-    // a ฝ่าย-scoped admin has no reason to hold the whole student roster
-    // (name + email) in memory just to rank their own department.
     lbScans = (scans || []).filter(s => scopeCoversActivity(adminScope, s));
-    const inScope = new Set(lbScans.map(s => s.user_id));
-    lbProfiles = new Map((profiles || []).filter(p => inScope.has(p.id)).map(p => [p.id, p]));
+    // The RPC returns one row per in-scope participant; the per-facet totals are
+    // still aggregated client-side from lbScans, so only the identity map is taken
+    // from here.
+    lbProfiles = new Map((people || []).map(p => [p.user_id, { full_name: p.full_name, email: p.email }]));
     return true;
 }
 
