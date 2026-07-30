@@ -62,7 +62,13 @@ create policy scans_update on passport.scans for update to public
 --     participants only, signed-in callers only, no email.
 --   * the admin ranking comes from passport.admin_leaderboard(), scope-filtered.
 -- If any of those three is not deployed in the app yet, DO NOT apply this file.
+-- Drop BOTH names: the old one being replaced, and the new one so this file stays
+-- re-runnable. Postgres has no `create or replace policy`, and a rename means the
+-- usual same-name drop does not cover the replay — a second apply 42710s, which is
+-- exactly how tools/pass-hardening.mjs (it applies this file inside a rolled-back
+-- transaction) started failing once 0011 had been applied for real.
 drop policy if exists profiles_read_all on passport.profiles;
+drop policy if exists profiles_read_self_or_admin on passport.profiles;
 create policy profiles_read_self_or_admin on passport.profiles for select to public
   using ((auth.uid() is not null and id = auth.uid()) or passport.is_admin());
 
