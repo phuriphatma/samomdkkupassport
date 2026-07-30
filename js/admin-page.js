@@ -1636,19 +1636,42 @@ async function ensureLbScans() {
     // Scans are still read directly (scans_read stays public) because the
     // year/season/ฝ่าย facet dropdowns are derived from them client-side; they
     // carry no personal data beyond user_id.
-    const [{ data: scans, error: e1 }, { data: people, error: e2 }] = await Promise.all([
+    // A LEGACY admin/1234 session has no Supabase JWT at all, so
+    // passport.admin_leaderboard() raises NOT_AUTHORIZED for it — is_admin() can
+    // only see a real session. While that door is still in use it therefore needs
+    // the old direct read, which works because profiles_read_all is still open.
+    //
+    // This fallback is EXACTLY what db/0011 removes. That is deliberate: the day
+    // the lockdown lands, the legacy leaderboard stops working, which is the
+    // forcing function for retiring the password. Until then both paths must work,
+    // and branching on adminScope.legacy (rather than catching the RPC error) keeps
+    // the reason visible.
+    const legacy = adminScope?.legacy === true;
+
+    const [{ data: scans, error: e1 }, people] = await Promise.all([
         supabase.from('scans').select('user_id, points_awarded, samo_year_id, season_id, department_id, sub_department_id'),
-        supabase.rpc('admin_leaderboard'),
+        legacy
+            ? supabase.from('profiles').select('id, full_name, email')
+            : supabase.rpc('admin_leaderboard'),
     ]);
-    if (e1 || e2) {
-        table.innerHTML = `<p style="color:var(--accent-danger);">Could not load leaderboard: ${(e1 || e2).message}</p>`;
+    if (e1 || people.error) {
+        table.innerHTML = `<p style="color:var(--accent-danger);">Could not load leaderboard: ${(e1 || people.error).message}</p>`;
         return false;
     }
     lbScans = (scans || []).filter(s => scopeCoversActivity(adminScope, s));
-    // The RPC returns one row per in-scope participant; the per-facet totals are
-    // still aggregated client-side from lbScans, so only the identity map is taken
-    // from here.
-    lbProfiles = new Map((people || []).map(p => [p.user_id, { full_name: p.full_name, email: p.email }]));
+    // Both shapes reduce to the same identity map. The RPC keys on user_id and has
+    // already applied the caller's ฝ่าย scope server-side; the legacy read keys on
+    // id and is narrowed here to the students the scoped scans reference, so the
+    // whole roster is not retained in memory either way.
+    if (legacy) {
+        const inScope = new Set(lbScans.map(s => s.user_id));
+        lbProfiles = new Map((people.data || [])
+            .filter(p => inScope.has(p.id))
+            .map(p => [p.id, { full_name: p.full_name, email: p.email }]));
+    } else {
+        lbProfiles = new Map((people.data || [])
+            .map(p => [p.user_id, { full_name: p.full_name, email: p.email }]));
+    }
     return true;
 }
 
