@@ -225,15 +225,55 @@ function countChildren_(folder) {
   return { id: folder.getId(), files: files, folders: folders };
 }
 
+/**
+ * Is `file` somewhere under this app's own folder? Compares folder IDs, not
+ * names, so a rename of the container can never widen or break the check.
+ */
+function fileLivesUnderAppFolder_(file) {
+  var target = getAppFolder_().getId();
+  var stack = [], seen = {};
+  var ps = file.getParents();
+  while (ps.hasNext()) stack.push(ps.next());
+  while (stack.length) {
+    var f = stack.pop(), id = f.getId();
+    if (seen[id]) continue;
+    seen[id] = true;
+    if (id === target) return true;
+    var ups = f.getParents();
+    while (ups.hasNext()) stack.push(ups.next());
+  }
+  return false;
+}
+
+/**
+ * Trash a badge/certificate image.
+ *
+ * SCOPED ON PURPOSE. This web app is deployed ANYONE_ANONYMOUS and its /exec
+ * URL ships inside the public admin bundle, so this handler is reachable by
+ * anyone on the internet. Without the ancestry check below, `fileId` was an
+ * unauthenticated "trash any file this account owns" primitive — Drive ids of
+ * shared files are guessable/discoverable, and the SAMO account's Drive holds
+ * far more than this app.
+ *
+ * The frontend only ever deletes images it uploaded (js/upload.js
+ * deleteFromDrive / deleteFromDriveBeacon, always under this app's folder), so
+ * the guard costs nothing legitimate. A pasted EXTERNAL Drive link is now
+ * refused rather than trashed — also correct: that file is not ours to delete.
+ */
 function handleDelete_(fileId) {
   if (!fileId) return json_({ error: 'no fileId' });
+  var file;
   try {
-    DriveApp.getFileById(fileId).setTrashed(true);
-    return json_({ ok: true });
+    file = DriveApp.getFileById(fileId);
   } catch (err) {
-    // File may be external / already gone — not fatal.
+    // Already gone / not visible — not fatal, and callers must not retry.
     return json_({ ok: false, error: String(err) });
   }
+  if (!fileLivesUnderAppFolder_(file)) {
+    return json_({ ok: false, error: 'file is not inside ' + APP_FOLDER_NAME });
+  }
+  file.setTrashed(true);   // trash, not purge — 30-day recovery window
+  return json_({ ok: true });
 }
 
 function json_(obj) {
