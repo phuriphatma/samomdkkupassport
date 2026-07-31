@@ -41,6 +41,7 @@
 
 var APP_ROOT_FOLDER_NAME = 'IT Database';
 var APP_FOLDER_NAME = 'Passport';   // groups this app's folders inside the container
+var UPLOAD_FOLDERS = ['badges', 'certificates'];   // the only subfolders uploads may target
 var FOLDER_ID = ''; // override the container by id; empty = My Drive/IT Database
 
 function doPost(e) {
@@ -70,8 +71,15 @@ function handleUpload_(body) {
   var bytes = Utilities.base64Decode(body.data);
   var blob = Utilities.newBlob(bytes, body.mimeType || 'application/octet-stream', 'tmp');
 
+  // Allow-list the subfolder. The admin UI only ever sends these two
+  // (js/admin-page.js wireUpload), and this endpoint is ANYONE_ANONYMOUS with a
+  // publicly-readable URL, so an unconstrained value let any caller carve
+  // arbitrary folder trees into the SAMO Drive.
   var parent = getAppFolder_();
   if (body.folder) {
+    if (UPLOAD_FOLDERS.indexOf(String(body.folder)) === -1) {
+      return json_({ error: 'folder must be one of: ' + UPLOAD_FOLDERS.join(', ') });
+    }
     parent = getOrCreateAppSubfolder_(parent, body.folder);
   }
 
@@ -142,7 +150,7 @@ function getOrCreateAppSubfolder_(parent, name) {
  * migrateDriveLayout would do.
  */
 function inspectDriveLayout() {
-  var names = ['badges', 'certificates'];
+  var names = UPLOAD_FOLDERS;
   var myDrive = DriveApp.getRootFolder();
   var rootIt = myDrive.getFoldersByName(APP_ROOT_FOLDER_NAME);
   var root = rootIt.hasNext() ? rootIt.next() : null;
@@ -188,7 +196,7 @@ function inspectDriveLayout() {
  * merge), and never creates a folder that does not already exist.
  */
 function migrateDriveLayout() {
-  var names = ['badges', 'certificates'];
+  var names = UPLOAD_FOLDERS;
   var myDrive = DriveApp.getRootFolder();
   var app = getAppFolder_();
   var report = [];
