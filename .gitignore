@@ -30,3 +30,7 @@ dist-ssr
 
 # AI
 repomix-output.xml
+
+# Apps Script deploy staging (tools/deploy-gas.mjs)
+.gas-build/
+.gas-remote/

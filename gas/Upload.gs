@@ -47,6 +47,16 @@ function doPost(e) {
   try {
     var body = JSON.parse(e.postData.contents);
 
+    // Deploy canary. Inert BOTH ways, which is what makes it usable to tell
+    // new code from old: here it returns before touching anything, and on the
+    // pre-ping version it falls through to handleUpload_, whose very first
+    // statement is Utilities.base64Decode(body.data) — undefined, so it throws
+    // before any Drive call. `layout` names the folder scheme so the probe
+    // proves WHICH version is serving, not merely that something answered.
+    if (body.action === 'ping') {
+      return json_({ ok: true, layout: APP_ROOT_FOLDER_NAME + '/' + APP_FOLDER_NAME });
+    }
+
     if (body.action === 'delete') {
       return handleDelete_(body.fileId);
     }

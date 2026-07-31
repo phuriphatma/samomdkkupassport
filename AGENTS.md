@@ -1,6 +1,6 @@
-# CLAUDE.md — SAMO Passport
+# AGENTS.md — SAMO Passport
 
-Guide for working in this repo (for Claude and humans). Keep it accurate: update it
+Guide for working in this repo (for Codex and humans). Keep it accurate: update it
 when structure, conventions, or workflows change.
 
 > Companion docs: [STATE.md](STATE.md) (what's done / pending / config) and
@@ -131,9 +131,9 @@ change, **not a tax on every commit** (internal-only refactors/typos can skip 1�
 2. **`MISTAKES.md`** — if a new bug class or non-obvious trap was discovered, append it
    (**symptom → cause → fix → where it lives now**). This is what saves cold-start agents from
    re-walking bugs we already paid for.
-3. **`CLAUDE.md`** (this file) — if structure, conventions, the DB schema, or a workflow changed,
+3. **`AGENTS.md`** (this file) — if structure, conventions, the DB schema, or a workflow changed,
    update the relevant section.
-4. **Persistent memory** (`~/.claude/projects/-Users-xeno-development-samodevmdkku69-passport/memory/`)
+4. **Persistent memory** (`~/.Codex/projects/-Users-xeno-development-samodevmdkku69-passport/memory/`)
    — if a **durable** fact changed (user preference, architecture decision, external resource, a
    blocker resolved or discovered), update the matching memory file **and** the `MEMORY.md` index.
    Don't duplicate what the repo already records (code, git history, this file).
