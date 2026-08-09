@@ -280,6 +280,21 @@ function handleDelete_(fileId) {
   if (!fileLivesUnderAppFolder_(file)) {
     return json_({ ok: false, error: 'file is not inside ' + APP_FOLDER_NAME });
   }
+  // REVOKE FIRST, THEN TRASH. `setTrashed(true)` alone is NOT a removal:
+  // proven live on 2026-08-09 in the samoweb repo, a trashed file that is
+  // shared "anyone with the link" still returns HTTP 200 and the real image
+  // from `lh3.googleusercontent.com/d/<id>` — which is the URL form this app
+  // stores and renders. So a badge someone deleted stayed publicly readable for
+  // the whole 30-day undo window, and forever if the trash is never emptied.
+  //
+  // Revoking closes that immediately while keeping the undo window. Best-effort:
+  // a file whose sharing cannot be changed must still be trashed rather than
+  // left both visible AND present.
+  try {
+    file.setSharing(DriveApp.Access.PRIVATE, DriveApp.Permission.NONE);
+  } catch (e) {
+    console.warn('handleDelete_: could not revoke sharing: ' + e);
+  }
   file.setTrashed(true);   // trash, not purge — 30-day recovery window
   return json_({ ok: true });
 }
