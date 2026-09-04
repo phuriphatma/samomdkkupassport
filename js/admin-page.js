@@ -1512,18 +1512,50 @@ window.startNewYear = async () => {
     const seasonName = (prompt(`Name the FIRST season for "${name}" (e.g. Q1):`) || '').trim();
     if (!seasonName) { alert('Cancelled — a วาระสโม must start with a season (so scans are never uncategorized).'); return; }
     if (!confirm(`Start "${name}" with season "${seasonName}"?\n\nThis ENDS the current วาระสโม + season and resets the live leaderboard and current-year totals. All past logs and standings are kept.`)) return;
-    const now = new Date().toISOString();
-    await adminDb.from('samo_seasons').update({ ended_at: now }).is('ended_at', null);
-    await adminDb.from('samo_years').update({ ended_at: now }).is('ended_at', null);
+    // ⛔ THE ORDER IS LOAD-BEARING: CREATE the new rows, THEN end the old ones.
+    // This used to end first, and that left a window — four network round-trips
+    // wide — with NO open วาระ and NO open season. passport.stamp_scan stamps
+    // every scan with "the open row having the latest started_at", and both
+    // columns are nullable, so a scan in that window is filed under NULL: the
+    // student sees no error, their km still lands on total_km, and the row is
+    // missing from every per-season view for ever, unrepairable except by
+    // guessing from a timestamp. Worse, if a later step failed the old rows
+    // were ALREADY ended, leaving nothing open until a human noticed.
+    //
+    // Creating first makes the worst case a one-second OVERLAP, which every
+    // reader resolves correctly because they all take the newest open row:
+    // stamp_scan, samo.js getCurrentYear/getCurrentSeason, and admin's
+    // currentYearRow (its list is loaded started_at-descending). And if an
+    // insert fails, nothing has been ended — the current วาระ is still running.
+    // docs/INVARIANTS.md, "Never leave a GAP between two วาระ or two seasons".
     const { data: yRows, error } = await adminDb.from('samo_years').insert([{ name }]).select();
-    if (error) { alert('Failed: ' + error.message); return; }
+    if (error) { alert(`Failed: ${error.message}\nNothing was changed — the current วาระสโม is still running.`); return; }
     const newYear = yRows && yRows[0];
-    if (!newYear) { alert('วาระสโม created but could not read it back — add the season manually.'); await loadSamoData(); renderSamoControl(); return; }
-    const { error: sErr } = await adminDb.from('samo_seasons').insert([{ samo_year_id: newYear.id, name: seasonName }]);
-    if (sErr) { alert(`วาระสโม "${name}" started, but the season failed: ${sErr.message}\nAdd a season now or scans will be uncategorized.`); }
+    if (!newYear) { alert('Could not read the new วาระสโม back — nothing was ended; check the list and retry.'); await loadSamoData(); renderSamoControl(); return; }
+
+    const { data: sRows, error: sErr } = await adminDb.from('samo_seasons')
+        .insert([{ samo_year_id: newYear.id, name: seasonName }]).select();
+    if (sErr || !sRows || !sRows[0]) {
+        // Undo the วาระ just created. Leaving it would be worse than failing:
+        // stamp_scan resolves the season GLOBALLY (no year filter), so an open
+        // year with no season of its own would pair the NEW year with the OLD
+        // year's season — a mismatched stamp on every scan until someone spotted it.
+        const { error: undoErr } = await adminDb.from('samo_years').delete().eq('id', newYear.id);
+        alert(undoErr
+            ? `The season failed (${sErr ? sErr.message : 'could not read it back'}) AND rolling back "${name}" failed (${undoErr.message}).\nEND "${name}" MANUALLY NOW, or scans will be mis-stamped.`
+            : `Failed to create the season: ${sErr ? sErr.message : 'could not read it back'}\nNothing was changed — the current วาระสโม is still running.`);
+        await loadSamoData(); renderSamoControl(); return;
+    }
+    const newSeason = sRows[0];
+
+    // Only now close the previous ones — excluding the two just created.
+    const now = new Date().toISOString();
+    await adminDb.from('samo_seasons').update({ ended_at: now }).is('ended_at', null).neq('id', newSeason.id);
+    await adminDb.from('samo_years').update({ ended_at: now }).is('ended_at', null).neq('id', newYear.id);
+
     await loadSamoData();
     renderSamoControl();
-    if (!sErr) alert(`Started "${name}" · season "${seasonName}".`);
+    alert(`Started "${name}" · season "${seasonName}".`);
 };
 
 window.startNewSeason = async () => {
@@ -1533,10 +1565,18 @@ window.startNewSeason = async () => {
     const name = (prompt('Name the new Season (e.g. Q1):') || '').trim();
     if (!name) return;
     if (!confirm(`Start season "${name}" under ${y.name}?\n\nThis ENDS the current season and resets the live leaderboard. The previous season's standings stay viewable.`)) return;
+    // ⛔ CREATE first, then end — same reason as startNewYear above, and the
+    // same reason spelled out in docs/INVARIANTS.md. Ending first leaves a
+    // window where no season is open and scans are filed under NULL silently.
+    const { data: sRows, error } = await adminDb.from('samo_seasons')
+        .insert([{ samo_year_id: y.id, name }]).select();
+    if (error || !sRows || !sRows[0]) {
+        alert(`Failed: ${error ? error.message : 'could not read the new season back'}\nNothing was changed — the current season is still running.`);
+        return;
+    }
     const now = new Date().toISOString();
-    await adminDb.from('samo_seasons').update({ ended_at: now }).is('ended_at', null).eq('samo_year_id', y.id);
-    const { error } = await adminDb.from('samo_seasons').insert([{ samo_year_id: y.id, name }]);
-    if (error) { alert('Failed: ' + error.message); return; }
+    await adminDb.from('samo_seasons').update({ ended_at: now })
+        .is('ended_at', null).eq('samo_year_id', y.id).neq('id', sRows[0].id);
     await loadSamoData();
     renderSamoControl();
 };
