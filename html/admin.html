@@ -4,13 +4,14 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <!-- Deprecated-host guard: *.pages.dev is retired; the app is self-hosted at
-       samo.md.kku.ac.th/passport. Forward pages.dev visitors to the moved splash
+  <!-- Deprecated-host guard: the ONE retired pages.dev host; app is self-hosted at
+       samo.md.kku.ac.th/passport. ⚠️ ANCHORED — a subdomain is a PREVIEW, never
+       bounce it; full reasoning in index.html. Forward that host to the splash
        (preserving the deep link). Never fires on the VM or localhost. -->
   <script>
     (function () {
       try {
-        if (/\.pages\.dev$/i.test(location.hostname) && location.pathname !== '/moved.html') {
+        if (/^samomdkkupassport\.pages\.dev$/i.test(location.hostname) && location.pathname !== '/moved.html') {
           location.replace('/moved.html?next=' + encodeURIComponent(location.pathname + location.search + location.hash));
         }
       } catch (e) {}

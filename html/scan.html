@@ -4,17 +4,18 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <!-- Deprecated-host guard: *.pages.dev is retired; the app is self-hosted at
+  <!-- Deprecated-host guard: the ONE retired pages.dev host; app is self-hosted at
        samo.md.kku.ac.th/passport. A scan is a TRANSACTIONAL deep-link (an action,
        not a bookmark), so old printed QR codes forward STRAIGHT to the VM — no
        "we've moved" splash / 30s countdown (that interstitial is only right for
        the bookmark-style index/dashboard/admin entries). Params (aid/tk) are
        preserved; the VM nginx $uri.html fallback resolves the extensionless path.
-       Never fires on the VM or localhost. -->
+       ⚠️ ANCHORED — a subdomain is a PREVIEW, never bounce it; full reasoning
+       in index.html. Never fires on the VM or localhost. -->
   <script>
     (function () {
       try {
-        if (/\.pages\.dev$/i.test(location.hostname)) {
+        if (/^samomdkkupassport\.pages\.dev$/i.test(location.hostname)) {
           location.replace('https://samo.md.kku.ac.th/passport' + location.pathname + location.search + location.hash);
         }
       } catch (e) {}

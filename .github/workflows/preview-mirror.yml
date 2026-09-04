@@ -1,0 +1,67 @@
+# preview-mirror.yml — give `main` ONE stable address to look at.
+#
+# WHY THIS EXISTS. Cloudflare names a preview after its branch, but `main` is
+# the project's PRODUCTION branch, so its only alias is the bare
+# `samomdkkupassport.pages.dev` — the retired host, which the in-app host guard
+# bounces to the "we have moved" splash. So there was no memorable address for
+# "what does Passport look like right now" on the dev database.
+#
+# This mirrors `main` onto a branch called `preview`, which Cloudflare builds as
+# a PREVIEW deployment and serves, permanently, at:
+#
+#     https://preview.samomdkkupassport.pages.dev
+#
+# ⛔ THIS ONLY WORKS BECAUSE THE HOST GUARD IS ANCHORED. Every built entry
+# (index.html, html/dashboard.html, html/admin.html, html/scan.html) tests
+# `/^samomdkkupassport\.pages\.dev$/i` — the ONE retired host. It used to test
+# `/\.pages\.dev$/i`, which matches EVERY pages.dev host including this preview,
+# so the preview would have bounced ITSELF to a splash pointing at production —
+# a tester aiming at dev would have landed on the real site. If anyone ever
+# widens that regex, this workflow keeps running and the preview silently stops
+# being a preview. samomdkkuweb's `tools/repo-protection.mjs` asserts the
+# anchoring over the GitHub API, because this repo has no test runner.
+#
+# ⛔ `preview` IS A MIRROR, NEVER A TARGET. Nobody branches from it, nobody opens
+# a pull request against it, and it is force-pushed on every run. It is always
+# exactly `main` — which is the point.
+#
+# It cannot reach production data: both Cloudflare environments for this project
+# are pinned to the samo-dev database, asserted by samomdkkuweb's
+# `tools/repo-protection.mjs` across the whole account.
+#
+# 📌 Uses only `GITHUB_TOKEN`, which is minted per run — no stored secret.
+
+name: preview-mirror
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Least privilege: this job writes one ref and reads nothing else.
+permissions:
+  contents: write
+
+concurrency:
+  # Two pushes in quick succession would race to force-push the same ref.
+  # Keep the newest and drop the older — the mirror only ever needs to match
+  # the latest main.
+  group: preview-mirror
+  cancel-in-progress: true
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Full history: a shallow checkout makes valid shas look missing to
+          # anything that resolves them.
+          fetch-depth: 0
+
+      - name: Mirror main onto the preview branch
+        run: |
+          set -euo pipefail
+          echo "main is at $(git rev-parse --short HEAD)"
+          git push --force origin HEAD:refs/heads/preview
+          echo "preview now matches main — https://preview.samomdkkupassport.pages.dev"

@@ -3,13 +3,30 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <!-- Deprecated-host guard: *.pages.dev is retired; the app is self-hosted at
-         samo.md.kku.ac.th/passport. Forward pages.dev visitors to the moved
-         splash (preserving the deep link). Never fires on the VM or localhost. -->
+    <!-- Deprecated-host guard: the ORIGINAL pages.dev deployment is retired now
+         that the app is self-hosted at samo.md.kku.ac.th/passport. On that host,
+         forward to the "we've moved" splash, preserving the deep link.
+         Never fires on the VM or localhost.
+
+         ⚠️ MUST STAY EXACT, and this is the second repo to learn it. It first
+         tested /\.pages\.dev$/ — ANY pages.dev host — which also matches every
+         PREVIEW URL, because previews live on pages.dev too. That made the
+         dev-server work self-defeating: `preview.samomdkkupassport.pages.dev`
+         would bounce ITSELF to the splash, and the splash points at production,
+         so a tester aiming at dev would land on the real site. Only the ONE
+         EXACT host — the retired production URL — redirects; any subdomain of
+         it is a preview. Anchored `^` for exactly that reason; do not relax it
+         to (^|\.).
+
+         samomdkkuweb/index.html carries the same guard and was narrowed twice on
+         2026-08-27 for the same reason; this repo did not get that fix until
+         2026-09-04. Asserted from OUTSIDE, over the GitHub API, by
+         samomdkkuweb's `tools/repo-protection.mjs` — this repo has no test
+         runner, and a rule with one implementation per repo drifts. -->
     <script>
       (function () {
         try {
-          if (/\.pages\.dev$/i.test(location.hostname) && location.pathname !== '/moved.html') {
+          if (/^samomdkkupassport\.pages\.dev$/i.test(location.hostname) && location.pathname !== '/moved.html') {
             location.replace('/moved.html?next=' + encodeURIComponent(location.pathname + location.search + location.hash));
           }
         } catch (e) {}
